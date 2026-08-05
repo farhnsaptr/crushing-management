@@ -16,16 +16,21 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapse 
   const { siteLogo } = useTheme();
   const userRole = user?.role || 'operator';
 
-  // Filter main menu items & admin menu items
+  // Filter navigation items by section & active role permissions
   const mainNavItems = NAVIGATION_ITEMS.filter(
     (item) => item.section === 'main' && item.roles.includes(userRole)
+  );
+
+  const masterNavItems = NAVIGATION_ITEMS.filter(
+    (item) => item.section === 'master' && item.roles.includes(userRole)
   );
 
   const adminNavItems = NAVIGATION_ITEMS.filter(
     (item) => item.section === 'admin' && item.roles.includes(userRole)
   );
 
-  const isAdmin = userRole === 'admin';
+  const isSuperAdmin = userRole === 'super-admin';
+  const isAdminOrSuper = userRole === 'super-admin' || userRole === 'admin';
 
   return (
     <aside
@@ -44,7 +49,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapse 
         color: '#ffffff',
       }}
     >
-      {/* Brand Header - Consistent Toggle Button Location */}
+      {/* Brand Header - Fixed Position Toggle Button */}
       <div
         style={{
           padding: isCollapsed ? '1rem 0.5rem' : '1.25rem 1.25rem',
@@ -90,7 +95,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapse 
           </div>
         )}
 
-        {/* Toggle Button - Stays Fixed at Top Header Always */}
+        {/* Toggle Button - Fixed at Top Header */}
         <button
           onClick={onToggleCollapse}
           title={isCollapsed ? 'Buka Sidebar' : 'Tutup Sidebar'}
@@ -112,7 +117,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapse 
         </button>
       </div>
 
-      {/* Navigation Items */}
+      {/* Navigation Items Container */}
       <div style={{ flex: 1, padding: '1.25rem 0.875rem', overflowY: 'auto' }}>
         {/* SECTION 1: MAIN MENU (Universal for all roles) */}
         {mainNavItems.length > 0 && (
@@ -166,8 +171,60 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapse 
           </div>
         )}
 
-        {/* SECTION 2: MENU ADMINISTRATOR (ONLY visible for Admin Role) */}
-        {isAdmin && adminNavItems.length > 0 && (
+        {/* SECTION 2: MASTER DATA MANAGEMENT (Visible for super-admin & admin) */}
+        {isAdminOrSuper && masterNavItems.length > 0 && (
+          <div style={{ marginBottom: '1.25rem' }}>
+            {!isCollapsed && (
+              <div
+                style={{
+                  fontSize: '0.7rem',
+                  fontWeight: 800,
+                  color: 'rgba(255, 255, 255, 0.75)',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.08em',
+                  marginBottom: '0.625rem',
+                  paddingLeft: '0.5rem',
+                }}
+              >
+                Master Data
+              </div>
+            )}
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
+              {masterNavItems.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <NavLink
+                    key={item.id}
+                    to={item.path}
+                    title={isCollapsed ? item.title : undefined}
+                    style={({ isActive }) => ({
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.875rem',
+                      padding: '0.85rem 1rem',
+                      borderRadius: 'var(--radius-md)',
+                      fontSize: '0.925rem',
+                      fontWeight: isActive ? 800 : 600,
+                      color: isActive ? 'var(--secondary-color)' : '#ffffff',
+                      backgroundColor: isActive ? '#ffffff' : 'transparent',
+                      boxShadow: isActive ? '0 4px 12px rgba(0,0,0,0.15)' : 'none',
+                      transition: 'all 0.2s ease',
+                      textDecoration: 'none',
+                      justifyContent: isCollapsed ? 'center' : 'flex-start',
+                    })}
+                  >
+                    <Icon size={20} style={{ flexShrink: 0 }} />
+                    {!isCollapsed && <span>{item.title}</span>}
+                  </NavLink>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* SECTION 3: SYSTEM ADMINISTRATOR (ONLY visible for Super-Admin Role) */}
+        {isSuperAdmin && adminNavItems.length > 0 && (
           <div>
             {!isCollapsed && (
               <div
@@ -181,7 +238,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapse 
                   paddingLeft: '0.5rem',
                 }}
               >
-                Menu Administrator
+                System Administrator
               </div>
             )}
 
@@ -219,7 +276,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapse 
         )}
       </div>
 
-      {/* Sidebar Footer User Badge (Hidden when collapsed for clean layout) */}
+      {/* Sidebar Footer User Badge */}
       {!isCollapsed && user && (
         <div
           style={{

@@ -1,4 +1,4 @@
-import { LayoutDashboard, Users, FileText, Palette } from 'lucide-react';
+import { LayoutDashboard, Building2, Users, FileText, Palette } from 'lucide-react';
 import React from 'react';
 
 export interface NavigationItem {
@@ -6,8 +6,8 @@ export interface NavigationItem {
   title: string;
   path: string;
   icon: React.ComponentType<{ size?: number; className?: string; style?: React.CSSProperties }>;
-  roles: ('admin' | 'operator')[];
-  section: 'main' | 'admin';
+  roles: ('super-admin' | 'admin' | 'operator')[];
+  section: 'main' | 'master' | 'admin';
 }
 
 export const NAVIGATION_ITEMS: NavigationItem[] = [
@@ -16,15 +16,23 @@ export const NAVIGATION_ITEMS: NavigationItem[] = [
     title: 'Dashboard',
     path: '/dashboard',
     icon: LayoutDashboard,
-    roles: ['admin', 'operator'],
+    roles: ['super-admin', 'admin', 'operator'],
     section: 'main',
+  },
+  {
+    id: 'factories',
+    title: 'Factory Management',
+    path: '/admin/factories',
+    icon: Building2,
+    roles: ['super-admin', 'admin'],
+    section: 'master',
   },
   {
     id: 'users',
     title: 'User Management',
     path: '/admin/users',
     icon: Users,
-    roles: ['admin'],
+    roles: ['super-admin'],
     section: 'admin',
   },
   {
@@ -32,7 +40,7 @@ export const NAVIGATION_ITEMS: NavigationItem[] = [
     title: 'Global Audit Logs',
     path: '/admin/logs',
     icon: FileText,
-    roles: ['admin'],
+    roles: ['super-admin'],
     section: 'admin',
   },
   {
@@ -40,7 +48,7 @@ export const NAVIGATION_ITEMS: NavigationItem[] = [
     title: 'Site Configuration',
     path: '/admin/site-config',
     icon: Palette,
-    roles: ['admin'],
+    roles: ['super-admin'],
     section: 'admin',
   },
 ];

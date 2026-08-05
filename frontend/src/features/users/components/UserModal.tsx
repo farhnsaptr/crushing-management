@@ -23,7 +23,7 @@ export const UserModal: React.FC<UserModalProps> = ({
   const [username, setUsername] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [fullName, setFullName] = useState<string>('');
-  const [role, setRole] = useState<'admin' | 'operator'>('operator');
+  const [role, setRole] = useState<'super-admin' | 'admin' | 'operator'>('operator');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -160,7 +160,7 @@ export const UserModal: React.FC<UserModalProps> = ({
             />
             <select
               value={role}
-              onChange={(e) => setRole(e.target.value as 'admin' | 'operator')}
+              onChange={(e) => setRole(e.target.value as 'super-admin' | 'admin' | 'operator')}
               style={{
                 width: '100%',
                 paddingTop: '0.625rem',
@@ -176,7 +176,8 @@ export const UserModal: React.FC<UserModalProps> = ({
               }}
             >
               <option value="operator">OPERATOR (Input NG & Actual)</option>
-              <option value="admin">ADMIN (Akses Penuh Sistem)</option>
+              <option value="admin">ADMIN (Manajemen Master Data & Pabrik)</option>
+              <option value="super-admin">SUPER-ADMIN (Akses Penuh Seluruh Sistem)</option>
             </select>
           </div>
         </div>

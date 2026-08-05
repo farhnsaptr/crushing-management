@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { Spinner } from '../common/Spinner';
 
 interface ProtectedRouteProps {
-  allowedRoles?: ('admin' | 'operator')[];
+  allowedRoles?: ('super-admin' | 'admin' | 'operator')[];
 }
 
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ allowedRoles }) => {

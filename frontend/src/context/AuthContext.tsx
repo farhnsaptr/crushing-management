@@ -6,7 +6,7 @@ export interface UserProfile {
   id: string;
   username: string;
   full_name: string;
-  role: 'admin' | 'operator';
+  role: 'super-admin' | 'admin' | 'operator';
   last_login_at?: string;
 }
 
@@ -25,7 +25,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   const verifySession = async () => {
-    // Clear any legacy user data stored in localStorage for maximum security
+    // Clear legacy storage tokens if present
     localStorage.removeItem('user');
     localStorage.removeItem('token');
 
