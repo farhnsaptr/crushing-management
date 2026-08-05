@@ -8,6 +8,9 @@ export interface ThemeColors {
   theme_dark_primary: string;
   theme_dark_secondary: string;
   theme_dark_accent: string;
+  site_title?: string;
+  site_logo?: string;
+  site_background?: string;
 }
 
 const DEFAULT_THEME: ThemeColors = {
@@ -17,12 +20,18 @@ const DEFAULT_THEME: ThemeColors = {
   theme_dark_primary: '#008d51',
   theme_dark_secondary: '#E76114',
   theme_dark_accent: '#037233',
+  site_title: 'Crushing Management - PT Sugity Creatives',
+  site_logo: '/logo.png',
+  site_background: '/background.jpg',
 };
 
 interface ThemeContextType {
   isDarkMode: boolean;
   toggleDarkMode: () => void;
   colors: ThemeColors;
+  siteTitle: string;
+  siteLogo: string;
+  siteBackground: string;
   updateThemeColors: (newColors: Partial<ThemeColors>) => void;
   fetchThemeConfig: () => Promise<void>;
 }
@@ -50,7 +59,28 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     fetchThemeConfig();
   }, []);
 
-  // Apply colors and dark mode class to document element
+  const siteTitle = colors.site_title || DEFAULT_THEME.site_title!;
+  const siteLogo = colors.site_logo || DEFAULT_THEME.site_logo!;
+  const siteBackground = colors.site_background || DEFAULT_THEME.site_background!;
+
+  // Dynamically update document title and favicon
+  useEffect(() => {
+    if (siteTitle) {
+      document.title = siteTitle;
+    }
+
+    if (siteLogo) {
+      let link: HTMLLinkElement | null = document.querySelector("link[rel*='icon']");
+      if (!link) {
+        link = document.createElement('link');
+        link.rel = 'icon';
+        document.getElementsByTagName('head')[0].appendChild(link);
+      }
+      link.href = siteLogo;
+    }
+  }, [siteTitle, siteLogo]);
+
+  // Apply CSS color variables to document element
   useEffect(() => {
     const root = document.documentElement;
 
@@ -81,6 +111,9 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         isDarkMode,
         toggleDarkMode,
         colors,
+        siteTitle,
+        siteLogo,
+        siteBackground,
         updateThemeColors,
         fetchThemeConfig,
       }}

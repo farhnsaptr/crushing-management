@@ -2,6 +2,7 @@ import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { NAVIGATION_ITEMS } from '../../config/navigation.config';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
 import { ChevronLeft, ChevronRight, ShieldCheck } from 'lucide-react';
 import { Badge } from '../common/Badge';
 
@@ -12,6 +13,7 @@ interface SidebarProps {
 
 export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapse }) => {
   const { user } = useAuth();
+  const { siteLogo } = useTheme();
   const userRole = user?.role || 'operator';
 
   // Filter main menu items & admin menu items
@@ -69,7 +71,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapse 
               }}
             >
               <img
-                src="/logo.png"
+                src={siteLogo || '/logo.png'}
                 alt="PT Sugity Creatives Logo"
                 style={{
                   height: '34px',

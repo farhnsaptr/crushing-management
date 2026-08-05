@@ -2,14 +2,16 @@ import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LoginForm } from '../components/LoginForm';
 import { useAuth } from '../../../context/AuthContext';
+import { useTheme } from '../../../context/ThemeContext';
 
 export const LoginPage: React.FC = () => {
   const { isAuthenticated, user } = useAuth();
+  const { siteLogo, siteBackground } = useTheme();
   const navigate = useNavigate();
 
   useEffect(() => {
     if (isAuthenticated && user) {
-      navigate(user.role === 'admin' ? '/admin/users' : '/');
+      navigate('/dashboard');
     }
   }, [isAuthenticated, user, navigate]);
 
@@ -29,7 +31,7 @@ export const LoginPage: React.FC = () => {
     >
       {/* Background Image Overlay with 20% Opacity */}
       <img
-        src="/background.jpg"
+        src={siteBackground || '/background.jpg'}
         alt="Factory Background"
         style={{
           position: 'absolute',
@@ -61,7 +63,7 @@ export const LoginPage: React.FC = () => {
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
           <div style={{ marginBottom: '1rem' }}>
             <img
-              src="/logo.png"
+              src={siteLogo || '/logo.png'}
               alt="PT Sugity Creatives Logo"
               style={{ height: '56px', objectFit: 'contain' }}
             />
