@@ -19,7 +19,7 @@ export class SiteConfigService {
   }
 
   static async updateConfig(items: { key: string; value: string }[], updatedByUserId: string) {
-    const allowedKeys = new Set([
+    const colorKeys = new Set([
       'theme_light_primary',
       'theme_light_secondary',
       'theme_light_accent',
@@ -28,13 +28,23 @@ export class SiteConfigService {
       'theme_dark_accent',
     ]);
 
+    const stringKeys = new Set([
+      'site_title',
+      'site_logo',
+      'site_background',
+    ]);
+
     const hexColorRegex = /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/;
 
     for (const item of items) {
-      if (!allowedKeys.has(item.key)) {
+      const isColor = colorKeys.has(item.key);
+      const isString = stringKeys.has(item.key);
+
+      if (!isColor && !isString) {
         throw new Error(`Invalid config key: ${item.key}`);
       }
-      if (!hexColorRegex.test(item.value)) {
+
+      if (isColor && !hexColorRegex.test(item.value)) {
         throw new Error(`Invalid hex color value for key '${item.key}': ${item.value}`);
       }
 

@@ -1,44 +1,45 @@
 import { Router } from 'express';
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
 import { SiteConfigController } from './siteConfig.controller';
 import { verifyToken, requireRole } from '../../middlewares/auth.middleware';
 
+const uploadDir = path.join(process.cwd(), 'uploads');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+const storage = multer.diskStorage({
+  destination: (_req, _file, cb) => {
+    cb(null, uploadDir);
+  },
+  filename: (_req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+    const ext = path.extname(file.originalname);
+    cb(null, `file-${uniqueSuffix}${ext}`);
+  },
+});
+
+const upload = multer({
+  storage,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+  fileFilter: (_req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files (PNG, JPG, WEBP, SVG, ICO) are allowed'));
+    }
+  },
+});
+
 const router = Router();
 
-/**
- * @openapi
- * /api/site-config:
- *   get:
- *     summary: Retrieve site theme colors configuration (Light/Dark mode)
- *     tags: [Site Config]
- *     responses:
- *       200:
- *         description: Key-value object of theme hex colors
- *   put:
- *     summary: Update site theme hex colors (Admin only)
- *     tags: [Site Config]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [settings]
- *             properties:
- *               settings:
- *                 type: array
- *                 items:
- *                   type: object
- *                   required: [key, value]
- *                   properties:
- *                     key: { type: string, description: "Nama kunci variabel konfigurasi tema" }
- *                     value: { type: string, description: "Nilai kode warna HEX (#RRGGBB)" }
- *     responses:
- *       200:
- *         description: Updated site config
- */
+// GET is public for fetching application logo, title, and theme tokens
 router.get('/', SiteConfigController.getConfig);
+
+// Admin-only routes
 router.put('/', verifyToken, requireRole(['admin']), SiteConfigController.updateConfig);
+router.post('/upload', verifyToken, requireRole(['admin']), upload.single('file'), SiteConfigController.uploadFile);
 
 export default router;

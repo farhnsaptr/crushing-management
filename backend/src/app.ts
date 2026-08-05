@@ -1,6 +1,7 @@
 import express, { Application } from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
+import path from 'path';
 import { env } from './config/env.config';
 import { requestLogger } from './middlewares/requestLogger.middleware';
 import { errorHandler } from './middlewares/errorHandler.middleware';
@@ -40,6 +41,9 @@ app.use(cookieParser());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+// Static uploads directory
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+
 // Audit Logger (Redis Stream)
 app.use(requestLogger);
 
@@ -48,7 +52,7 @@ app.use('/api', apiLimiter);
 
 // Health Check
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok', service: 'Recycle Material Management API', timestamp: new Date() });
+  res.json({ status: 'ok', service: 'Crushing Management API', timestamp: new Date() });
 });
 
 // API Routes Mount
