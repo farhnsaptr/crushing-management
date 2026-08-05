@@ -8,6 +8,20 @@ router.use(verifyToken, requireRole(['admin']));
 
 /**
  * @openapi
+ * /api/admin/logs/stream:
+ *   get:
+ *     summary: Real-time Server-Sent Events (SSE) stream for API request logs (Admin only)
+ *     tags: [Global Audit Logs]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Event stream established
+ */
+router.get('/stream', GlobalLogsController.streamLogs);
+
+/**
+ * @openapi
  * /api/admin/logs:
  *   get:
  *     summary: Read API request audit logs from Redis Stream (Admin only)
@@ -18,16 +32,19 @@ router.use(verifyToken, requireRole(['admin']));
  *       - in: query
  *         name: count
  *         schema: { type: integer, default: 50 }
- *       - in: query
- *         name: start_id
- *         schema: { type: string, default: "+" }
- *       - in: query
- *         name: end_id
- *         schema: { type: string, default: "-" }
  *     responses:
  *       200:
  *         description: Audit logs list from Redis Stream
+ *   delete:
+ *     summary: Purge/clear all audit logs in Redis Stream (Admin only)
+ *     tags: [Global Audit Logs]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: All audit logs cleared
  */
 router.get('/', GlobalLogsController.getLogs);
+router.delete('/', GlobalLogsController.clearAllLogs);
 
 export default router;

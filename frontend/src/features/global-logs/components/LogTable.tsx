@@ -6,9 +6,10 @@ import { Badge } from '../../../components/common/Badge';
 interface LogTableProps {
   logs: AuditLogItem[];
   isLoading: boolean;
+  newlyAddedIds: Set<string>;
 }
 
-export const LogTable: React.FC<LogTableProps> = ({ logs, isLoading }) => {
+export const LogTable: React.FC<LogTableProps> = ({ logs, isLoading, newlyAddedIds }) => {
   const getMethodBadgeVariant = (method: string = 'GET') => {
     switch (method.toUpperCase()) {
       case 'GET':
@@ -118,6 +119,7 @@ export const LogTable: React.FC<LogTableProps> = ({ logs, isLoading }) => {
       isLoading={isLoading}
       emptyMessage="Belum ada audit log tercatat di Redis Streams."
       keyExtractor={(row) => row.id || Math.random().toString()}
+      rowClassName={(row) => (newlyAddedIds.has(row.id) ? 'new-log-highlight' : '')}
     />
   );
 };

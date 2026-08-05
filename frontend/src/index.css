@@ -149,6 +149,20 @@ button, input, select, textarea {
   border-bottom: 1px solid rgba(255, 255, 255, 0.15);
 }
 
+/* Real-Time SSE Log Green Highlight Fade-Out Animation (3 seconds) */
+@keyframes greenFadeOut {
+  0% {
+    background-color: rgba(16, 185, 129, 0.35);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+.new-log-highlight {
+  animation: greenFadeOut 3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
 /* Keyframe Animations */
 @keyframes spin {
   from { transform: rotate(0deg); }

@@ -14,6 +14,7 @@ interface TableProps<T> {
   isLoading?: boolean;
   emptyMessage?: string;
   keyExtractor: (row: T) => string | number;
+  rowClassName?: (row: T) => string;
 }
 
 export function Table<T>({
@@ -22,6 +23,7 @@ export function Table<T>({
   isLoading = false,
   emptyMessage = 'No data available',
   keyExtractor,
+  rowClassName,
 }: TableProps<T>) {
   return (
     <div style={{ width: '100%', overflowX: 'auto' }}>
@@ -82,12 +84,21 @@ export function Table<T>({
             data.map((row) => (
               <tr
                 key={keyExtractor(row)}
+                className={rowClassName ? rowClassName(row) : undefined}
                 style={{
                   borderBottom: '1px solid var(--border-color)',
                   transition: 'background-color 0.15s ease',
                 }}
-                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--bg-main)')}
-                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                onMouseEnter={(e) => {
+                  if (!rowClassName || !rowClassName(row)) {
+                    e.currentTarget.style.backgroundColor = 'var(--bg-main)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!rowClassName || !rowClassName(row)) {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                  }
+                }}
               >
                 {columns.map((col, idx) => (
                   <td
