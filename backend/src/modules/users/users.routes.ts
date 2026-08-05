@@ -10,7 +10,7 @@ router.use(verifyToken, requireRole(['admin']));
  * @openapi
  * /api/users:
  *   get:
- *     summary: List all registered users (Admin only)
+ *     summary: List all registered users excluding currently logged-in user (Admin only)
  *     tags: [Users Management]
  *     security:
  *       - bearerAuth: []
@@ -43,6 +43,49 @@ router.post('/', UsersController.createUser);
 
 /**
  * @openapi
+ * /api/users/{id}:
+ *   put:
+ *     summary: Update user account details (Admin only)
+ *     tags: [Users Management]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid, description: "ID pengguna (UUID)" }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               full_name: { type: string, description: "Nama lengkap baru" }
+ *               role: { type: string, enum: [admin, operator], description: "Role akses baru" }
+ *               password: { type: string, description: "Password baru (opsional)" }
+ *     responses:
+ *       200:
+ *         description: User updated successfully
+ *   delete:
+ *     summary: Delete a user account (Admin only)
+ *     tags: [Users Management]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid, description: "ID pengguna (UUID)" }
+ *     responses:
+ *       200:
+ *         description: User deleted
+ */
+router.put('/:id', UsersController.updateUser);
+router.delete('/:id', UsersController.deleteUser);
+
+/**
+ * @openapi
  * /api/users/{id}/status:
  *   put:
  *     summary: Activate or deactivate a user account (Admin only)
@@ -68,24 +111,5 @@ router.post('/', UsersController.createUser);
  *         description: User status updated
  */
 router.put('/:id/status', UsersController.updateUserStatus);
-
-/**
- * @openapi
- * /api/users/{id}:
- *   delete:
- *     summary: Delete a user account (Admin only)
- *     tags: [Users Management]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema: { type: string, format: uuid, description: "ID pengguna (UUID)" }
- *     responses:
- *       200:
- *         description: User deleted
- */
-router.delete('/:id', UsersController.deleteUser);
 
 export default router;

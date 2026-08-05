@@ -11,6 +11,7 @@ export interface UserRow extends RowDataPacket {
   full_name: string;
   role: 'admin' | 'operator';
   is_active: boolean;
+  last_login_at?: string;
 }
 
 export class AuthService {
@@ -35,6 +36,9 @@ export class AuthService {
       throw new Error('Invalid username or password');
     }
 
+    // Update last_login_at timestamp in database
+    await pool.query('UPDATE users SET last_login_at = CURRENT_TIMESTAMP WHERE id = ?', [user.id]);
+
     const tokenPayload = {
       id: user.id,
       username: user.username,
@@ -43,7 +47,7 @@ export class AuthService {
     };
 
     const token = jwt.sign(tokenPayload, env.JWT_SECRET, {
-      expiresIn: env.JWT_EXPIRES_IN as any,
+      expiresIn: '30d',
     });
 
     return {

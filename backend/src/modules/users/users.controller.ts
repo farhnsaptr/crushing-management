@@ -1,18 +1,20 @@
-import { Request, Response } from 'express';
+import { Response } from 'express';
 import { UsersService } from './users.service';
 import { sendSuccess, sendError } from '../../utils/response.util';
+import { AuthenticatedRequest } from '../../middlewares/auth.middleware';
 
 export class UsersController {
-  static async listUsers(req: Request, res: Response): Promise<void> {
+  static async listUsers(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
-      const users = await UsersService.listUsers();
+      const currentUserId = req.user?.id;
+      const users = await UsersService.listUsers(currentUserId);
       sendSuccess(res, users, 'Users retrieved successfully');
     } catch (error: any) {
       sendError(res, error.message || 'Failed to retrieve users', 500);
     }
   }
 
-  static async createUser(req: Request, res: Response): Promise<void> {
+  static async createUser(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
       const { username, password, full_name, role } = req.body;
 
@@ -33,7 +35,29 @@ export class UsersController {
     }
   }
 
-  static async updateUserStatus(req: Request, res: Response): Promise<void> {
+  static async updateUser(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      const userId = String(req.params.id);
+      const { full_name, role, password } = req.body;
+
+      if (!userId) {
+        sendError(res, 'Invalid user ID', 400);
+        return;
+      }
+
+      if (role && !['admin', 'operator'].includes(role)) {
+        sendError(res, 'Role must be admin or operator', 400);
+        return;
+      }
+
+      const user = await UsersService.updateUser(userId, { full_name, role, password });
+      sendSuccess(res, user, 'User updated successfully');
+    } catch (error: any) {
+      sendError(res, error.message || 'Failed to update user', 400);
+    }
+  }
+
+  static async updateUserStatus(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
       const userId = String(req.params.id);
       const { is_active } = req.body;
@@ -50,7 +74,7 @@ export class UsersController {
     }
   }
 
-  static async deleteUser(req: Request, res: Response): Promise<void> {
+  static async deleteUser(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
       const userId = String(req.params.id);
       if (!userId) {

@@ -4,9 +4,17 @@ import { pool } from '../../config/database';
 import { RowDataPacket, ResultSetHeader } from 'mysql2';
 
 export class UsersService {
-  static async listUsers() {
+  static async listUsers(currentUserId?: string) {
+    if (currentUserId) {
+      const [rows] = await pool.query<RowDataPacket[]>(
+        'SELECT id, username, full_name, role, is_active, last_login_at, created_at, updated_at FROM users WHERE id != ? ORDER BY created_at DESC',
+        [currentUserId]
+      );
+      return rows;
+    }
+
     const [rows] = await pool.query<RowDataPacket[]>(
-      'SELECT id, username, full_name, role, is_active, created_at, updated_at FROM users ORDER BY created_at DESC'
+      'SELECT id, username, full_name, role, is_active, last_login_at, created_at, updated_at FROM users ORDER BY created_at DESC'
     );
     return rows;
   }
@@ -40,6 +48,54 @@ export class UsersService {
       role: data.role,
       is_active: true,
     };
+  }
+
+  static async updateUser(
+    userId: string,
+    data: {
+      full_name?: string;
+      role?: 'admin' | 'operator';
+      password?: string;
+    }
+  ) {
+    const fields: string[] = [];
+    const values: any[] = [];
+
+    if (data.full_name) {
+      fields.push('full_name = ?');
+      values.push(data.full_name);
+    }
+
+    if (data.role) {
+      fields.push('role = ?');
+      values.push(data.role);
+    }
+
+    if (data.password && data.password.trim() !== '') {
+      const passwordHash = await bcrypt.hash(data.password, 10);
+      fields.push('password_hash = ?');
+      values.push(passwordHash);
+    }
+
+    if (fields.length === 0) {
+      throw new Error('No fields provided for update');
+    }
+
+    values.push(userId);
+    const query = `UPDATE users SET ${fields.join(', ')} WHERE id = ?`;
+
+    const [result] = await pool.query<ResultSetHeader>(query, values);
+
+    if (result.affectedRows === 0) {
+      throw new Error('User not found');
+    }
+
+    const [updatedRows] = await pool.query<RowDataPacket[]>(
+      'SELECT id, username, full_name, role, is_active, last_login_at, created_at, updated_at FROM users WHERE id = ?',
+      [userId]
+    );
+
+    return updatedRows[0];
   }
 
   static async updateUserStatus(userId: string, isActive: boolean) {
