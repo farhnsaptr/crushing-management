@@ -1,75 +1,39 @@
-# React + TypeScript + Vite
+# Frontend Web Application - PT Sugity Creatives Recycle Material Management
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Aplikasi web modern berbasis React (Vite + TypeScript + React Router DOM v7) untuk sistem manajemen daur ulang material plastik injection molding di PT Sugity Creatives.
 
-Currently, two official plugins are available:
-
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+## Structure
+```
+frontend/
+├── src/
+│   ├── assets/                # Font Outfit (.ttf) & aset gambar
+│   ├── components/
+│   │   ├── common/            # Reusable UI Components (Button, Input, Card, Modal, Table, Badge, Toast)
+│   │   ├── errors/            # Shared Error Components (NotFoundPage 404 & ForbiddenPage 403)
+│   │   ├── layout/            # App Shell Layout (Sidebar, Header, MainLayout)
+│   │   └── guard/             # Role-based Route Guard (ProtectedRoute)
+│   ├── config/                # Environment config & dynamic navigation items
+│   ├── context/               # AuthContext (JWT Session) & ThemeContext (Dynamic Colors)
+│   ├── features/
+│   │   ├── auth/              # Halaman & Form Login
+│   │   ├── users/             # Admin User Management
+│   │   ├── global-logs/       # Admin Redis Streams Audit Log Viewer
+│   │   └── site-config/       # Admin Theme Color Customizer
+│   ├── services/              # Axios API Client dengan JWT Interceptor
+│   ├── index.css              # Font Outfit, CSS Reset & Color Variables
+│   ├── App.tsx                # App Routing setup
+│   └── main.tsx               # React Entry Point
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Features
+- **Design Aesthetic**: Referensi dari `recycle-mate` dengan font **Outfit** dan skema warna resmi PT Sugity Creatives (`#008d51`, `#E76114`, `#037233`).
+- **Dynamic Sidebar**: Menu sidebar terpusat di `navigation.config.ts` dan difilter otomatis berdasar role pengguna.
+- **Strict AGENTS.md**: Pemisahan tegas antara komponen UI murni (`*.tsx`) dan logika API/state (`hooks/` & `services/`).
+- **Shared Error Pages**: Komponen khusus untuk 404 Not Found dan 403 Forbidden.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+## Run Locally
+```bash
+# Terminal (di folder frontend)
+npm run dev
 ```
+Aplikasi frontend akan berjalan di `http://localhost:5173`.
