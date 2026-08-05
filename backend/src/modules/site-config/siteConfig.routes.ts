@@ -38,8 +38,8 @@ const router = Router();
 // GET is public for fetching application logo, title, and theme tokens
 router.get('/', SiteConfigController.getConfig);
 
-// Admin-only routes
-router.put('/', verifyToken, requireRole(['admin']), SiteConfigController.updateConfig);
-router.post('/upload', verifyToken, requireRole(['admin']), upload.single('file'), SiteConfigController.uploadFile);
+// Super-Admin only routes for site configuration mutation
+router.put('/', verifyToken, requireRole(['super-admin']), SiteConfigController.updateConfig);
+router.post('/upload', verifyToken, requireRole(['super-admin']), upload.single('file'), SiteConfigController.uploadFile);
 
 export default router;

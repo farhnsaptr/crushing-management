@@ -23,8 +23,8 @@ export class UsersController {
         return;
       }
 
-      if (!['admin', 'operator'].includes(role)) {
-        sendError(res, 'Role must be admin or operator', 400);
+      if (!['super-admin', 'admin', 'operator'].includes(role)) {
+        sendError(res, 'Role must be super-admin, admin, or operator', 400);
         return;
       }
 
@@ -45,8 +45,8 @@ export class UsersController {
         return;
       }
 
-      if (role && !['admin', 'operator'].includes(role)) {
-        sendError(res, 'Role must be admin or operator', 400);
+      if (role && !['super-admin', 'admin', 'operator'].includes(role)) {
+        sendError(res, 'Role must be super-admin, admin, or operator', 400);
         return;
       }
 

@@ -93,8 +93,8 @@ router.get('/', FactoriesController.list);
  *         description: Factory deleted
  */
 router.get('/:id', FactoriesController.getById);
-router.post('/', requireRole(['admin']), FactoriesController.create);
-router.put('/:id', requireRole(['admin']), FactoriesController.update);
-router.delete('/:id', requireRole(['admin']), FactoriesController.delete);
+router.post('/', requireRole(['super-admin', 'admin']), FactoriesController.create);
+router.put('/:id', requireRole(['super-admin', 'admin']), FactoriesController.update);
+router.delete('/:id', requireRole(['super-admin', 'admin']), FactoriesController.delete);
 
 export default router;

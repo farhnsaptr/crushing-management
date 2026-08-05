@@ -118,8 +118,8 @@ router.get('/by-factory/:factory_id', MachinesController.getByFactory);
  */
 router.get('/:id', MachinesController.getById);
 
-router.post('/', requireRole(['admin']), MachinesController.create);
-router.put('/:id', requireRole(['admin']), MachinesController.update);
-router.delete('/:id', requireRole(['admin']), MachinesController.delete);
+router.post('/', requireRole(['super-admin', 'admin']), MachinesController.create);
+router.put('/:id', requireRole(['super-admin', 'admin']), MachinesController.update);
+router.delete('/:id', requireRole(['super-admin', 'admin']), MachinesController.delete);
 
 export default router;

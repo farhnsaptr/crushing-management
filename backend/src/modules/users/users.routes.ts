@@ -4,13 +4,14 @@ import { verifyToken, requireRole } from '../../middlewares/auth.middleware';
 
 const router = Router();
 
-router.use(verifyToken, requireRole(['admin']));
+// User Management requires super-admin role
+router.use(verifyToken, requireRole(['super-admin']));
 
 /**
  * @openapi
  * /api/users:
  *   get:
- *     summary: List all registered users excluding currently logged-in user (Admin only)
+ *     summary: List all registered users excluding currently logged-in user (Super-Admin only)
  *     tags: [Users Management]
  *     security:
  *       - bearerAuth: []
@@ -18,7 +19,7 @@ router.use(verifyToken, requireRole(['admin']));
  *       200:
  *         description: List of users
  *   post:
- *     summary: Create a new user account (Admin only)
+ *     summary: Create a new user account (Super-Admin only)
  *     tags: [Users Management]
  *     security:
  *       - bearerAuth: []
@@ -33,7 +34,7 @@ router.use(verifyToken, requireRole(['admin']));
  *               username: { type: string, description: "Username unik akun" }
  *               password: { type: string, description: "Password akun" }
  *               full_name: { type: string, description: "Nama lengkap pengguna" }
- *               role: { type: string, enum: [admin, operator], description: "Role akses akun (admin/operator)" }
+ *               role: { type: string, enum: [super-admin, admin, operator], description: "Role akses akun" }
  *     responses:
  *       201:
  *         description: User created
@@ -45,7 +46,7 @@ router.post('/', UsersController.createUser);
  * @openapi
  * /api/users/{id}:
  *   put:
- *     summary: Update user account details (Admin only)
+ *     summary: Update user account details (Super-Admin only)
  *     tags: [Users Management]
  *     security:
  *       - bearerAuth: []
@@ -62,13 +63,13 @@ router.post('/', UsersController.createUser);
  *             type: object
  *             properties:
  *               full_name: { type: string, description: "Nama lengkap baru" }
- *               role: { type: string, enum: [admin, operator], description: "Role akses baru" }
+ *               role: { type: string, enum: [super-admin, admin, operator], description: "Role akses baru" }
  *               password: { type: string, description: "Password baru (opsional)" }
  *     responses:
  *       200:
  *         description: User updated successfully
  *   delete:
- *     summary: Delete a user account (Admin only)
+ *     summary: Delete a user account (Super-Admin only)
  *     tags: [Users Management]
  *     security:
  *       - bearerAuth: []
@@ -88,7 +89,7 @@ router.delete('/:id', UsersController.deleteUser);
  * @openapi
  * /api/users/{id}/status:
  *   put:
- *     summary: Activate or deactivate a user account (Admin only)
+ *     summary: Activate or deactivate a user account (Super-Admin only)
  *     tags: [Users Management]
  *     security:
  *       - bearerAuth: []

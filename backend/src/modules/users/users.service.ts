@@ -23,7 +23,7 @@ export class UsersService {
     username: string;
     password: string;
     full_name: string;
-    role: 'admin' | 'operator';
+    role: 'super-admin' | 'admin' | 'operator';
   }) {
     const [existing] = await pool.query<RowDataPacket[]>(
       'SELECT id FROM users WHERE username = ?',
@@ -54,7 +54,7 @@ export class UsersService {
     userId: string,
     data: {
       full_name?: string;
-      role?: 'admin' | 'operator';
+      role?: 'super-admin' | 'admin' | 'operator';
       password?: string;
     }
   ) {

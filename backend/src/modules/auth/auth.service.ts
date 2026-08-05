@@ -9,7 +9,7 @@ export interface UserRow extends RowDataPacket {
   username: string;
   password_hash: string;
   full_name: string;
-  role: 'admin' | 'operator';
+  role: 'super-admin' | 'admin' | 'operator';
   is_active: boolean;
   last_login_at?: string;
 }

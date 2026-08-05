@@ -131,6 +131,6 @@ router.get('/by-jenis', MasterPartsController.getByJenis);
  *         description: Master part created
  */
 router.get('/', MasterPartsController.listAll);
-router.post('/', requireRole(['admin']), MasterPartsController.create);
+router.post('/', requireRole(['super-admin', 'admin']), MasterPartsController.create);
 
 export default router;

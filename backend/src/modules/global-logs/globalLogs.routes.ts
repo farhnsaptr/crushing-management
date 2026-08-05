@@ -4,13 +4,14 @@ import { verifyToken, requireRole } from '../../middlewares/auth.middleware';
 
 const router = Router();
 
-router.use(verifyToken, requireRole(['admin']));
+// Global Audit Logs requires super-admin role
+router.use(verifyToken, requireRole(['super-admin']));
 
 /**
  * @openapi
  * /api/admin/logs/stream:
  *   get:
- *     summary: Real-time Server-Sent Events (SSE) stream for API request logs (Admin only)
+ *     summary: Real-time Server-Sent Events (SSE) stream for API request logs (Super-Admin only)
  *     tags: [Global Audit Logs]
  *     security:
  *       - bearerAuth: []
@@ -24,7 +25,7 @@ router.get('/stream', GlobalLogsController.streamLogs);
  * @openapi
  * /api/admin/logs:
  *   get:
- *     summary: Read API request audit logs from Redis Stream (Admin only)
+ *     summary: Read API request audit logs from Redis Stream (Super-Admin only)
  *     tags: [Global Audit Logs]
  *     security:
  *       - bearerAuth: []
@@ -36,7 +37,7 @@ router.get('/stream', GlobalLogsController.streamLogs);
  *       200:
  *         description: Audit logs list from Redis Stream
  *   delete:
- *     summary: Purge/clear all audit logs in Redis Stream (Admin only)
+ *     summary: Purge/clear all audit logs in Redis Stream (Super-Admin only)
  *     tags: [Global Audit Logs]
  *     security:
  *       - bearerAuth: []
