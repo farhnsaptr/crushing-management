@@ -106,11 +106,12 @@ export class MasterPartsService {
     const total = countRows[0].total;
 
     const dataQuery = `
-      SELECT mp.*, m.model_code, mc.name AS machine_name, mc.code AS machine_code, f.name AS factory_name, f.code AS factory_code
+      SELECT mp.*, m.model_code, mc.name AS machine_name, mc.code AS machine_code, f.name AS factory_name, f.code AS factory_code, mm.material_name AS master_material_name
       FROM master_parts mp
       JOIN master_models m ON mp.model_id = m.id
       JOIN machines mc ON mp.machine_id = mc.id
       JOIN factories f ON mc.factory_id = f.id
+      LEFT JOIN master_materials mm ON mp.material_id = mm.id
       ${whereClause}
       ORDER BY mp.created_at DESC
       LIMIT ? OFFSET ?
@@ -146,6 +147,7 @@ export class MasterPartsService {
     machine_id: string;
     customer: string;
     model_id: string;
+    material_id?: string;
     part_number: string;
     part_name: string;
     jenis_part: string;
@@ -166,20 +168,40 @@ export class MasterPartsService {
     const stdQtyNg = shikakeVal * 2;
     const allowanceKg = Number(((stdQtyNg * beratPartVal) / 1000).toFixed(3));
 
+    // Auto-resolve or create Material in master_materials if material_id not provided
+    let finalMaterialId: string | null = data.material_id || null;
+    const cleanMatName = (data.material || '-').trim();
+    if (!finalMaterialId && cleanMatName && cleanMatName !== '-') {
+      const [matRows] = await pool.query<RowDataPacket[]>(
+        'SELECT id FROM master_materials WHERE material_name = ?',
+        [cleanMatName]
+      );
+      if (matRows.length > 0) {
+        finalMaterialId = matRows[0].id;
+      } else {
+        finalMaterialId = randomUUID();
+        await pool.query('INSERT INTO master_materials (id, material_name) VALUES (?, ?)', [
+          finalMaterialId,
+          cleanMatName,
+        ]);
+      }
+    }
+
     await pool.query(
       `INSERT INTO master_parts
-       (id, sebango_code, machine_id, customer, model_id, part_number, part_name, jenis_part, material, shikake, qty_day, prod_lot, qty_kbn, berat_part_gr, berat_runner_gr, std_qty_ng, allowance_kg, image_url, qr_code_value)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       (id, sebango_code, machine_id, customer, model_id, material_id, part_number, part_name, jenis_part, material, shikake, qty_day, prod_lot, qty_kbn, berat_part_gr, berat_runner_gr, std_qty_ng, allowance_kg, image_url, qr_code_value)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
         data.sebango_code,
         data.machine_id,
         data.customer || '-',
         data.model_id,
+        finalMaterialId,
         data.part_number || '-',
         data.part_name || '-',
         data.jenis_part || '-',
-        data.material || '-',
+        cleanMatName,
         shikakeVal,
         Number(data.qty_day) || 0,
         Number(data.prod_lot) || 0,
@@ -193,7 +215,7 @@ export class MasterPartsService {
       ]
     );
 
-    return { id, ...data, std_qty_ng: stdQtyNg, allowance_kg: allowanceKg };
+    return { id, ...data, material_id: finalMaterialId, std_qty_ng: stdQtyNg, allowance_kg: allowanceKg };
   }
 
   static async updatePart(
@@ -203,6 +225,7 @@ export class MasterPartsService {
       machine_id?: string;
       customer?: string;
       model_id?: string;
+      material_id?: string;
       part_number?: string;
       part_name?: string;
       jenis_part?: string;
@@ -233,9 +256,28 @@ export class MasterPartsService {
     const stdQtyNg = shikakeVal * 2;
     const allowanceKg = Number(((stdQtyNg * beratPartVal) / 1000).toFixed(3));
 
+    let finalMaterialId: string | null = data.material_id !== undefined ? data.material_id : current.material_id;
+    const cleanMatName = data.material !== undefined ? data.material.trim() : current.material;
+
+    if (data.material !== undefined && cleanMatName && cleanMatName !== '-') {
+      const [matRows] = await pool.query<RowDataPacket[]>(
+        'SELECT id FROM master_materials WHERE material_name = ?',
+        [cleanMatName]
+      );
+      if (matRows.length > 0) {
+        finalMaterialId = matRows[0].id;
+      } else {
+        finalMaterialId = randomUUID();
+        await pool.query('INSERT INTO master_materials (id, material_name) VALUES (?, ?)', [
+          finalMaterialId,
+          cleanMatName,
+        ]);
+      }
+    }
+
     await pool.query(
       `UPDATE master_parts SET
-        sebango_code = ?, machine_id = ?, customer = ?, model_id = ?, part_number = ?,
+        sebango_code = ?, machine_id = ?, customer = ?, model_id = ?, material_id = ?, part_number = ?,
         part_name = ?, jenis_part = ?, material = ?, shikake = ?, qty_day = ?,
         prod_lot = ?, qty_kbn = ?, berat_part_gr = ?, berat_runner_gr = ?,
         std_qty_ng = ?, allowance_kg = ?, image_url = ?, qr_code_value = ?
@@ -245,10 +287,11 @@ export class MasterPartsService {
         data.machine_id ?? current.machine_id,
         data.customer ?? current.customer,
         data.model_id ?? current.model_id,
+        finalMaterialId,
         data.part_number ?? current.part_number,
         data.part_name ?? current.part_name,
         data.jenis_part ?? current.jenis_part,
-        data.material ?? current.material,
+        cleanMatName,
         shikakeVal,
         data.qty_day !== undefined ? Number(data.qty_day) : current.qty_day,
         data.prod_lot !== undefined ? Number(data.prod_lot) : current.prod_lot,
@@ -263,7 +306,7 @@ export class MasterPartsService {
       ]
     );
 
-    return { id, ...data, std_qty_ng: stdQtyNg, allowance_kg: allowanceKg };
+    return { id, ...data, material_id: finalMaterialId, std_qty_ng: stdQtyNg, allowance_kg: allowanceKg };
   }
 
   static async deletePart(id: string) {
@@ -457,10 +500,11 @@ export class MasterPartsService {
       throw new Error('Tidak ada baris data valid yang dapat disimpan.');
     }
 
-    // Cache factories, machines, and models for fast lookup
+    // Cache factories, machines, models, and materials for fast lookup
     const [factories] = await pool.query<RowDataPacket[]>('SELECT id, code, name FROM factories');
     const [machines] = await pool.query<RowDataPacket[]>('SELECT id, code, name, factory_id FROM machines');
     const [models] = await pool.query<RowDataPacket[]>('SELECT id, model_code FROM master_models');
+    const [materials] = await pool.query<RowDataPacket[]>('SELECT id, material_name FROM master_materials');
 
     const factoryMap = new Map<string, string>();
     factories.forEach((f) => {
@@ -477,6 +521,11 @@ export class MasterPartsService {
     const modelMap = new Map<string, string>();
     models.forEach((m) => {
       modelMap.set(m.model_code.toUpperCase(), m.id);
+    });
+
+    const materialMap = new Map<string, string>();
+    materials.forEach((mat) => {
+      materialMap.set(mat.material_name.toUpperCase(), mat.id);
     });
 
     // Default Factory (FACTORY 2 or first)
@@ -513,16 +562,32 @@ export class MasterPartsService {
         machineMap.set(row.machine_code.toUpperCase(), machineId);
       }
 
-      // 3. Upsert Master Part
+      // 3. Resolve or Create Material
+      const cleanMatName = (row.material || '-').trim();
+      let materialId: string | null = null;
+      if (cleanMatName && cleanMatName !== '-') {
+        materialId = materialMap.get(cleanMatName.toUpperCase()) || null;
+        if (!materialId) {
+          materialId = randomUUID();
+          await pool.query('INSERT INTO master_materials (id, material_name) VALUES (?, ?)', [
+            materialId,
+            cleanMatName,
+          ]);
+          materialMap.set(cleanMatName.toUpperCase(), materialId);
+        }
+      }
+
+      // 4. Upsert Master Part
       const partId = randomUUID();
       await pool.query(
         `INSERT INTO master_parts
-         (id, sebango_code, machine_id, customer, model_id, part_number, part_name, jenis_part, material, shikake, qty_day, prod_lot, qty_kbn, berat_part_gr, berat_runner_gr, std_qty_ng, allowance_kg)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         (id, sebango_code, machine_id, customer, model_id, material_id, part_number, part_name, jenis_part, material, shikake, qty_day, prod_lot, qty_kbn, berat_part_gr, berat_runner_gr, std_qty_ng, allowance_kg)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          ON DUPLICATE KEY UPDATE
            machine_id = VALUES(machine_id),
            customer = VALUES(customer),
            model_id = VALUES(model_id),
+           material_id = VALUES(material_id),
            part_number = VALUES(part_number),
            part_name = VALUES(part_name),
            jenis_part = VALUES(jenis_part),
@@ -541,10 +606,11 @@ export class MasterPartsService {
           machineId,
           row.customer || '-',
           modelId,
+          materialId,
           row.part_number || '-',
           row.part_name || '-',
           row.jenis_part || '-',
-          row.material || '-',
+          cleanMatName,
           row.shikake || 1,
           row.qty_day || 0,
           row.prod_lot || 0,

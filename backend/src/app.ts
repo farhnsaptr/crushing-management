@@ -20,6 +20,7 @@ import productionActualRoutes from './modules/production-actual/productionActual
 import dashboardRoutes from './modules/dashboard/dashboard.routes';
 import siteConfigRoutes from './modules/site-config/siteConfig.routes';
 import globalLogsRoutes from './modules/global-logs/globalLogs.routes';
+import materialsRoutes from './modules/materials/materials.routes';
 
 const app: Application = express();
 
@@ -60,6 +61,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/factories', factoriesRoutes);
 app.use('/api/machines', machinesRoutes);
+app.use('/api/materials', materialsRoutes);
 app.use('/api/master-parts', masterPartsRoutes);
 app.use('/api/ng-transactions', ngTransactionsRoutes);
 app.use('/api/production-actual', productionActualRoutes);
