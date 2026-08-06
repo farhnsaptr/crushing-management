@@ -1,4 +1,4 @@
-import { LayoutDashboard, Building2, Cpu, Package, Users, FileText, Palette } from 'lucide-react';
+import { LayoutDashboard, Building2, Cpu, Package, Layers, Users, FileText, Palette } from 'lucide-react';
 import React from 'react';
 
 export interface NavigationItem {
@@ -32,6 +32,14 @@ export const NAVIGATION_ITEMS: NavigationItem[] = [
     title: 'Machine Management',
     path: '/admin/machines',
     icon: Cpu,
+    roles: ['super-admin', 'admin'],
+    section: 'master',
+  },
+  {
+    id: 'materials',
+    title: 'Material Management',
+    path: '/admin/materials',
+    icon: Layers,
     roles: ['super-admin', 'admin'],
     section: 'master',
   },

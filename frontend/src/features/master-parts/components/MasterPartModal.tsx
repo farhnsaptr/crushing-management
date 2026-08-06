@@ -252,7 +252,15 @@ export const MasterPartModal: React.FC<MasterPartModalProps> = ({
             value={material}
             onChange={(e) => setMaterial(e.target.value)}
             leftIcon={<Layers size={18} />}
+            list="material-suggestions"
           />
+          <datalist id="material-suggestions">
+            <option value="PP2 EXXON AP03-202B" />
+            <option value="PP2 EXXON" />
+            <option value="ABS BLAZE" />
+            <option value="POM" />
+            <option value="PC/ABS" />
+          </datalist>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '1rem' }}>
