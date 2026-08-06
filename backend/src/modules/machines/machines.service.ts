@@ -47,13 +47,15 @@ export class MachinesService {
     status?: 'active' | 'inactive';
   }) {
     const id = randomUUID();
+    const formattedCode = formatMachineCode(data.code);
+
     await pool.query(
       `INSERT INTO machines (id, factory_id, code, name, type, tonnage, status)
        VALUES (?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
         data.factory_id,
-        data.code,
+        formattedCode,
         data.name,
         data.type || 'Injection Mold',
         data.tonnage || null,
@@ -81,7 +83,7 @@ export class MachinesService {
     }
 
     const factory_id = data.factory_id || existing.factory_id;
-    const code = data.code || existing.code;
+    const code = data.code ? formatMachineCode(data.code) : existing.code;
     const name = data.name || existing.name;
     const type = data.type !== undefined ? data.type : existing.type;
     const tonnage = data.tonnage !== undefined ? data.tonnage : existing.tonnage;
@@ -108,4 +110,28 @@ export class MachinesService {
 
     return { id };
   }
+
+  static async deleteAllMachines() {
+    const connection = await pool.getConnection();
+    try {
+      await connection.query('SET FOREIGN_KEY_CHECKS = 0');
+      const [result] = await connection.query<ResultSetHeader>('DELETE FROM machines');
+      await connection.query('SET FOREIGN_KEY_CHECKS = 1');
+      return { deletedCount: result.affectedRows };
+    } finally {
+      connection.release();
+    }
+  }
+}
+
+export function formatMachineCode(code: string): string {
+  const clean = (code || '').trim();
+  const match = clean.match(/^(?:#|MC-?|MC\s+)?\s*([A-Za-z]*)(\d+)$/i);
+  if (match) {
+    const prefix = match[1] ? match[1].toUpperCase() : '';
+    const num = parseInt(match[2], 10);
+    const paddedNum = String(num).padStart(2, '0');
+    return prefix ? `MC-${prefix}${paddedNum}` : `MC-${paddedNum}`;
+  }
+  return clean.toUpperCase();
 }

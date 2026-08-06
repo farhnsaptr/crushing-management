@@ -71,4 +71,14 @@ export class MachinesController {
       sendError(res, error.message || 'Failed to delete machine', 400);
     }
   }
+
+  static async deleteAll(_req: Request, res: Response): Promise<void> {
+    try {
+      const result = await MachinesService.deleteAllMachines();
+      sendSuccess(res, result, `Seluruh data mesin (${result.deletedCount} items) berhasil dihapus`);
+    } catch (error: any) {
+      console.error('[DeleteAll Machines Error]', error);
+      sendError(res, error.message || 'Gagal menghapus seluruh data mesin', 500);
+    }
+  }
 }
