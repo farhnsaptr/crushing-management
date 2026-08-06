@@ -111,6 +111,28 @@ export const useMachines = () => {
     }
   };
 
+  const handleDeleteAllMachines = async () => {
+    if (!window.confirm('PERINGATAN SUPER-ADMIN!\n\nApakah Anda yakin ingin menghapus SELURUH data mesin dari database? Tindakan ini tidak dapat dibatalkan.')) {
+      return;
+    }
+
+    try {
+      await MachinesService.deleteAllMachines();
+      setToast({
+        id: Date.now().toString(),
+        type: 'success',
+        message: 'Seluruh data mesin berhasil dihapus dari database.',
+      });
+      fetchInitialData();
+    } catch (err: any) {
+      setToast({
+        id: Date.now().toString(),
+        type: 'error',
+        message: err.response?.data?.message || 'Gagal menghapus seluruh data mesin.',
+      });
+    }
+  };
+
   const filteredMachines = machines.filter((m) => {
     const matchesSearch =
       m.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -154,5 +176,6 @@ export const useMachines = () => {
     handleCreateMachine,
     handleUpdateMachine,
     handleDeleteMachine,
+    handleDeleteAllMachines,
   };
 };

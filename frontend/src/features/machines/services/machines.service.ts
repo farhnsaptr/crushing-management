@@ -30,4 +30,8 @@ export class MachinesService {
   static async deleteMachine(id: string): Promise<void> {
     await apiClient.delete(`/api/machines/${id}`);
   }
+
+  static async deleteAllMachines(): Promise<void> {
+    await apiClient.delete('/api/machines/all');
+  }
 }

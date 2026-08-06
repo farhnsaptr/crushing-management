@@ -6,9 +6,13 @@ import { Card } from '../../../components/common/Card';
 import { Input } from '../../../components/common/Input';
 import { Button } from '../../../components/common/Button';
 import { Toast } from '../../../components/common/Toast';
-import { Search, Plus, RefreshCw, Cpu, CheckCircle2, XCircle, Filter } from 'lucide-react';
+import { useAuth } from '../../../context/AuthContext';
+import { Search, Plus, RefreshCw, Cpu, CheckCircle2, XCircle, Filter, Trash2 } from 'lucide-react';
 
 export const MachinesPage: React.FC = () => {
+  const { user } = useAuth();
+  const isSuperAdmin = user?.role === 'super-admin';
+
   const {
     machines,
     factories,
@@ -33,6 +37,7 @@ export const MachinesPage: React.FC = () => {
     handleCreateMachine,
     handleUpdateMachine,
     handleDeleteMachine,
+    handleDeleteAllMachines,
   } = useMachines();
 
   return (
@@ -164,6 +169,18 @@ export const MachinesPage: React.FC = () => {
 
           {/* Action Buttons */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            {isSuperAdmin && (
+              <Button
+                variant="ghost"
+                onClick={handleDeleteAllMachines}
+                style={{ color: '#ef4444', backgroundColor: 'rgba(239, 68, 68, 0.08)' }}
+                leftIcon={<Trash2 size={16} />}
+                title="Hapus Seluruh Data Mesin dari Database"
+              >
+                Hapus Semua Mesin
+              </Button>
+            )}
+
             <Button
               variant="outline"
               onClick={fetchInitialData}
