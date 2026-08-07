@@ -46,4 +46,12 @@ router.post(
   MasterPartsController.commitImport
 );
 
+// Upload Part Image to MinIO S3
+router.post(
+  '/:id/upload-image',
+  requireRole(['super-admin', 'admin']),
+  uploadMemory.single('image'),
+  MasterPartsController.uploadPartImage
+);
+
 export default router;

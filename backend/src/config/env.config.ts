@@ -24,4 +24,10 @@ export const env = {
   JWT_SECRET: requireEnv('JWT_SECRET'),
   JWT_EXPIRES_IN: requireEnv('JWT_EXPIRES_IN'),
   CORS_ORIGIN: requireEnv('CORS_ORIGIN'),
+  MINIO_ENDPOINT: process.env.MINIO_ENDPOINT || 'http://127.0.0.1:9000',
+  MINIO_ACCESS_KEY: process.env.MINIO_ACCESS_KEY || 'minioadmin',
+  MINIO_SECRET_KEY: process.env.MINIO_SECRET_KEY || 'minioadmin',
+  MINIO_BUCKET_NAME: process.env.MINIO_BUCKET_NAME || 'crushing-management-parts',
+  MINIO_REGION: process.env.MINIO_REGION || 'us-east-1',
+  MINIO_PUBLIC_URL: process.env.MINIO_PUBLIC_URL || 'http://127.0.0.1:9000/crushing-management-parts',
 };

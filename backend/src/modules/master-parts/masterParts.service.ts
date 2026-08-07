@@ -1,6 +1,7 @@
 import { randomUUID } from 'crypto';
 import { pool } from '../../config/database';
 import { RowDataPacket, ResultSetHeader } from 'mysql2';
+import { StorageService } from '../../services/storage.service';
 import XLSX from 'xlsx';
 
 export interface ParsedPartRow {
@@ -84,7 +85,14 @@ export class MasterPartsService {
     return rows;
   }
 
-  static async listAllParts(page: number = 1, limit: number = 20, search: string = '', jenis: string = '') {
+  static async listAllParts(
+    page: number = 1,
+    limit: number = 20,
+    search: string = '',
+    jenis: string = '',
+    sortBy: string = '',
+    sortOrder: string = 'asc'
+  ) {
     const offset = (page - 1) * limit;
 
     let whereClause = 'WHERE mp.is_active = TRUE';
@@ -105,6 +113,17 @@ export class MasterPartsService {
     const [countRows] = await pool.query<RowDataPacket[]>(countQuery, params);
     const total = countRows[0].total;
 
+    let orderByClause = 'ORDER BY f.name ASC, m.model_code ASC, mp.part_name ASC';
+    const dir = sortOrder.toLowerCase() === 'desc' ? 'DESC' : 'ASC';
+
+    if (sortBy === 'part_name') {
+      orderByClause = `ORDER BY mp.part_name ${dir}`;
+    } else if (sortBy === 'model_code') {
+      orderByClause = `ORDER BY m.model_code ${dir}, mp.part_name ASC`;
+    } else if (sortBy === 'factory_name') {
+      orderByClause = `ORDER BY f.name ${dir}, m.model_code ASC, mp.part_name ASC`;
+    }
+
     const dataQuery = `
       SELECT mp.*, m.model_code, mc.name AS machine_name, mc.code AS machine_code, f.name AS factory_name, f.code AS factory_code, mm.material_name AS master_material_name
       FROM master_parts mp
@@ -113,7 +132,7 @@ export class MasterPartsService {
       JOIN factories f ON mc.factory_id = f.id
       LEFT JOIN master_materials mm ON mp.material_id = mm.id
       ${whereClause}
-      ORDER BY mp.created_at DESC
+      ${orderByClause}
       LIMIT ? OFFSET ?
     `;
 
@@ -309,7 +328,37 @@ export class MasterPartsService {
     return { id, ...data, material_id: finalMaterialId, std_qty_ng: stdQtyNg, allowance_kg: allowanceKg };
   }
 
+  static async getPartById(id: string) {
+    const [rows] = await pool.query<RowDataPacket[]>(
+      `SELECT mp.*, m.model_code, mc.name AS machine_name, mc.code AS machine_code, f.name AS factory_name, f.code AS factory_code, mm.material_name AS master_material_name
+       FROM master_parts mp
+       JOIN master_models m ON mp.model_id = m.id
+       JOIN machines mc ON mp.machine_id = mc.id
+       JOIN factories f ON mc.factory_id = f.id
+       LEFT JOIN master_materials mm ON mp.material_id = mm.id
+       WHERE mp.id = ?`,
+      [id]
+    );
+    return rows[0] || null;
+  }
+
+  static async updatePartImageUrl(id: string, imageUrl: string) {
+    const [result] = await pool.query<ResultSetHeader>(
+      'UPDATE master_parts SET image_url = ? WHERE id = ?',
+      [imageUrl, id]
+    );
+    if (result.affectedRows === 0) {
+      throw new Error('Master Part not found');
+    }
+    return this.getPartById(id);
+  }
+
   static async deletePart(id: string) {
+    const existing = await this.getPartById(id);
+    if (existing && existing.image_url) {
+      await StorageService.deleteImageFromUrl(existing.image_url);
+    }
+
     const [result] = await pool.query<ResultSetHeader>(
       'DELETE FROM master_parts WHERE id = ?',
       [id]

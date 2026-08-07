@@ -1,16 +1,54 @@
-version: '3.8'
-
 services:
   redis:
     image: redis:7-alpine
     container_name: crushing_redis
     restart: always
     ports:
-      - "6379:6379"
+      - "${REDIS_PORT}:6379"
     volumes:
       - redis_data:/data
     command: redis-server --appendonly yes
 
+  minio:
+    image: minio/minio:latest
+    container_name: crushing_minio
+    restart: always
+    ports:
+      - "${MINIO_PORT}:9000"
+      - "${MINIO_CONSOLE_PORT}:9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  createbuckets:
+    image: minio/mc:latest
+    container_name: crushing_minio_createbuckets
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      MINIO_BUCKET_NAME: ${MINIO_BUCKET_NAME}
+    entrypoint: >
+      /bin/sh -c "
+      /usr/bin/mc alias set myminio http://minio:9000 $${MINIO_ROOT_USER} $${MINIO_ROOT_PASSWORD};
+      /usr/bin/mc mb myminio/$${MINIO_BUCKET_NAME} --ignore-existing;
+      echo '{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"AWS\":[\"*\"]},\"Action\":[\"s3:GetObject\"],\"Resource\":[\"arn:aws:s3:::$${MINIO_BUCKET_NAME}/*\"]}]}' > /tmp/policy.json;
+      /usr/bin/mc anonymous set-json /tmp/policy.json myminio/$${MINIO_BUCKET_NAME};
+      exit 0;
+      "
+
 volumes:
   redis_data:
+    driver: local
+  minio_data:
     driver: local

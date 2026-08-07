@@ -1,5 +1,6 @@
 import { Response } from 'express';
 import { MasterPartsService } from './masterParts.service';
+import { StorageService } from '../../services/storage.service';
 import { sendSuccess, sendError } from '../../utils/response.util';
 import { AuthenticatedRequest } from '../../middlewares/auth.middleware';
 
@@ -75,8 +76,10 @@ export class MasterPartsController {
       const limit = parseInt(req.query.limit as string, 10) || 20;
       const search = (req.query.search as string) || '';
       const jenis = (req.query.jenis as string) || '';
+      const sortBy = (req.query.sortBy as string) || '';
+      const sortOrder = (req.query.sortOrder as string) || 'asc';
 
-      const result = await MasterPartsService.listAllParts(page, limit, search, jenis);
+      const result = await MasterPartsService.listAllParts(page, limit, search, jenis, sortBy, sortOrder);
       sendSuccess(res, result, 'Master parts list retrieved successfully');
     } catch (error: any) {
       sendError(res, error.message || 'Failed to list master parts', 500);
@@ -200,6 +203,35 @@ export class MasterPartsController {
       sendSuccess(res, result, `Berhasil mengimpor ${result.insertedCount} master parts ke database`);
     } catch (error: any) {
       sendError(res, error.message || 'Gagal menyimpan data impor ke database', 400);
+    }
+  }
+
+  static async uploadPartImage(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      const id = String(req.params.id);
+      if (!req.file || !req.file.buffer) {
+        sendError(res, 'File gambar wajib diunggah', 400);
+        return;
+      }
+
+      // Check existing part image URL to delete old object from MinIO S3
+      const existingPart = await MasterPartsService.getPartById(id);
+      if (existingPart && existingPart.image_url) {
+        await StorageService.deleteImageFromUrl(existingPart.image_url);
+      }
+
+      const imageUrl = await StorageService.uploadImageBuffer(
+        req.file.buffer,
+        req.file.originalname || 'camera.jpg',
+        req.file.mimetype || 'image/jpeg',
+        'master-parts'
+      );
+
+      const updatedPart = await MasterPartsService.updatePartImageUrl(id, imageUrl);
+      sendSuccess(res, updatedPart, 'Foto master part berhasil diperbarui & menimpa foto lama di MinIO S3');
+    } catch (error: any) {
+      console.error('[Upload Part Image Error]', error);
+      sendError(res, error.message || 'Gagal mengunggah foto ke MinIO S3', 500);
     }
   }
 
