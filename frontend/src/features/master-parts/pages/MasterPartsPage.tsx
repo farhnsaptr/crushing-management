@@ -1,6 +1,9 @@
 import React from 'react';
 import { useMasterParts } from '../hooks/useMasterParts';
 import { MasterPartsTable } from '../components/MasterPartsTable';
+import { MasterPartImageViewerCard } from '../components/MasterPartImageViewerCard';
+import { MasterPartDetailModal } from '../components/MasterPartDetailModal';
+import { CameraCaptureModal } from '../components/CameraCaptureModal';
 import { MasterPartUploadModal } from '../components/MasterPartUploadModal';
 import { MasterPartImportPreviewModal } from '../components/MasterPartImportPreviewModal';
 import { MasterPartModal } from '../components/MasterPartModal';
@@ -9,7 +12,7 @@ import { Input } from '../../../components/common/Input';
 import { Button } from '../../../components/common/Button';
 import { Toast } from '../../../components/common/Toast';
 import { useAuth } from '../../../context/AuthContext';
-import { Search, Plus, RefreshCw, Upload, Download, FileSpreadsheet, Package, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
+import { Search, Plus, RefreshCw, Upload, Download, FileSpreadsheet, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
 
 export const MasterPartsPage: React.FC = () => {
   const { user } = useAuth();
@@ -26,17 +29,34 @@ export const MasterPartsPage: React.FC = () => {
     setSearchQuery,
     selectedJenis,
     setSelectedJenis,
+    sortBy,
+    sortOrder,
+    handleSort,
     isLoading,
     isUploading,
     isCommitting,
+    selectedPart,
+    draftImagePreview,
+    isSubmittingImage,
     isUploadModalOpen,
     setIsUploadModalOpen,
     isPreviewModalOpen,
     setIsPreviewModalOpen,
     isCreateModalOpen,
     setIsCreateModalOpen,
+    isDetailModalOpen,
+    setIsDetailModalOpen,
+    isCameraModalOpen,
+    setIsCameraModalOpen,
     editingPart,
+    detailPart,
     previewData,
+    handleSelectPart,
+    handleOpenDetailModal,
+    handleCaptureImage,
+    handleSelectImageFile,
+    handleSubmitDraftImage,
+    handleCancelDraftImage,
     handleOpenCreateModal,
     handleOpenEditModal,
     handleCreatePart,
@@ -53,50 +73,30 @@ export const MasterPartsPage: React.FC = () => {
   } = useMasterParts();
 
   // Helper to generate page numbers with ellipsis
-  const getPageNumbers = (current: number, total: number) => {
+  const getPageNumbers = (current: number, totalPagesCount: number) => {
     const pages: (number | string)[] = [];
-    if (total <= 7) {
-      for (let i = 1; i <= total; i++) pages.push(i);
+    if (totalPagesCount <= 7) {
+      for (let i = 1; i <= totalPagesCount; i++) pages.push(i);
     } else {
       pages.push(1);
       if (current > 3) pages.push('...');
 
       const start = Math.max(2, current - 1);
-      const end = Math.min(total - 1, current + 1);
+      const end = Math.min(totalPagesCount - 1, current + 1);
 
       for (let i = start; i <= end; i++) {
         if (!pages.includes(i)) pages.push(i);
       }
 
-      if (current < total - 2) pages.push('...');
-      pages.push(total);
+      if (current < totalPagesCount - 2) pages.push('...');
+      pages.push(totalPagesCount);
     }
     return pages;
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-      {/* Metric Overview Card */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.25rem' }}>
-        <Card>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div>
-              <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
-                Total Master Parts Terdaftar
-              </span>
-              <h3 style={{ fontSize: '1.75rem', fontWeight: 900, color: 'var(--primary-color)', marginTop: '0.25rem' }}>
-                {total}
-              </h3>
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Sebango & Mold Items Active</span>
-            </div>
-            <div style={{ padding: '0.75rem', backgroundColor: 'var(--primary-light)', borderRadius: 'var(--radius-md)', color: 'var(--primary-color)' }}>
-              <Package size={24} />
-            </div>
-          </div>
-        </Card>
-      </div>
-
-      {/* Action Header & Filtering Bar */}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+      {/* Metric Overview & Quick Actions Header Bar */}
       <Card>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <div
@@ -216,86 +216,130 @@ export const MasterPartsPage: React.FC = () => {
         </div>
       </Card>
 
-      {/* Master Parts Table Card */}
-      <Card
-        title="Daftar Master Data Parts & Mould"
-        subtitle={`Menampilkan Halaman ${page} dari ${totalPages} (Total ${total} item)`}
-      >
-        {/* Pagination Navigation Bar Above Table */}
-        <div
-          style={{
-            display: 'flex',
-            flexWrap: 'wrap',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            marginBottom: '1rem',
-            paddingBottom: '0.85rem',
-            borderBottom: '1px solid var(--border-color)',
-            gap: '0.75rem',
-          }}
-        >
-          <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)' }}>
-            Halaman {page} dari {totalPages}
-          </span>
+      {/* Main Split Layout: Left Table (~60-65%), Right 16:9 Image Card (~35-40%) */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.25rem', alignItems: 'start' }}>
+        {/* Left Side: Master Parts Table Card */}
+        <div style={{ flex: '1 1 60%' }}>
+          <Card
+            title="Daftar Master Data Parts"
+            subtitle={`Menampilkan Halaman ${page} dari ${totalPages} (Total ${total} item)`}
+          >
+            {/* Top Numbered Pagination Bar */}
+            {totalPages > 1 && (
+              <div
+                style={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  marginBottom: '1rem',
+                  paddingBottom: '0.85rem',
+                  borderBottom: '1px solid var(--border-color)',
+                  gap: '0.75rem',
+                }}
+              >
+                <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)' }}>
+                  Halaman {page} dari {totalPages}
+                </span>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', flexWrap: 'wrap' }}>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page <= 1}
-              leftIcon={<ChevronLeft size={16} />}
-            >
-              Sebelumnya
-            </Button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', flexWrap: 'wrap' }}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    disabled={page <= 1}
+                    leftIcon={<ChevronLeft size={16} />}
+                  >
+                    Sebelumnya
+                  </Button>
 
-            {getPageNumbers(page, totalPages).map((pNum, idx) => {
-              if (pNum === '...') {
-                return (
-                  <span key={`ellipsis-${idx}`} style={{ padding: '0 0.25rem', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                    ...
-                  </span>
-                );
-              }
-              const isCurrent = pNum === page;
-              return (
-                <Button
-                  key={`page-${pNum}`}
-                  variant={isCurrent ? 'primary' : 'outline'}
-                  size="sm"
-                  onClick={() => setPage(pNum as number)}
-                  style={{
-                    minWidth: '34px',
-                    padding: '0.35rem 0.5rem',
-                    fontWeight: isCurrent ? 800 : 500,
-                  }}
-                >
-                  {pNum}
-                </Button>
-              );
-            })}
+                  {getPageNumbers(page, totalPages).map((pNum, idx) => {
+                    if (pNum === '...') {
+                      return (
+                        <span key={`ellipsis-${idx}`} style={{ padding: '0 0.25rem', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                          ...
+                        </span>
+                      );
+                    }
+                    const isCurrent = pNum === page;
+                    return (
+                      <Button
+                        key={`page-${pNum}`}
+                        variant={isCurrent ? 'primary' : 'outline'}
+                        size="sm"
+                        onClick={() => setPage(pNum as number)}
+                        style={{
+                          minWidth: '34px',
+                          padding: '0.35rem 0.5rem',
+                          fontWeight: isCurrent ? 800 : 500,
+                        }}
+                      >
+                        {pNum}
+                      </Button>
+                    );
+                  })}
 
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page >= totalPages}
-              rightIcon={<ChevronRight size={16} />}
-            >
-              Selanjutnya
-            </Button>
-          </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={page >= totalPages}
+                    rightIcon={<ChevronRight size={16} />}
+                  >
+                    Selanjutnya
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            <MasterPartsTable
+              parts={parts}
+              isLoading={isLoading}
+              selectedPartId={selectedPart?.id || null}
+              sortBy={sortBy}
+              sortOrder={sortOrder}
+              onSort={handleSort}
+              onSelectPart={handleSelectPart}
+              onOpenDetailModal={handleOpenDetailModal}
+              onEdit={handleOpenEditModal}
+              onDelete={handleDeletePart}
+            />
+          </Card>
         </div>
 
-        <MasterPartsTable
-          parts={parts}
-          isLoading={isLoading}
-          onEdit={handleOpenEditModal}
-          onDelete={handleDeletePart}
-        />
-      </Card>
+        {/* Right Side: 16:9 Image Viewer & Camera Capture Card */}
+        <div style={{ flex: '1 1 38%', position: 'sticky', top: '1.5rem' }}>
+          <MasterPartImageViewerCard
+            selectedPart={selectedPart}
+            draftImagePreview={draftImagePreview}
+            isSubmittingImage={isSubmittingImage}
+            onSubmitDraftPhoto={handleSubmitDraftImage}
+            onCancelDraftPhoto={handleCancelDraftImage}
+            onLaunchDesktopCamera={() => setIsCameraModalOpen(true)}
+            onCaptureImage={handleCaptureImage}
+            onSelectImageFile={handleSelectImageFile}
+            onOpenDetailModal={handleOpenDetailModal}
+          />
+        </div>
+      </div>
 
-      {/* 1. Upload File Excel Modal */}
+      {/* Modals */}
+      {/* 1. Technical Detail Viewer Modal */}
+      <MasterPartDetailModal
+        isOpen={isDetailModalOpen}
+        onClose={() => setIsDetailModalOpen(false)}
+        part={detailPart}
+        onEdit={handleOpenEditModal}
+      />
+
+      {/* 2. WebRTC Desktop Camera Live Stream Modal */}
+      <CameraCaptureModal
+        isOpen={isCameraModalOpen}
+        onClose={() => setIsCameraModalOpen(false)}
+        onCapture={handleCaptureImage}
+      />
+
+      {/* 3. Upload File Excel Modal */}
       <MasterPartUploadModal
         isOpen={isUploadModalOpen}
         onClose={() => setIsUploadModalOpen(false)}
@@ -304,7 +348,7 @@ export const MasterPartsPage: React.FC = () => {
         isUploading={isUploading}
       />
 
-      {/* 2. Modal Data Viewer / Preview Table Pra-Impor */}
+      {/* 4. Modal Data Viewer / Preview Table Pra-Impor */}
       <MasterPartImportPreviewModal
         isOpen={isPreviewModalOpen}
         onClose={() => setIsPreviewModalOpen(false)}
@@ -313,7 +357,7 @@ export const MasterPartsPage: React.FC = () => {
         isCommitting={isCommitting}
       />
 
-      {/* 3. Create / Edit Master Part Single Entry Modal */}
+      {/* 5. Create / Edit Master Part Single Entry Modal */}
       <MasterPartModal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}

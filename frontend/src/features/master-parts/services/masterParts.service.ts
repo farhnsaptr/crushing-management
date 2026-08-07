@@ -11,10 +11,12 @@ export class MasterPartsService {
     page: number = 1,
     limit: number = 20,
     search: string = '',
-    jenis: string = ''
+    jenis: string = '',
+    sortBy: string = '',
+    sortOrder: string = 'asc'
   ) {
     const response = await apiClient.get('/api/master-parts', {
-      params: { page, limit, search, jenis },
+      params: { page, limit, search, jenis, sortBy, sortOrder },
     });
     return response.data.data;
   }
@@ -81,5 +83,18 @@ export class MasterPartsService {
 
   static async deleteAllParts(): Promise<void> {
     await apiClient.delete('/api/master-parts/all');
+  }
+
+  static async uploadPartImage(partId: string, imageBlobOrFile: Blob | File): Promise<MasterPart> {
+    const formData = new FormData();
+    formData.append('image', imageBlobOrFile, 'part_image.jpg');
+
+    const response = await apiClient.post(`/api/master-parts/${partId}/upload-image`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+
+    return response.data.data;
   }
 }

@@ -2,7 +2,7 @@ import React from 'react';
 import { Spinner } from './Spinner';
 
 export interface Column<T> {
-  header: string;
+  header: string | React.ReactNode;
   accessorKey?: keyof T;
   cell?: (row: T) => React.ReactNode;
   width?: string;
@@ -15,6 +15,8 @@ interface TableProps<T> {
   emptyMessage?: string;
   keyExtractor: (row: T) => string | number;
   rowClassName?: (row: T) => string;
+  onRowClick?: (row: T) => void;
+  selectedRowId?: string | number;
 }
 
 export function Table<T>({
@@ -24,6 +26,8 @@ export function Table<T>({
   emptyMessage = 'No data available',
   keyExtractor,
   rowClassName,
+  onRowClick,
+  selectedRowId,
 }: TableProps<T>) {
   return (
     <div style={{ width: '100%', overflowX: 'auto' }}>
@@ -81,43 +85,50 @@ export function Table<T>({
               </td>
             </tr>
           ) : (
-            data.map((row) => (
-              <tr
-                key={keyExtractor(row)}
-                className={rowClassName ? rowClassName(row) : undefined}
-                style={{
-                  borderBottom: '1px solid var(--border-color)',
-                  transition: 'background-color 0.15s ease',
-                }}
-                onMouseEnter={(e) => {
-                  if (!rowClassName || !rowClassName(row)) {
-                    e.currentTarget.style.backgroundColor = 'var(--bg-main)';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!rowClassName || !rowClassName(row)) {
-                    e.currentTarget.style.backgroundColor = 'transparent';
-                  }
-                }}
-              >
-                {columns.map((col, idx) => (
-                  <td
-                    key={idx}
-                    style={{
-                      padding: '1rem',
-                      color: 'var(--text-main)',
-                      verticalAlign: 'middle',
-                    }}
-                  >
-                    {col.cell
-                      ? col.cell(row)
-                      : col.accessorKey
-                      ? (row[col.accessorKey] as React.ReactNode)
-                      : null}
-                  </td>
-                ))}
-              </tr>
-            ))
+            data.map((row) => {
+              const rowId = keyExtractor(row);
+              const isSelected = selectedRowId !== undefined && selectedRowId === rowId;
+              return (
+                <tr
+                  key={rowId}
+                  className={rowClassName ? rowClassName(row) : undefined}
+                  onClick={() => onRowClick && onRowClick(row)}
+                  style={{
+                    borderBottom: '1px solid var(--border-color)',
+                    backgroundColor: isSelected ? 'rgba(59, 130, 246, 0.08)' : 'transparent',
+                    cursor: onRowClick ? 'pointer' : 'default',
+                    transition: 'background-color 0.15s ease',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isSelected && (!rowClassName || !rowClassName(row))) {
+                      e.currentTarget.style.backgroundColor = 'var(--bg-main)';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isSelected && (!rowClassName || !rowClassName(row))) {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                    }
+                  }}
+                >
+                  {columns.map((col, idx) => (
+                    <td
+                      key={idx}
+                      style={{
+                        padding: '0.85rem 1rem',
+                        color: 'var(--text-main)',
+                        verticalAlign: 'middle',
+                      }}
+                    >
+                      {col.cell
+                        ? col.cell(row)
+                        : col.accessorKey
+                        ? (row[col.accessorKey] as React.ReactNode)
+                        : null}
+                    </td>
+                  ))}
+                </tr>
+              );
+            })
           )}
         </tbody>
       </table>

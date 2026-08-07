@@ -3,11 +3,17 @@ import type { MasterPart } from '../types/masterParts.types';
 import { Table, type Column } from '../../../components/common/Table';
 import { Badge } from '../../../components/common/Badge';
 import { Button } from '../../../components/common/Button';
-import { Pencil, Trash2 } from 'lucide-react';
+import { Pencil, Trash2, Eye, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 
 interface MasterPartsTableProps {
   parts: MasterPart[];
   isLoading: boolean;
+  selectedPartId: string | null;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+  onSort?: (field: string) => void;
+  onSelectPart: (part: MasterPart) => void;
+  onOpenDetailModal: (part: MasterPart) => void;
   onEdit: (part: MasterPart) => void;
   onDelete: (id: string) => void;
 }
@@ -15,131 +21,98 @@ interface MasterPartsTableProps {
 export const MasterPartsTable: React.FC<MasterPartsTableProps> = ({
   parts,
   isLoading,
+  selectedPartId,
+  sortBy,
+  sortOrder = 'asc',
+  onSort,
+  onSelectPart,
+  onOpenDetailModal,
   onEdit,
   onDelete,
 }) => {
+  const renderSortHeader = (label: string, field: string) => {
+    const isSorted = sortBy === field;
+    return (
+      <div
+        onClick={() => onSort && onSort(field)}
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '0.35rem',
+          cursor: 'pointer',
+          userSelect: 'none',
+        }}
+        title={`Urutkan berdasarkan ${label}`}
+      >
+        <span>{label}</span>
+        {isSorted ? (
+          sortOrder === 'asc' ? (
+            <ArrowUp size={14} style={{ color: 'var(--primary-color)' }} />
+          ) : (
+            <ArrowDown size={14} style={{ color: 'var(--primary-color)' }} />
+          )
+        ) : (
+          <ArrowUpDown size={13} style={{ color: 'var(--text-muted)', opacity: 0.6 }} />
+        )}
+      </div>
+    );
+  };
+
   const columns: Column<MasterPart>[] = [
     {
-      header: 'Sebango Code',
-      accessorKey: 'sebango_code',
-      cell: (part) => (
-        <Badge variant="primary" size="md">
-          {part.sebango_code}
-        </Badge>
-      ),
-      width: '140px',
-    },
-    {
-      header: 'Part Number',
-      accessorKey: 'part_number',
-      cell: (part) => (
-        <span style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--text-main)' }}>
-          {part.part_number}
-        </span>
-      ),
-      width: '150px',
-    },
-    {
-      header: 'Part Name',
+      header: renderSortHeader('Part Name', 'part_name'),
       accessorKey: 'part_name',
       cell: (part) => (
-        <span style={{ fontSize: '0.85rem', color: 'var(--text-main)' }}>
+        <span style={{ fontWeight: 800, fontSize: '0.875rem', color: 'var(--text-main)' }}>
           {part.part_name}
         </span>
       ),
     },
     {
-      header: 'Customer',
-      accessorKey: 'customer',
-      cell: (part) => (
-        <Badge variant="neutral" size="sm">
-          {part.customer || '-'}
-        </Badge>
-      ),
-      width: '100px',
-    },
-    {
-      header: 'Model',
+      header: renderSortHeader('Model', 'model_code'),
       accessorKey: 'model_code',
       cell: (part) => (
-        <span style={{ fontWeight: 700, fontSize: '0.85rem' }}>{part.model_code || '-'}</span>
+        <Badge variant="neutral" size="sm">
+          {part.model_code || '-'}
+        </Badge>
       ),
-      width: '90px',
+      width: '110px',
     },
     {
-      header: 'Mesin',
-      accessorKey: 'machine_code',
+      header: renderSortHeader('Factory', 'factory_name'),
+      accessorKey: 'factory_name',
       cell: (part) => (
-        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-          {part.machine_code ? `${part.machine_code} (${part.factory_code || ''})` : '-'}
+        <span style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--primary-color)' }}>
+          {part.factory_name || part.factory_code || '-'}
         </span>
-      ),
-      width: '140px',
-    },
-    {
-      header: 'Jenis Part',
-      accessorKey: 'jenis_part',
-      cell: (part) => (
-        <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>{part.jenis_part || '-'}</span>
       ),
       width: '120px',
     },
     {
-      header: 'Material',
-      accessorKey: 'material',
-      cell: (part) => (
-        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{part.material || '-'}</span>
-      ),
-      width: '140px',
-    },
-    {
-      header: 'Shikake',
-      accessorKey: 'shikake',
-      cell: (part) => <span>{Number(part.shikake)}</span>,
-      width: '70px',
-    },
-    {
-      header: 'Berat Part (gr)',
-      accessorKey: 'berat_part_gr',
-      cell: (part) => <span>{Number(part.berat_part_gr)} gr</span>,
-      width: '110px',
-    },
-    {
-      header: 'Berat Runner (gr)',
-      accessorKey: 'berat_runner_gr',
-      cell: (part) => <span>{Number(part.berat_runner_gr || 0)} gr</span>,
-      width: '110px',
-    },
-    {
-      header: 'STD QTY NG',
-      accessorKey: 'std_qty_ng',
-      cell: (part) => (
-        <span style={{ fontWeight: 800, color: '#2563eb' }}>
-          {Number(part.std_qty_ng ?? (part.shikake || 1) * 2)}
-        </span>
-      ),
-      width: '100px',
-    },
-    {
-      header: 'Allowance (kg)',
-      accessorKey: 'allowance_kg',
-      cell: (part) => (
-        <span style={{ fontWeight: 800, color: '#2563eb' }}>
-          {Number(part.allowance_kg ?? (((part.shikake || 1) * 2 * part.berat_part_gr) / 1000))} kg
-        </span>
-      ),
-      width: '110px',
-    },
-    {
       header: 'Aksi',
       cell: (part) => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <div
+          style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}
+          onClick={(e) => e.stopPropagation()} // Prevent row select when clicking buttons
+        >
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onOpenDetailModal(part)}
+            leftIcon={<Eye size={14} />}
+            title="Lihat Detail Spesifikasi Part"
+            style={{ padding: '0.3rem 0.5rem', fontSize: '0.75rem' }}
+          >
+            Detail
+          </Button>
+
           <Button
             variant="outline"
             size="sm"
             onClick={() => onEdit(part)}
-            leftIcon={<Pencil size={15} />}
+            leftIcon={<Pencil size={14} />}
             title="Edit Master Part"
+            style={{ padding: '0.3rem 0.5rem', fontSize: '0.75rem' }}
           >
             Edit
           </Button>
@@ -148,14 +121,14 @@ export const MasterPartsTable: React.FC<MasterPartsTableProps> = ({
             variant="ghost"
             size="sm"
             onClick={() => onDelete(part.id)}
-            style={{ color: '#ef4444' }}
+            style={{ color: '#ef4444', padding: '0.3rem' }}
             title="Hapus Master Part"
           >
-            <Trash2 size={16} />
+            <Trash2 size={15} />
           </Button>
         </div>
       ),
-      width: '140px',
+      width: '180px',
     },
   ];
 
@@ -166,6 +139,8 @@ export const MasterPartsTable: React.FC<MasterPartsTableProps> = ({
       isLoading={isLoading}
       emptyMessage="Belum ada data master part terdaftar."
       keyExtractor={(row) => row.id}
+      onRowClick={(row) => onSelectPart(row)}
+      selectedRowId={selectedPartId || undefined}
     />
   );
 };
