@@ -7,33 +7,34 @@ Modul ini bertanggung jawab untuk menangani pendaftaran transaksi barang/part ru
 ```
 ng-input/
 ├── components/
-│   ├── NgFilterCard.tsx      # Card filter atas untuk mode Jenis Part / Factory
-│   ├── NgPartGridCard.tsx    # Grid kartu part (gambar di atas, nama/model di bawah)
-│   └── NgInputFormCard.tsx   # Form input Qty, Shift, dan estimasi berat otomatis
+│   ├── NgFilterCard.tsx           # Card filter atas untuk mode Jenis Part / Factory
+│   ├── NgPartGridCard.tsx         # Grid kartu part (gambar di atas, nama/model di bawah)
+│   ├── NgInputFormCard.tsx        # Form input Qty, Shift, dan estimasi berat otomatis
+│   ├── NgMaterialSummaryList.tsx  # Pareto list material & part (urut Kg terbanyak)
+│   ├── NgPartDetailModal.tsx      # Modal detail analitik part
+│   ├── NgDailyChart.tsx           # Grafik Recharts stacked shift (Pagi & Malam) & garis allowance
+│   └── NgTransactionLogTable.tsx  # Tabel log transaksi NG dalam modal
 ├── hooks/
-│   └── useNgInput.ts         # Logic & state management (filter, auto-detect shift, kalkulasi berat)
+│   ├── useNgInput.ts              # Logic & state management form input NG
+│   └── useNgDetail.ts             # Logic & state management ringkasan detail material & part modal
 ├── pages/
-│   └── NgInputPage.tsx       # Layout utama 2 kolom
+│   └── NgInputPage.tsx            # Layout utama dengan Tab Bar (Detail Input NG vs Input Part NG Baru)
 ├── services/
-│   └── ngInput.service.ts    # Pemanggilan endpoint API backend (/api/ng-transactions)
+│   └── ngInput.service.ts         # Pemanggilan endpoint API backend (/api/ng-transactions)
 ├── types/
-│   └── ngInput.types.ts      # Type definitions untuk payload dan response NG
-└── README.md                 # Dokumentasi modul
+│   └── ngInput.types.ts           # Type definitions untuk payload dan response NG
+└── README.md                      # Dokumentasi modul
 ```
 
 ## Fitur Utama
 
-1. **Dual Filter Grouping (Single Mode)**:
+1. **Detail Input NG & Pareto Analytics**:
+   - Pemilihan filter **Bulan & Tahun** dengan pencarian langsung.
+   - Daftar Material disortir dari **akumulasi berat NG (Kg) terbanyak**.
+   - Accordion sub-list Part yang disortir dari **berat NG (Kg) terbanyak**.
+   - Modal Detail Part berisi **Grafik Harian Stacked Shift Pagi/Malam** dengan **Garis Threshold Allowance** dan **Tabel Log Transaksi**.
+2. **Dual Filter Grouping (Single Mode)**:
    - Pengelompokan berdasarkan **Jenis Part** (Bumper, Grille, Door Trim, dsb).
    - Pengelompokan berdasarkan **Factory** (Factory 1, Factory 2, dsb).
-2. **Visual Part Grid Cards**:
-   - Menampilkan gambar part di posisi teratas kartu (ratio 16:9).
-   - Menampilkan Nama Part, Nomor Part, dan Model di bawah gambar (tanpa QR Code).
-3. **Autodeteksi Shift**:
-   - Pukul **21:00 - 07:00** $\rightarrow$ Otomatis memilih **Shift Malam**.
-   - Pukul **07:00 - 21:00** $\rightarrow$ Otomatis memilih **Shift Pagi**.
-   - User dapat mengganti shift secara manual melalui tombol toggle.
-4. **Real-time Auto Weight Calculation**:
-   - Menghitung estimasi berat dalam Kilogram secara otomatis dengan rumus: `(Input Qty pcs * Berat Part gr) / 1000`.
-5. **Real-time SSE Syncing**:
-   - Setiap kali transaksi NG disimpan, backend menyiarkan SSE event yang memperbarui angka Dashboard secara otomatis.
+3. **Visual Part Grid Cards & Auto Weight Calculation**:
+   - Kartu visual part dan kalkulasi estimasi berat Kilogram otomatis.

@@ -1,5 +1,12 @@
 import { apiClient } from '../../../services/api.client';
-import type { CreateNgTransactionPayload, NgTransactionResult, MasterPart } from '../types/ngInput.types';
+import type {
+  CreateNgTransactionPayload,
+  NgTransactionResult,
+  MasterPart,
+  MaterialSummaryResponse,
+  PartMonthlyDetailResponse,
+  PlantLocation,
+} from '../types/ngInput.types';
 import type { Factory } from '../../factories/types/factories.types';
 
 export class NgInputService {
@@ -19,6 +26,25 @@ export class NgInputService {
 
   static async submitNgTransaction(payload: CreateNgTransactionPayload): Promise<NgTransactionResult> {
     const response = await apiClient.post('/api/ng-transactions', payload);
+    return response.data.data;
+  }
+
+  static async getMaterialSummary(year: number, month: number, location: PlantLocation = 'Cibitung'): Promise<MaterialSummaryResponse> {
+    const response = await apiClient.get('/api/ng-transactions/summary-by-material', {
+      params: { year, month, location },
+    });
+    return response.data.data;
+  }
+
+  static async getPartMonthlyDetail(
+    partId: string,
+    year: number,
+    month: number,
+    location: PlantLocation = 'Cibitung'
+  ): Promise<PartMonthlyDetailResponse> {
+    const response = await apiClient.get(`/api/ng-transactions/part-detail/${partId}`, {
+      params: { year, month, location },
+    });
     return response.data.data;
   }
 }
