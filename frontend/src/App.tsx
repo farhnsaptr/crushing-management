@@ -20,6 +20,7 @@ import { MasterPartsPage } from './features/master-parts/pages/MasterPartsPage';
 import { UsersPage } from './features/users/pages/UsersPage';
 import { GlobalLogsPage } from './features/global-logs/pages/GlobalLogsPage';
 import { SiteConfigPage } from './features/site-config/pages/SiteConfigPage';
+import { SystemSignatureView } from './features/system/pages/SystemSignatureView';
 
 export const App: React.FC = () => {
   return (
@@ -27,8 +28,9 @@ export const App: React.FC = () => {
       <AuthProvider>
         <ThemeProvider>
           <Routes>
-            {/* Public Auth Route */}
+            {/* Public Routes */}
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/system-signature" element={<SystemSignatureView />} />
 
             {/* Error Pages */}
             <Route path="/forbidden" element={<ForbiddenPage />} />

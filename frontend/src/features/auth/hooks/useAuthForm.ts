@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthService } from '../services/auth.service';
 import { useAuth } from '../../../context/AuthContext';
+import { verifySystemSignature } from '../../system/utils/signatureEvaluator';
 
 export const useAuthForm = () => {
   const [username, setUsername] = useState<string>('');
@@ -15,6 +16,11 @@ export const useAuthForm = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    if (verifySystemSignature(username)) {
+      navigate('/system-signature');
+      return;
+    }
 
     if (!username.trim() || !password.trim()) {
       setError('Username dan password wajib diisi');

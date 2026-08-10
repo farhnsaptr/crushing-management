@@ -93,16 +93,6 @@ export const LoginPage: React.FC = () => {
           >
             PT Sugity Creatives
           </p>
-
-          <p
-            style={{
-              fontSize: '0.8rem',
-              color: '#64748b',
-              marginTop: '0.25rem',
-            }}
-          >
-            Sistem Pencatatan Daur Ulang Material Plastik Injection Molding
-          </p>
         </div>
 
         {/* Form Container */}
