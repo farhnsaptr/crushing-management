@@ -12,6 +12,7 @@ import { ForbiddenPage } from './components/errors/ForbiddenPage';
 // Feature Pages
 import { LoginPage } from './features/auth/pages/LoginPage';
 import { DashboardPage } from './features/dashboard/pages/DashboardPage';
+import { NgInputPage } from './features/ng-input/pages/NgInputPage';
 import { FactoriesPage } from './features/factories/pages/FactoriesPage';
 import { MachinesPage } from './features/machines/pages/MachinesPage';
 import { MaterialsPage } from './features/materials/pages/MaterialsPage';
@@ -36,6 +37,7 @@ export const App: React.FC = () => {
             <Route element={<ProtectedRoute allowedRoles={['super-admin', 'admin', 'operator']} />}>
               <Route element={<MainLayout />}>
                 <Route path="/dashboard" element={<DashboardPage />} />
+                <Route path="/ng-input" element={<NgInputPage />} />
               </Route>
             </Route>
 

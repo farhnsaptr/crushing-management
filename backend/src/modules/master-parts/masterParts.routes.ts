@@ -17,6 +17,7 @@ router.get('/search', MasterPartsController.search);
 router.get('/models', MasterPartsController.getModelsForPart);
 router.get('/by-qr', MasterPartsController.getByQr);
 router.get('/by-jenis', MasterPartsController.getByJenis);
+router.get('/jenis-list', MasterPartsController.getJenisPartList);
 
 // Excel Template Download & Export Data Routes (Admin/Super-Admin)
 router.get('/template', requireRole(['super-admin', 'admin']), MasterPartsController.downloadTemplate);

@@ -6,20 +6,15 @@ import { AuthenticatedRequest } from '../../middlewares/auth.middleware';
 export class NgTransactionsController {
   static async create(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
-      const { master_part_id, quantity_pcs, shift, input_method, transaction_date, notes } = req.body;
+      const { master_part_id, quantity_pcs, shift, transaction_date, notes } = req.body;
 
-      if (!master_part_id || !quantity_pcs || !shift || !input_method || !transaction_date) {
-        sendError(res, 'master_part_id, quantity_pcs, shift, input_method, and transaction_date are required', 400);
+      if (!master_part_id || !quantity_pcs || !shift || !transaction_date) {
+        sendError(res, 'master_part_id, quantity_pcs, shift, and transaction_date are required', 400);
         return;
       }
 
       if (!['Pagi', 'Malam'].includes(shift)) {
         sendError(res, 'shift must be Pagi or Malam', 400);
-        return;
-      }
-
-      if (!['typed', 'scan'].includes(input_method)) {
-        sendError(res, 'input_method must be typed or scan', 400);
         return;
       }
 
@@ -33,7 +28,6 @@ export class NgTransactionsController {
         master_part_id,
         quantity_pcs,
         shift,
-        input_method,
         transaction_date,
         input_by: inputBy,
         notes,

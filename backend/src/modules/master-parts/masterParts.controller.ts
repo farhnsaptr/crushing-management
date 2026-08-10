@@ -70,6 +70,15 @@ export class MasterPartsController {
     }
   }
 
+  static async getJenisPartList(_req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      const results = await MasterPartsService.getJenisPartList();
+      sendSuccess(res, results, 'Jenis part list retrieved successfully');
+    } catch (error: any) {
+      sendError(res, error.message || 'Failed to get jenis part list', 500);
+    }
+  }
+
   static async listAll(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
       const page = parseInt(req.query.page as string, 10) || 1;

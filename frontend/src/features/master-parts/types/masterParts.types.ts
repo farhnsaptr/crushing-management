@@ -22,7 +22,6 @@ export interface MasterPart {
   std_qty_ng?: number;
   allowance_kg?: number;
   image_url?: string;
-  qr_code_value?: string;
   created_at?: string;
 }
 
@@ -42,7 +41,6 @@ export interface CreateMasterPartPayload {
   berat_part_gr: number;
   berat_runner_gr?: number;
   image_url?: string;
-  qr_code_value?: string;
 }
 
 export interface ParsedPartRow {

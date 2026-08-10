@@ -29,6 +29,7 @@ export const MasterPartsPage: React.FC = () => {
     setSearchQuery,
     selectedJenis,
     setSelectedJenis,
+    jenisList,
     sortBy,
     sortOrder,
     handleSort,
@@ -138,13 +139,12 @@ export const MasterPartsPage: React.FC = () => {
                   outline: 'none',
                 }}
               >
-                <option value="all">Semua Jenis Part</option>
-                <option value="BUMPER">BUMPER</option>
-                <option value="GRILLE">GRILLE</option>
-                <option value="DOOR TRIM">DOOR TRIM</option>
-                <option value="QUARTER TRIM">QUARTER TRIM</option>
-                <option value="GARNISH">GARNISH</option>
-                <option value="SPOILER">SPOILER</option>
+                <option value="all">Semua Jenis Part ({jenisList.length})</option>
+                {jenisList.map((j) => (
+                  <option key={j} value={j}>
+                    {j}
+                  </option>
+                ))}
               </select>
             </div>
 

@@ -21,6 +21,11 @@ export class MasterPartsService {
     return response.data.data;
   }
 
+  static async getJenisList(): Promise<string[]> {
+    const response = await apiClient.get('/api/master-parts/jenis-list');
+    return response.data.data || [];
+  }
+
   static async createPart(payload: CreateMasterPartPayload): Promise<MasterPart> {
     const response = await apiClient.post('/api/master-parts', payload);
     return response.data.data;

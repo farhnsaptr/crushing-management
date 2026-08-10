@@ -13,6 +13,7 @@ import type { ToastMessage } from '../../../components/common/Toast';
 export const useMasterParts = () => {
   const [parts, setParts] = useState<MasterPart[]>([]);
   const [machines, setMachines] = useState<Machine[]>([]);
+  const [jenisList, setJenisList] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedJenis, setSelectedJenis] = useState<string>('all');
   const [sortBy, setSortBy] = useState<string>('');
@@ -181,12 +182,22 @@ export const useMasterParts = () => {
     setPage(1);
   };
 
+  const fetchJenisList = async () => {
+    try {
+      const data = await MasterPartsService.getJenisList();
+      setJenisList(data || []);
+    } catch (err) {
+      console.warn('Failed to load jenis list', err);
+    }
+  };
+
   useEffect(() => {
     fetchParts();
   }, [page, searchQuery, selectedJenis, sortBy, sortOrder]);
 
   useEffect(() => {
     fetchMachines();
+    fetchJenisList();
   }, []);
 
   const handleOpenCreateModal = () => {
@@ -371,6 +382,7 @@ export const useMasterParts = () => {
     setSearchQuery,
     selectedJenis,
     setSelectedJenis,
+    jenisList,
     sortBy,
     sortOrder,
     handleSort,

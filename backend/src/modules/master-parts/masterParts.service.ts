@@ -40,6 +40,16 @@ export class MasterPartsService {
     return rows;
   }
 
+  static async getJenisPartList(): Promise<string[]> {
+    const [rows] = await pool.query<RowDataPacket[]>(
+      `SELECT DISTINCT jenis_part
+       FROM master_parts
+       WHERE is_active = TRUE AND jenis_part IS NOT NULL AND jenis_part != '' AND jenis_part != '-'
+       ORDER BY jenis_part ASC`
+    );
+    return rows.map((r) => r.jenis_part);
+  }
+
   static async getModelsForPartNumber(partNumber: string) {
     const [rows] = await pool.query<RowDataPacket[]>(
       `SELECT mp.id AS master_part_id, mp.part_number, mp.part_name, mp.berat_part_gr, mp.image_url,
@@ -73,7 +83,7 @@ export class MasterPartsService {
   static async getPartsByJenis(jenisPart: string) {
     const [rows] = await pool.query<RowDataPacket[]>(
       `SELECT mp.id AS master_part_id, mp.part_number, mp.part_name, mp.jenis_part, mp.material,
-              mp.berat_part_gr, mp.image_url, mp.qr_code_value,
+              mp.berat_part_gr, mp.image_url,
               m.model_code, mc.name AS machine_name, f.name AS factory_name
        FROM master_parts mp
        JOIN master_models m ON mp.model_id = m.id
@@ -563,8 +573,8 @@ export class MasterPartsService {
 
     const machineMap = new Map<string, string>();
     machines.forEach((m) => {
-      machineMap.set(m.code.toUpperCase(), m.id);
-      machineMap.set(m.name.toUpperCase(), m.id);
+      machineMap.set(`${m.factory_id}:${m.code.toUpperCase()}`, m.id);
+      machineMap.set(`${m.factory_id}:${m.name.toUpperCase()}`, m.id);
     });
 
     const modelMap = new Map<string, string>();
@@ -577,14 +587,43 @@ export class MasterPartsService {
       materialMap.set(mat.material_name.toUpperCase(), mat.id);
     });
 
-    // Default Factory (FACTORY 2 or first)
-    const defaultFactoryId = factories[0]?.id;
-    const defaultMachineId = machines[0]?.id;
-
     let insertedCount = 0;
 
     for (const row of validRows) {
-      // 1. Resolve or Create Model
+      // 1. Resolve or Create Factory first
+      const rawLoc = (row.location || '').trim();
+      const cleanLoc = rawLoc.toUpperCase();
+      let factoryId: string = factoryMap.get(cleanLoc) || '';
+
+      if (!factoryId) {
+        let facCode = cleanLoc;
+        if (cleanLoc.startsWith('FACTORY')) {
+          const numMatch = cleanLoc.match(/\d+/);
+          facCode = numMatch ? `FAC${numMatch[0]}` : cleanLoc;
+        } else if (cleanLoc.startsWith('FAC')) {
+          facCode = cleanLoc;
+        }
+
+        const [existingFac] = await pool.query<RowDataPacket[]>(
+          'SELECT id FROM factories WHERE code = ? OR name = ?',
+          [facCode, rawLoc]
+        );
+
+        if (existingFac.length > 0) {
+          factoryId = existingFac[0].id;
+        } else {
+          factoryId = randomUUID();
+          await pool.query('INSERT INTO factories (id, code, name) VALUES (?, ?, ?)', [
+            factoryId,
+            facCode,
+            rawLoc || 'FACTORY 2',
+          ]);
+        }
+        factoryMap.set(cleanLoc, factoryId);
+        factoryMap.set(facCode.toUpperCase(), factoryId);
+      }
+
+      // 2. Resolve or Create Model
       let modelId = modelMap.get(row.model_code.toUpperCase());
       if (!modelId) {
         modelId = randomUUID();
@@ -595,20 +634,22 @@ export class MasterPartsService {
         modelMap.set(row.model_code.toUpperCase(), modelId);
       }
 
-      // 2. Resolve or Create Machine
+      // 3. Resolve or Create Machine scoped to Factory
       const parsedMc = parseMachineFromExcel(row.machine_code);
-      let machineId = machineMap.get(parsedMc.code.toUpperCase()) || machineMap.get(row.machine_code.toUpperCase());
+      const rawMcUpper = (row.machine_code || '').toUpperCase();
+      const keyCode = `${factoryId}:${parsedMc.code.toUpperCase()}`;
+      const keyRaw = `${factoryId}:${rawMcUpper}`;
+
+      let machineId = machineMap.get(keyCode) || machineMap.get(keyRaw);
 
       if (!machineId) {
-        // Resolve factory ID
-        let factoryId = factoryMap.get(row.location.toUpperCase()) || defaultFactoryId;
         machineId = randomUUID();
         await pool.query(
           'INSERT INTO machines (id, factory_id, code, name, type, tonnage) VALUES (?, ?, ?, ?, ?, ?)',
           [machineId, factoryId, parsedMc.code, parsedMc.name, 'Injection Mold', parsedMc.tonnage]
         );
-        machineMap.set(parsedMc.code.toUpperCase(), machineId);
-        machineMap.set(row.machine_code.toUpperCase(), machineId);
+        machineMap.set(keyCode, machineId);
+        machineMap.set(keyRaw, machineId);
       }
 
       // 3. Resolve or Create Material

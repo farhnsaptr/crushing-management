@@ -7,7 +7,6 @@ export interface CreateNgTransactionDto {
   master_part_id: string;
   quantity_pcs: number;
   shift: 'Pagi' | 'Malam';
-  input_method: 'typed' | 'scan';
   transaction_date: string; // YYYY-MM-DD
   input_by: string;
   notes?: string;
@@ -34,8 +33,8 @@ export class NgTransactionsService {
     // 2. Insert into ng_transactions with UUID
     await pool.query(
       `INSERT INTO ng_transactions
-       (id, master_part_id, part_number_snapshot, part_name_snapshot, model_snapshot, berat_part_gr_snapshot, quantity_pcs, shift, input_method, transaction_date, input_by, notes)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       (id, master_part_id, part_number_snapshot, part_name_snapshot, model_snapshot, berat_part_gr_snapshot, quantity_pcs, shift, transaction_date, input_by, notes)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
         dto.master_part_id,
@@ -45,7 +44,6 @@ export class NgTransactionsService {
         masterPart.berat_part_gr,
         dto.quantity_pcs,
         dto.shift,
-        dto.input_method,
         dto.transaction_date,
         dto.input_by,
         dto.notes || null,
