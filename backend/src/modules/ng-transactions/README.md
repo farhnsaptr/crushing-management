@@ -26,3 +26,5 @@ ng-transactions/
 |---|---|---|---|
 | `POST` | `/api/ng-transactions` | Authenticated | Catat transaksi NG baru (ketik/scan) |
 | `GET` | `/api/ng-transactions` | Authenticated | Ambil riwayat transaksi NG (filter tanggal & shift) |
+| `GET` | `/api/ng-transactions/summary-by-material` | Authenticated | Ambil ringkasan pareto material & part berdasar bulan & tahun |
+| `GET` | `/api/ng-transactions/part-detail/:partId` | Authenticated | Ambil analitik detail part, grafik harian shift & allowance, serta log transaksi |

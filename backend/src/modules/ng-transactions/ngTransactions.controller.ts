@@ -52,4 +52,38 @@ export class NgTransactionsController {
       sendError(res, error.message || 'Failed to list NG transactions', 500);
     }
   }
+
+  static async getSummaryByMaterial(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      const now = new Date();
+      const year = parseInt(req.query.year as string, 10) || now.getFullYear();
+      const month = parseInt(req.query.month as string, 10) || now.getMonth() + 1;
+      const location = (req.query.location as string) === 'Karawang' ? 'Karawang' : 'Cibitung';
+
+      const summary = await NgTransactionsService.getMaterialSummary(year, month, location);
+      sendSuccess(res, summary, 'Material summary retrieved successfully', 200);
+    } catch (error: any) {
+      sendError(res, error.message || 'Failed to retrieve material summary', 500);
+    }
+  }
+
+  static async getPartMonthlyDetail(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      const partId = String(req.params.partId);
+      const now = new Date();
+      const year = parseInt(req.query.year as string, 10) || now.getFullYear();
+      const month = parseInt(req.query.month as string, 10) || now.getMonth() + 1;
+      const location = (req.query.location as string) === 'Karawang' ? 'Karawang' : 'Cibitung';
+
+      if (!partId) {
+        sendError(res, 'partId is required', 400);
+        return;
+      }
+
+      const detail = await NgTransactionsService.getPartMonthlyDetail(partId, year, month, location);
+      sendSuccess(res, detail, 'Part monthly detail retrieved successfully', 200);
+    } catch (error: any) {
+      sendError(res, error.message || 'Failed to retrieve part monthly detail', 500);
+    }
+  }
 }

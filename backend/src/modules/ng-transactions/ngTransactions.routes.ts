@@ -55,5 +55,7 @@ router.use(verifyToken);
  */
 router.post('/', NgTransactionsController.create);
 router.get('/', NgTransactionsController.list);
+router.get('/summary-by-material', NgTransactionsController.getSummaryByMaterial);
+router.get('/part-detail/:partId', NgTransactionsController.getPartMonthlyDetail);
 
 export default router;
