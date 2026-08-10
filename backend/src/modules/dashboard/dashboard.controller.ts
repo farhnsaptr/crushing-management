@@ -1,16 +1,16 @@
 import { Request, Response } from 'express';
 import { DashboardService } from './dashboard.service';
 import { sendSuccess, sendError } from '../../utils/response.util';
-import { addSseClient } from '../../utils/sse.util';
 
 export class DashboardController {
   static async getSummary(req: Request, res: Response): Promise<void> {
     try {
-      const startDate = req.query.start_date as string | undefined;
-      const endDate = req.query.end_date as string | undefined;
+      const year = req.query.year ? parseInt(req.query.year as string, 10) : undefined;
+      const month = req.query.month ? parseInt(req.query.month as string, 10) : undefined;
+      const location = (req.query.location as string) === 'Karawang' ? 'Karawang' : 'Cibitung';
 
-      const stats = await DashboardService.getSummaryStats(startDate, endDate);
-      sendSuccess(res, stats, 'Dashboard summary stats retrieved');
+      const stats = await DashboardService.getSummaryStats(year, month, location);
+      sendSuccess(res, stats, 'Dashboard summary stats retrieved successfully');
     } catch (error: any) {
       sendError(res, error.message || 'Failed to get dashboard summary', 500);
     }
@@ -18,11 +18,12 @@ export class DashboardController {
 
   static async getDailyChart(req: Request, res: Response): Promise<void> {
     try {
-      const startDate = req.query.start_date as string | undefined;
-      const endDate = req.query.end_date as string | undefined;
+      const year = req.query.year ? parseInt(req.query.year as string, 10) : undefined;
+      const month = req.query.month ? parseInt(req.query.month as string, 10) : undefined;
+      const location = (req.query.location as string) === 'Karawang' ? 'Karawang' : 'Cibitung';
 
-      const chartData = await DashboardService.getDailyChartData(startDate, endDate);
-      sendSuccess(res, chartData, 'Daily chart data retrieved');
+      const chartData = await DashboardService.getDailyChartData(year, month, location);
+      sendSuccess(res, chartData, 'Daily chart data retrieved successfully');
     } catch (error: any) {
       sendError(res, error.message || 'Failed to get daily chart data', 500);
     }
@@ -30,8 +31,12 @@ export class DashboardController {
 
   static async getParetoMaterial(req: Request, res: Response): Promise<void> {
     try {
-      const paretoData = await DashboardService.getParetoMaterial();
-      sendSuccess(res, paretoData, 'Pareto material data retrieved');
+      const year = req.query.year ? parseInt(req.query.year as string, 10) : undefined;
+      const month = req.query.month ? parseInt(req.query.month as string, 10) : undefined;
+      const location = (req.query.location as string) === 'Karawang' ? 'Karawang' : 'Cibitung';
+
+      const paretoData = await DashboardService.getParetoMaterial(year, month, location);
+      sendSuccess(res, paretoData, 'Pareto material data retrieved successfully');
     } catch (error: any) {
       sendError(res, error.message || 'Failed to get pareto material data', 500);
     }
@@ -39,38 +44,32 @@ export class DashboardController {
 
   static async getTopNgParts(req: Request, res: Response): Promise<void> {
     try {
-      const topNgData = await DashboardService.getTopNgParts();
-      sendSuccess(res, topNgData, 'Top NG parts retrieved');
+      const year = req.query.year ? parseInt(req.query.year as string, 10) : undefined;
+      const month = req.query.month ? parseInt(req.query.month as string, 10) : undefined;
+      const location = (req.query.location as string) === 'Karawang' ? 'Karawang' : 'Cibitung';
+
+      const topNgData = await DashboardService.getTopNgParts(year, month, location);
+      sendSuccess(res, topNgData, 'Top NG parts retrieved successfully');
     } catch (error: any) {
       sendError(res, error.message || 'Failed to get top NG parts', 500);
     }
   }
 
-  static sseStream(req: Request, res: Response): void {
-    res.setHeader('Content-Type', 'text/event-stream');
-    res.setHeader('Cache-Control', 'no-cache');
-    res.setHeader('Connection', 'keep-alive');
-    res.setHeader('X-Accel-Buffering', 'no');
-    res.flushHeaders();
-
-    // Send connection established event
-    res.write(`event: connected\ndata: ${JSON.stringify({ message: 'SSE Stream Connected' })}\n\n`);
-
-    addSseClient(res);
-  }
-
-  static async exportData(req: Request, res: Response): Promise<void> {
+  static async exportExcel(req: Request, res: Response): Promise<void> {
     try {
-      const startDate = req.query.start_date as string | undefined;
-      const endDate = req.query.end_date as string | undefined;
+      const startDate = (req.query.start_date as string) || (req.query.startDate as string);
+      const endDate = (req.query.end_date as string) || (req.query.endDate as string);
+      const location = (req.query.location as string) === 'Karawang' ? 'Karawang' : 'Cibitung';
 
-      const stats = await DashboardService.getSummaryStats(startDate, endDate);
-      const pareto = await DashboardService.getParetoMaterial();
-      const topParts = await DashboardService.getTopNgParts();
+      const buffer = await DashboardService.generateExcelBuffer(startDate, endDate, location);
 
-      sendSuccess(res, { stats, pareto, topParts }, 'Export dataset generated');
+      const filename = `NG_Transactions_${location}_${startDate || 'start'}_to_${endDate || 'end'}.xlsx`;
+
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.send(buffer);
     } catch (error: any) {
-      sendError(res, error.message || 'Failed to export dashboard data', 500);
+      sendError(res, error.message || 'Failed to export dashboard excel file', 500);
     }
   }
 }

@@ -10,17 +10,20 @@ router.use(verifyToken);
  * @openapi
  * /api/dashboard/summary:
  *   get:
- *     summary: Get Total Input (kg), Runner (kg), Output (kg), and Waste (kg)
+ *     summary: Get Total Input (kg), Total Output (kg), and Waste (kg)
  *     tags: [Dashboard]
  *     security:
  *       - bearerAuth: []
  *     parameters:
  *       - in: query
- *         name: start_date
- *         schema: { type: string, format: date, example: "2026-08-01" }
+ *         name: year
+ *         schema: { type: integer, example: 2026 }
  *       - in: query
- *         name: end_date
- *         schema: { type: string, format: date, example: "2026-08-31" }
+ *         name: month
+ *         schema: { type: integer, example: 8 }
+ *       - in: query
+ *         name: location
+ *         schema: { type: string, enum: [Cibitung, Karawang], example: "Cibitung" }
  *     responses:
  *       200:
  *         description: Summary stats object
@@ -31,7 +34,7 @@ router.get('/summary', DashboardController.getSummary);
  * @openapi
  * /api/dashboard/daily-chart:
  *   get:
- *     summary: Get daily stacked bar chart data (kg per day per shift)
+ *     summary: Get daily total recycle material chart data
  *     tags: [Dashboard]
  *     security:
  *       - bearerAuth: []
@@ -45,7 +48,7 @@ router.get('/daily-chart', DashboardController.getDailyChart);
  * @openapi
  * /api/dashboard/pareto-material:
  *   get:
- *     summary: Get pareto ranking table data by material type (kg)
+ *     summary: Get pareto ranking table data by material type (Top 10)
  *     tags: [Dashboard]
  *     security:
  *       - bearerAuth: []
@@ -59,7 +62,7 @@ router.get('/pareto-material', DashboardController.getParetoMaterial);
  * @openapi
  * /api/dashboard/top-ng-parts:
  *   get:
- *     summary: Get top NG rejected parts table data (by pcs)
+ *     summary: Get top NG rejected parts table data
  *     tags: [Dashboard]
  *     security:
  *       - bearerAuth: []
@@ -71,30 +74,16 @@ router.get('/top-ng-parts', DashboardController.getTopNgParts);
 
 /**
  * @openapi
- * /api/dashboard/stream:
+ * /api/dashboard/export-excel:
  *   get:
- *     summary: Server-Sent Events (SSE) endpoint for real-time dashboard updates
+ *     summary: Export dashboard report as an Excel spreadsheet (.xlsx)
  *     tags: [Dashboard]
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: Event stream connection established
+ *         description: Downloadable Excel file binary
  */
-router.get('/stream', DashboardController.sseStream);
-
-/**
- * @openapi
- * /api/dashboard/export:
- *   get:
- *     summary: Export dashboard dataset for Excel report generation
- *     tags: [Dashboard]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Consolidated dataset for export
- */
-router.get('/export', DashboardController.exportData);
+router.get('/export-excel', DashboardController.exportExcel);
 
 export default router;
