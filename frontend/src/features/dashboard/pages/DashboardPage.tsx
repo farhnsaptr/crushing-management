@@ -1,142 +1,304 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
-import { Card } from '../../../components/common/Card';
-import { Badge } from '../../../components/common/Badge';
-import { ShieldCheck, Clock, Layers, Activity, AlertTriangle } from 'lucide-react';
+import { useDashboard, MONTH_OPTIONS } from '../hooks/useDashboard';
+import { DashboardMetricCards } from '../components/DashboardMetricCards';
+import { DailyRecycleChart } from '../components/DailyRecycleChart';
+import { ParetoMaterialTable } from '../components/ParetoMaterialTable';
+import { TopNgPartsTable } from '../components/TopNgPartsTable';
+import { ExportDateModal } from '../components/ExportDateModal';
+import type { PlantLocation } from '../types/dashboard.types';
+import { PlusCircle, FileSpreadsheet, MapPin, Calendar, RefreshCw } from 'lucide-react';
 
 export const DashboardPage: React.FC = () => {
+  const navigate = useNavigate();
   const { user } = useAuth();
+  const [isExportModalOpen, setIsExportModalOpen] = useState<boolean>(false);
 
-  const formattedLastLogin = user?.last_login_at
-    ? new Date(user.last_login_at).toLocaleString('id-ID', {
-        dateStyle: 'medium',
-        timeStyle: 'short',
-      })
-    : 'Baru saja';
+  const {
+    selectedMonth,
+    setSelectedMonth,
+    selectedYear,
+    setSelectedYear,
+    selectedLocation,
+    setSelectedLocation,
+    summaryStats,
+    dailyChart,
+    paretoMaterials,
+    topParts,
+    isLoading,
+    isExporting,
+    fetchDashboardData,
+    handleExportExcel,
+  } = useDashboard();
+
+  // Formatted date text for top right header (e.g. "Jum'at, 31 Juli 2026")
+  const formattedTodayDate = new Date().toLocaleDateString('id-ID', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-      {/* Welcome Banner Card */}
-      <Card>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
-              <h2 style={{ fontSize: '1.5rem', fontWeight: 900, color: 'var(--text-main)' }}>
-                Selamat Datang, {user?.full_name || user?.username}!
-              </h2>
-              <Badge variant={user?.role === 'admin' ? 'primary' : 'secondary'} size="md">
-                {user?.role.toUpperCase()}
-              </Badge>
-            </div>
-            <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>
-              Sistem Manajemen Pencatatan & Daur Ulang Material Plastik — PT Sugity Creatives
-            </p>
-          </div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', width: '100%', minHeight: 'calc(100vh - 85px)' }}>
+      {/* Mobile Responsive & Single Screen Style Block */}
+      <style>{`
+        .dashboard-header-container {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          flex-wrap: wrap;
+          gap: 0.75rem;
+          background-color: var(--card-bg, #ffffff);
+          padding: 0.75rem 1.15rem;
+          border-radius: 16px;
+          border: 1px solid var(--border-color, #e2e8f0);
+          box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+        }
+        .dashboard-title {
+          font-size: 1.35rem;
+          font-weight: 900;
+          letter-spacing: -0.02em;
+          color: var(--text-main, #0f172a);
+          margin: 0;
+          text-transform: uppercase;
+        }
+        .dashboard-controls-bar {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          flex-wrap: wrap;
+          gap: 0.75rem;
+          background-color: var(--card-bg, #ffffff);
+          padding: 0.55rem 1rem;
+          border-radius: 14px;
+          border: 1px solid var(--border-color, #e2e8f0);
+          box-shadow: 0 2px 6px rgba(0,0,0,0.02);
+        }
+        .dashboard-tables-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 1rem;
+          align-items: start;
+        }
+        @media (max-width: 960px) {
+          .dashboard-tables-grid {
+            grid-template-columns: 1fr !important;
+          }
+          .dashboard-header-container {
+            padding: 0.75rem 1rem !important;
+          }
+          .dashboard-title {
+            font-size: 1.15rem !important;
+          }
+        }
+      `}</style>
 
+      {/* Top Header: Title & Date User Info */}
+      <div className="dashboard-header-container">
+        <div>
+          <h1 className="dashboard-title">RECYCLE MATERIAL MANAGEMENT</h1>
+          <p style={{ fontSize: '0.775rem', color: 'var(--text-muted, #64748b)', margin: '0.15rem 0 0 0', fontWeight: 600 }}>
+            Executive Overview & Data Analytics Daur Ulang Plastik — PT Sugity Creatives
+          </p>
+        </div>
+
+        <div style={{ textAlign: 'right' }}>
+          <div style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--text-main, #0f172a)' }}>
+            {formattedTodayDate}
+          </div>
+          <div style={{ fontSize: '0.775rem', fontWeight: 700, color: 'var(--secondary-color, #e76114)', marginTop: '0.1rem' }}>
+            {user?.full_name || user?.username || 'User'} ({user?.role.toUpperCase()})
+          </div>
+        </div>
+      </div>
+
+      {/* Control & Action Bar: Location Toggle, Date Pickers, Add Data & Export Buttons */}
+      <div className="dashboard-controls-bar">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', flexWrap: 'wrap' }}>
+          {/* Plant Location Pill Toggle */}
           <div
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '0.5rem',
-              padding: '0.5rem 1rem',
-              backgroundColor: 'var(--bg-main)',
-              borderRadius: 'var(--radius-md)',
-              border: '1px solid var(--border-color)',
-              fontSize: '0.85rem',
-              color: 'var(--text-muted)',
+              backgroundColor: '#f1f5f9',
+              padding: '2px',
+              borderRadius: '16px',
+              border: '1px solid #cbd5e1',
             }}
           >
-            <Clock size={16} color="var(--primary-color)" />
-            <span>Login Terakhir: {formattedLastLogin}</span>
+            {(['Cibitung', 'Karawang'] as PlantLocation[]).map((loc) => {
+              const isSelected = selectedLocation === loc;
+              return (
+                <button
+                  key={loc}
+                  type="button"
+                  onClick={() => setSelectedLocation(loc)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.3rem',
+                    padding: '0.35rem 0.85rem',
+                    borderRadius: '14px',
+                    border: 'none',
+                    backgroundColor: isSelected ? 'var(--secondary-color, #e76114)' : 'transparent',
+                    color: isSelected ? '#ffffff' : '#64748b',
+                    fontWeight: isSelected ? 800 : 600,
+                    fontSize: '0.8rem',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                  }}
+                >
+                  <MapPin size={13} />
+                  <span>{loc}</span>
+                </button>
+              );
+            })}
           </div>
+
+          {/* Month Select */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+            <Calendar size={15} color="var(--secondary-color, #e76114)" />
+            <select
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(Number(e.target.value))}
+              style={{
+                padding: '0.35rem 0.85rem',
+                borderRadius: '14px',
+                border: '1.5px solid var(--secondary-color, #e76114)',
+                backgroundColor: 'var(--secondary-color, #e76114)',
+                color: '#ffffff',
+                fontWeight: 700,
+                fontSize: '0.8rem',
+                cursor: 'pointer',
+                outline: 'none',
+              }}
+            >
+              {MONTH_OPTIONS.map((m) => (
+                <option key={m.value} value={m.value} style={{ backgroundColor: '#ffffff', color: '#0f172a' }}>
+                  {m.label}
+                </option>
+              ))}
+            </select>
+
+            {/* Year Input */}
+            <input
+              type="number"
+              className="no-spinner"
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(Number(e.target.value))}
+              min={2020}
+              max={2035}
+              style={{
+                width: '65px',
+                padding: '0.35rem 0.55rem',
+                borderRadius: '14px',
+                border: '1.5px solid var(--secondary-color, #e76114)',
+                backgroundColor: 'var(--secondary-color, #e76114)',
+                color: '#ffffff',
+                fontWeight: 800,
+                fontSize: '0.825rem',
+                textAlign: 'center',
+                outline: 'none',
+                MozAppearance: 'textfield',
+              }}
+            />
+          </div>
+
+          <button
+            onClick={fetchDashboardData}
+            style={{
+              padding: '0.35rem',
+              borderRadius: '50%',
+              border: '1px solid #cbd5e1',
+              backgroundColor: '#ffffff',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+            title="Refresh Data"
+          >
+            <RefreshCw size={15} color="#64748b" />
+          </button>
         </div>
-      </Card>
 
-      {/* Quick Summary Metric Cards (Placeholder) */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.25rem' }}>
-        {/* Metric 1 */}
-        <Card>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div>
-              <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
-                Total Transaksi NG
-              </span>
-              <h3 style={{ fontSize: '1.75rem', fontWeight: 900, color: 'var(--primary-color)', marginTop: '0.25rem' }}>
-                --
-              </h3>
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Placeholder Modul</span>
-            </div>
-            <div style={{ padding: '0.75rem', backgroundColor: 'var(--primary-light)', borderRadius: 'var(--radius-md)', color: 'var(--primary-color)' }}>
-              <Layers size={24} />
-            </div>
-          </div>
-        </Card>
+        {/* Action Buttons: + Add Data & Export */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', flexWrap: 'wrap' }}>
+          {/* + Add Data Button */}
+          <button
+            onClick={() => navigate('/ng-input')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.4rem',
+              padding: '0.45rem 1.15rem',
+              borderRadius: '14px',
+              border: '1.5px solid var(--primary-color, #0f172a)',
+              backgroundColor: 'var(--primary-color, #0f172a)',
+              color: '#ffffff',
+              fontWeight: 800,
+              fontSize: '0.825rem',
+              cursor: 'pointer',
+              boxShadow: '0 2px 6px rgba(15, 23, 42, 0.2)',
+              transition: 'all 0.2s ease',
+            }}
+          >
+            <PlusCircle size={16} />
+            <span>Add Data</span>
+          </button>
 
-        {/* Metric 2 */}
-        <Card>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div>
-              <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
-                Produksi Actual
-              </span>
-              <h3 style={{ fontSize: '1.75rem', fontWeight: 900, color: 'var(--secondary-color)', marginTop: '0.25rem' }}>
-                --
-              </h3>
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Placeholder Modul</span>
-            </div>
-            <div style={{ padding: '0.75rem', backgroundColor: 'var(--secondary-light)', borderRadius: 'var(--radius-md)', color: 'var(--secondary-color)' }}>
-              <Activity size={24} />
-            </div>
-          </div>
-        </Card>
-
-        {/* Metric 3 */}
-        <Card>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div>
-              <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
-                Status Sistem
-              </span>
-              <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#10b981', marginTop: '0.5rem' }}>
-                ONLINE & OPERATIONAL
-              </h3>
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>REST API Server Ready</span>
-            </div>
-            <div style={{ padding: '0.75rem', backgroundColor: 'rgba(16, 185, 129, 0.12)', borderRadius: 'var(--radius-md)', color: '#10b981' }}>
-              <ShieldCheck size={24} />
-            </div>
-          </div>
-        </Card>
+          {/* Export Excel Button (Opens Date Range Modal) */}
+          <button
+            onClick={() => setIsExportModalOpen(true)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.4rem',
+              padding: '0.45rem 1.15rem',
+              borderRadius: '14px',
+              border: '1.5px solid #0f172a',
+              backgroundColor: '#0f172a',
+              color: '#ffffff',
+              fontWeight: 800,
+              fontSize: '0.825rem',
+              cursor: 'pointer',
+              boxShadow: '0 2px 6px rgba(15, 23, 42, 0.2)',
+              transition: 'all 0.2s ease',
+            }}
+          >
+            <FileSpreadsheet size={16} />
+            <span>Export</span>
+          </button>
+        </div>
       </div>
 
-      {/* Development Placeholder Notice */}
-      <Card
-        title="Pengumuman Pengembangan Dashboard"
-        subtitle="Fitur visualisasi grafik dan agregasi statistik daur ulang material sedang dalam tahap penyelesaian"
-      >
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'flex-start',
-            gap: '1rem',
-            padding: '1.25rem',
-            backgroundColor: 'rgba(231, 97, 20, 0.08)',
-            border: '1px solid rgba(231, 97, 20, 0.25)',
-            borderRadius: 'var(--radius-md)',
-            color: 'var(--text-main)',
-          }}
-        >
-          <AlertTriangle size={24} color="var(--secondary-color)" style={{ flexShrink: 0, marginTop: '0.2rem' }} />
-          <div>
-            <h4 style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--secondary-color)' }}>
-              Halaman Dashboard Placeholder Active
-            </h4>
-            <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
-              Anda berhasil masuk sebagai <strong>{user?.role.toUpperCase()}</strong>. Fitur analitik lengkap (Grafik Tren NG, Efisiensi Crushing per Mesin & Factory) akan segera dihubungkan pada tahap pengembangan berikutnya.
-            </p>
-          </div>
-        </div>
-      </Card>
+      {/* Metric Summary Cards: Total Input, Total Output, Waste */}
+      <DashboardMetricCards summary={summaryStats} isLoading={isLoading} />
+
+      {/* 1. Full-Width Daily Recycle Chart spanning full width */}
+      <DailyRecycleChart
+        data={dailyChart}
+        isLoading={isLoading}
+        monthLabel={MONTH_OPTIONS.find((m) => m.value === selectedMonth)?.label || 'Bulan'}
+        year={selectedYear}
+      />
+
+      {/* 2. Side-by-Side Tables Below Full-Width Chart */}
+      <div className="dashboard-tables-grid">
+        <TopNgPartsTable data={topParts} isLoading={isLoading} />
+        <ParetoMaterialTable data={paretoMaterials} isLoading={isLoading} />
+      </div>
+
+      {/* Date Range Selection Export Modal */}
+      <ExportDateModal
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        defaultLocation={selectedLocation}
+        isExporting={isExporting}
+        onExport={handleExportExcel}
+      />
     </div>
   );
 };

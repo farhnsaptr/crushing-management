@@ -118,7 +118,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapse 
       </div>
 
       {/* Navigation Items Container */}
-      <div style={{ flex: 1, padding: '1.25rem 0.875rem', overflowY: 'auto' }}>
+      <div className="no-scrollbar" style={{ flex: 1, padding: '1.25rem 0.875rem', overflowY: 'auto' }}>
         {/* SECTION 1: MAIN MENU (Universal for all roles) */}
         {mainNavItems.length > 0 && (
           <div style={{ marginBottom: '1.25rem' }}>

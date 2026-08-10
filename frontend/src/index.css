@@ -120,6 +120,38 @@
   box-sizing: border-box;
   margin: 0;
   padding: 0;
+  scrollbar-width: none !important; /* Hide scrollbars in Firefox */
+  -ms-overflow-style: none !important; /* Hide scrollbars in IE & Edge */
+}
+
+/* Hide scrollbars globally across Chrome, Safari, Opera, Edge */
+::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+/* Dedicated Utility Class to Hide Scrollbars */
+.no-scrollbar {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+/* Hide HTML5 number input spinner arrows globally */
+input[type='number']::-webkit-outer-spin-button,
+input[type='number']::-webkit-inner-spin-button {
+  -webkit-appearance: none !important;
+  margin: 0 !important;
+}
+
+input[type='number'] {
+  -moz-appearance: textfield !important;
+  appearance: textfield !important;
 }
 
 body {
@@ -204,23 +236,4 @@ textarea {
 
 .animate-fade-in {
   animation: fadeInScale 0.25s ease forwards;
-}
-
-/* Custom Scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background: var(--border-color);
-  border-radius: 9999px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: var(--text-muted);
 }

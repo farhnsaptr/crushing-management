@@ -34,7 +34,7 @@ export const Header: React.FC<HeaderProps> = ({ title }) => {
           {title || 'Crushing Management'}
         </h1>
         <p style={{ fontSize: '0.75rem', color: 'rgba(255, 255, 255, 0.85)', fontWeight: 600 }}>
-          PT Sugity Creatives - Recycle Material Management System
+          PT SUGITY CREATIVES - Recycle Material Management System
         </p>
       </div>
 
