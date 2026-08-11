@@ -13,6 +13,7 @@ import { ForbiddenPage } from './components/errors/ForbiddenPage';
 import { LoginPage } from './features/auth/pages/LoginPage';
 import { DashboardPage } from './features/dashboard/pages/DashboardPage';
 import { NgInputPage } from './features/ng-input/pages/NgInputPage';
+import { PartRunnerNgPage } from './features/part-runner-ng/pages/PartRunnerNgPage';
 import { FactoriesPage } from './features/factories/pages/FactoriesPage';
 import { MachinesPage } from './features/machines/pages/MachinesPage';
 import { MaterialsPage } from './features/materials/pages/MaterialsPage';
@@ -40,6 +41,7 @@ export const App: React.FC = () => {
               <Route element={<MainLayout />}>
                 <Route path="/dashboard" element={<DashboardPage />} />
                 <Route path="/ng-input" element={<NgInputPage />} />
+                <Route path="/part-runner-ng" element={<PartRunnerNgPage />} />
               </Route>
             </Route>
 

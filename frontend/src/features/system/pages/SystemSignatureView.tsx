@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ShieldCheck, Mail, ArrowLeft, Code } from 'lucide-react';
+import { Mail, ArrowLeft, Code } from 'lucide-react';
 
 export const SystemSignatureView: React.FC = () => {
   const navigate = useNavigate();

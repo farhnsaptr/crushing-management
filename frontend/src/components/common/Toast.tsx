@@ -2,29 +2,40 @@ import React, { useEffect } from 'react';
 import { CheckCircle2, AlertTriangle, XCircle, Info, X } from 'lucide-react';
 
 export interface ToastMessage {
-  id: string;
+  id?: string;
   type: 'success' | 'error' | 'warning' | 'info';
   message: string;
 }
 
 interface ToastProps {
-  toast: ToastMessage | null;
+  toast?: ToastMessage | null;
+  message?: string;
+  type?: 'success' | 'error' | 'warning' | 'info';
   onClose: () => void;
   durationMs?: number;
 }
 
-export const Toast: React.FC<ToastProps> = ({ toast, onClose, durationMs = 4000 }) => {
+export const Toast: React.FC<ToastProps> = ({
+  toast,
+  message,
+  type = 'info',
+  onClose,
+  durationMs = 4000,
+}) => {
+  const activeMessage = toast?.message || message;
+  const activeType = toast?.type || type;
+
   useEffect(() => {
-    if (toast) {
+    if (activeMessage) {
       const timer = setTimeout(onClose, durationMs);
       return () => clearTimeout(timer);
     }
-  }, [toast, onClose, durationMs]);
+  }, [activeMessage, onClose, durationMs]);
 
-  if (!toast) return null;
+  if (!activeMessage) return null;
 
   const getIcon = () => {
-    switch (toast.type) {
+    switch (activeType) {
       case 'success':
         return <CheckCircle2 color="#10b981" size={20} />;
       case 'error':
@@ -38,7 +49,7 @@ export const Toast: React.FC<ToastProps> = ({ toast, onClose, durationMs = 4000 
   };
 
   const getBorderColor = () => {
-    switch (toast.type) {
+    switch (activeType) {
       case 'success':
         return '#10b981';
       case 'error':
@@ -72,7 +83,7 @@ export const Toast: React.FC<ToastProps> = ({ toast, onClose, durationMs = 4000 
       }}
     >
       <div>{getIcon()}</div>
-      <div style={{ flex: 1, fontSize: '0.9rem', fontWeight: 500 }}>{toast.message}</div>
+      <div style={{ flex: 1, fontSize: '0.9rem', fontWeight: 500 }}>{activeMessage}</div>
       <button
         onClick={onClose}
         style={{

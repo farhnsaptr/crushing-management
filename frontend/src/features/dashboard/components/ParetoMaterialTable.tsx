@@ -10,7 +10,7 @@ export const ParetoMaterialTable: React.FC<ParetoMaterialTableProps> = ({ data, 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', width: '100%', height: '100%' }}>
       <h3 style={{ fontSize: '0.95rem', fontWeight: 900, color: 'var(--text-main, #0f172a)', margin: 0 }}>
-        Pareto Mat'l Recycle
+        Pareto Material Recycle
       </h3>
 
       <div

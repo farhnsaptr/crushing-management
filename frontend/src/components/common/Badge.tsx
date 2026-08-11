@@ -4,12 +4,16 @@ interface BadgeProps {
   children: React.ReactNode;
   variant?: 'success' | 'warning' | 'danger' | 'info' | 'primary' | 'secondary' | 'neutral';
   size?: 'sm' | 'md';
+  style?: React.CSSProperties;
+  className?: string;
 }
 
 export const Badge: React.FC<BadgeProps> = ({
   children,
   variant = 'neutral',
   size = 'md',
+  style = {},
+  className = '',
 }) => {
   const getStyles = () => {
     switch (variant) {
@@ -33,6 +37,7 @@ export const Badge: React.FC<BadgeProps> = ({
 
   return (
     <span
+      className={className}
       style={{
         display: 'inline-flex',
         alignItems: 'center',
@@ -43,6 +48,7 @@ export const Badge: React.FC<BadgeProps> = ({
         padding: size === 'sm' ? '0.15rem 0.5rem' : '0.25rem 0.65rem',
         whiteSpace: 'nowrap',
         ...getStyles(),
+        ...style,
       }}
     >
       {children}

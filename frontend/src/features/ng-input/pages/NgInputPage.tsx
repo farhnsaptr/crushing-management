@@ -68,13 +68,11 @@ export const NgInputPage: React.FC = () => {
     setToast,
   } = useNgInput();
 
-  const gridTitle =
-    filterMode === 'jenis'
-      ? `Daftar Part — ${selectedJenis}`
-      : `Daftar Part — ${factories.find((f) => f.id === selectedFactoryId)?.name || 'Factory'}`;
-
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+      {/* Toast Notification */}
+      {toast && <Toast toast={toast} onClose={() => setToast(null)} />}
+
       {/* Top Tab Switcher Bar */}
       <div
         style={{
@@ -198,31 +196,28 @@ export const NgInputPage: React.FC = () => {
                   />
                 </div>
                 {searchQuery && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setSearchQuery('')}
-                    style={{ fontSize: '0.8rem', padding: '0.5rem 0.75rem', gap: '0.3rem' }}
-                  >
-                    <X size={14} />
-                    <span>Reset</span>
+                  <Button variant="secondary" size="sm" onClick={() => setSearchQuery('')} leftIcon={<X size={14} />}>
+                    Clear
                   </Button>
                 )}
               </div>
             </Card>
 
             <NgPartGridCard
+              title={
+                filterMode === 'jenis'
+                  ? `Daftar Part — ${selectedJenis}`
+                  : `Daftar Part — ${factories.find((f) => f.id === selectedFactoryId)?.name || 'Factory'}`
+              }
               parts={filteredParts}
               isLoading={isLoadingParts}
               selectedPartId={selectedPart?.id || null}
               onSelectPart={handleSelectPart}
-              title={gridTitle}
             />
           </div>
 
-          {/* Right Side: Quick Form Input Card (~35% width) */}
-          <div style={{ flex: '1 1 36%', position: 'sticky', top: '1.5rem' }}>
+          {/* Right Side: Entry Form (~35% width) */}
+          <div style={{ flex: '1 1 35%' }}>
             <NgInputFormCard
               selectedPart={selectedPart}
               quantityPcs={quantityPcs}
@@ -240,9 +235,6 @@ export const NgInputPage: React.FC = () => {
           </div>
         </div>
       )}
-
-      {/* Toast Notification */}
-      <Toast toast={toast} onClose={() => setToast(null)} />
     </div>
   );
 };

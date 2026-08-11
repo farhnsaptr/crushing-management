@@ -1,4 +1,4 @@
-import { LayoutDashboard, Building2, Cpu, Package, Layers, Users, FileText, Palette, PackageX } from 'lucide-react';
+import { LayoutDashboard, Building2, Cpu, Package, Layers, Users, FileText, Palette, PackageX, FileSpreadsheet } from 'lucide-react';
 import React from 'react';
 
 export interface NavigationItem {
@@ -24,6 +24,14 @@ export const NAVIGATION_ITEMS: NavigationItem[] = [
     title: 'Input Part NG',
     path: '/ng-input',
     icon: PackageX,
+    roles: ['super-admin', 'admin', 'operator'],
+    section: 'main',
+  },
+  {
+    id: 'part-runner-ng',
+    title: 'Input Part Runner NG',
+    path: '/part-runner-ng',
+    icon: FileSpreadsheet,
     roles: ['super-admin', 'admin', 'operator'],
     section: 'main',
   },
