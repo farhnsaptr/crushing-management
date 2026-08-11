@@ -13,7 +13,7 @@ import {
   CartesianGrid,
   Cell,
 } from 'recharts';
-import { Layers, Calendar, Scale, History, BarChart2, Edit2, Trash2 } from 'lucide-react';
+import { Layers, Scale, History, BarChart2, Edit2, Trash2 } from 'lucide-react';
 
 interface RunnerMaterialDetailModalProps {
   isOpen: boolean;

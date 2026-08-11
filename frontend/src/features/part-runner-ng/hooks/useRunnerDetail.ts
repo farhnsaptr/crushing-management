@@ -3,12 +3,11 @@ import { RunnerMaterialService } from '../services/runnerMaterial.service';
 import type {
   RunnerMaterialAnalyticsSummaryResponse,
   RunnerMaterialAnalyticsDetailResponse,
-  RunnerMaterialSummaryItem,
 } from '../types/runnerMaterial.types';
 
 export const useRunnerDetail = () => {
   const currentYear = new Date().getFullYear();
-  
+
   const [selectedYear, setSelectedYear] = useState<number>(currentYear);
   const [selectedMonth, setSelectedMonth] = useState<number>(0); // 0 = All Months
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -67,7 +66,7 @@ export const useRunnerDetail = () => {
 
   // Filter & Sort Materials
   const rawMaterials = summaryData?.materials || [];
-  
+
   const filteredMaterials = rawMaterials.filter((m) =>
     m.material_name.toLowerCase().includes(searchQuery.trim().toLowerCase())
   );

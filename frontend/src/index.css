@@ -237,3 +237,153 @@ textarea {
 .animate-fade-in {
   animation: fadeInScale 0.25s ease forwards;
 }
+
+/* Mobile Responsive Navbar (Header) & Layout Styles */
+.app-header {
+  height: 72px;
+  padding: 0 1.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 90;
+  background-color: var(--primary-color);
+  color: #ffffff;
+  box-shadow: var(--shadow-md);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  transition: padding 0.2s ease, height 0.2s ease;
+}
+
+.header-title-container {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  max-width: 450px;
+}
+
+.header-title {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin: 0;
+}
+
+.header-subtitle {
+  font-size: 0.725rem;
+  color: rgba(255, 255, 255, 0.85);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin: 0;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  flex-shrink: 0;
+}
+
+.header-user-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.35rem 0.75rem;
+  background-color: rgba(0, 0, 0, 0.15);
+  border-radius: var(--radius-pill, 9999px);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+.header-user-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.header-logout-btn {
+  background: #ffffff;
+  border: none;
+  color: #ef4444;
+  padding: 0.5rem 0.85rem;
+  border-radius: var(--radius-md, 8px);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-weight: 800;
+  font-size: 0.85rem;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.2s ease;
+}
+
+.header-logout-text {
+  display: inline;
+}
+
+.app-main-content {
+  flex: 1;
+  padding: 1.5rem 2rem;
+  width: 100%;
+}
+
+@media (max-width: 768px) {
+  .app-header {
+    height: 64px;
+    padding: 0 1rem;
+  }
+
+  .header-title-container {
+    max-width: 220px;
+  }
+
+  .header-title {
+    font-size: 1rem;
+  }
+
+  .header-subtitle {
+    font-size: 0.65rem;
+  }
+
+  .header-actions {
+    gap: 0.5rem;
+  }
+
+  .header-user-badge {
+    padding: 0.25rem 0.4rem;
+  }
+
+  .app-main-content {
+    padding: 1rem 0.85rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .header-title-container {
+    max-width: 160px;
+  }
+
+  .header-title {
+    font-size: 0.95rem;
+  }
+
+  .header-subtitle {
+    display: none; /* Hide subtitle on small mobile screens */
+  }
+
+  .header-user-text {
+    display: none; /* Hide user name and role text, avatar icon remains */
+  }
+
+  .header-logout-text {
+    display: none; /* Hide "Keluar" text, icon remains */
+  }
+
+  .header-logout-btn {
+    padding: 0.5rem;
+  }
+}

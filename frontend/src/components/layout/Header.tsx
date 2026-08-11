@@ -12,35 +12,20 @@ export const Header: React.FC<HeaderProps> = ({ title }) => {
   const { isDarkMode, toggleDarkMode } = useTheme();
 
   return (
-    <header
-      style={{
-        height: '76px',
-        padding: '0 2rem',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        position: 'sticky',
-        top: 0,
-        zIndex: 90,
-        backgroundColor: 'var(--primary-color)', // Solid Primary Color (#008d51)
-        color: '#ffffff',
-        boxShadow: 'var(--shadow-md)',
-        borderBottom: '1px solid rgba(0, 0, 0, 0.1)',
-      }}
-    >
-      {/* Page Title */}
-      <div>
-        <h1 style={{ fontSize: '1.35rem', fontWeight: 800, color: '#ffffff', letterSpacing: '-0.02em' }}>
+    <header className="app-header">
+      {/* Page Title & Subtitle */}
+      <div className="header-title-container">
+        <h1 className="header-title" title={title || 'Crushing Management'}>
           {title || 'Crushing Management'}
         </h1>
-        <p style={{ fontSize: '0.75rem', color: 'rgba(255, 255, 255, 0.85)', fontWeight: 600 }}>
+        <p className="header-subtitle" title="PT SUGITY CREATIVES - Recycle Material Management System">
           PT SUGITY CREATIVES - Recycle Material Management System
         </p>
       </div>
 
       {/* Header Actions */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
-        {/* Light/Dark Mode Toggle */}
+      <div className="header-actions">
+        {/* Light/Dark Mode Toggle Button */}
         <button
           onClick={toggleDarkMode}
           title={isDarkMode ? 'Mode Terang (Light Mode)' : 'Mode Gelap (Dark Mode)'}
@@ -48,53 +33,46 @@ export const Header: React.FC<HeaderProps> = ({ title }) => {
             background: 'rgba(255, 255, 255, 0.2)',
             border: 'none',
             color: '#ffffff',
-            width: '40px',
-            height: '40px',
+            width: '36px',
+            height: '36px',
             borderRadius: '50%',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             transition: 'all 0.2s ease',
+            flexShrink: 0,
           }}
         >
-          {isDarkMode ? <Sun size={20} color="#f59e0b" /> : <Moon size={20} color="#ffffff" />}
+          {isDarkMode ? <Sun size={18} color="#f59e0b" /> : <Moon size={18} color="#ffffff" />}
         </button>
 
         {/* User Info & Avatar */}
         {user && (
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.875rem',
-              padding: '0.4rem 0.875rem',
-              backgroundColor: 'rgba(0, 0, 0, 0.15)',
-              borderRadius: 'var(--radius-pill)',
-              border: '1px solid rgba(255, 255, 255, 0.25)',
-            }}
-          >
+          <div className="header-user-badge" title={`${user.full_name || user.username} (${user.role.toUpperCase()})`}>
             <div
               style={{
-                width: '34px',
-                height: '34px',
+                width: '32px',
+                height: '32px',
                 borderRadius: '50%',
                 backgroundColor: '#ffffff',
-                color: 'var(--primary-color)',
+                color: 'var(--primary-color, #008d51)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 fontWeight: 900,
-                fontSize: '0.9rem',
+                fontSize: '0.85rem',
+                flexShrink: 0,
               }}
             >
-              {user.full_name ? user.full_name.charAt(0).toUpperCase() : <User size={18} />}
+              {user.full_name ? user.full_name.charAt(0).toUpperCase() : <User size={16} />}
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              <span style={{ fontSize: '0.875rem', fontWeight: 700, color: '#ffffff', lineHeight: 1.2 }}>
+
+            <div className="header-user-text">
+              <span style={{ fontSize: '0.825rem', fontWeight: 700, color: '#ffffff', lineHeight: 1.2 }}>
                 {user.full_name || user.username}
               </span>
-              <span style={{ fontSize: '0.7rem', color: 'rgba(255, 255, 255, 0.8)', fontWeight: 700 }}>
+              <span style={{ fontSize: '0.675rem', color: 'rgba(255, 255, 255, 0.8)', fontWeight: 700 }}>
                 {user.role.toUpperCase()}
               </span>
             </div>
@@ -104,25 +82,11 @@ export const Header: React.FC<HeaderProps> = ({ title }) => {
         {/* Logout Button */}
         <button
           onClick={logout}
-          title="Sign out"
-          style={{
-            background: '#ffffff',
-            border: 'none',
-            color: '#ef4444',
-            padding: '0.55rem 1rem',
-            borderRadius: 'var(--radius-md)',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            fontWeight: 800,
-            fontSize: '0.85rem',
-            boxShadow: 'var(--shadow-sm)',
-            transition: 'all 0.2s ease',
-          }}
+          title="Sign out / Keluar"
+          className="header-logout-btn"
         >
           <LogOut size={16} />
-          <span>Keluar</span>
+          <span className="header-logout-text">Keluar</span>
         </button>
       </div>
     </header>

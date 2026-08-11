@@ -20,7 +20,7 @@ export const MainLayout: React.FC = () => {
       {/* Main Content Area */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         <Header title={title} />
-        <main style={{ flex: 1, padding: '1.75rem 2.25rem', width: '100%' }}>
+        <main className="app-main-content">
           <Outlet />
         </main>
       </div>
