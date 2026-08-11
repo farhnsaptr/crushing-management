@@ -21,6 +21,7 @@ import dashboardRoutes from './modules/dashboard/dashboard.routes';
 import siteConfigRoutes from './modules/site-config/siteConfig.routes';
 import globalLogsRoutes from './modules/global-logs/globalLogs.routes';
 import materialsRoutes from './modules/materials/materials.routes';
+import runnerMaterialRoutes from './modules/runner-material/runnerMaterial.routes';
 
 const app: Application = express();
 
@@ -65,6 +66,7 @@ app.use('/api/materials', materialsRoutes);
 app.use('/api/master-parts', masterPartsRoutes);
 app.use('/api/ng-transactions', ngTransactionsRoutes);
 app.use('/api/production-actual', productionActualRoutes);
+app.use('/api/runner-material', runnerMaterialRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/site-config', siteConfigRoutes);
 app.use('/api/admin/logs', globalLogsRoutes);
