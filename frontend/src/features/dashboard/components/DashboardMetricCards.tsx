@@ -42,7 +42,7 @@ export const DashboardMetricCards: React.FC<DashboardMetricCardsProps> = ({ summ
         </div>
       </div>
 
-      {/* Metric Card 2: Total Output */}
+      {/* Metric Card 2: Total Output (Part Reuse) */}
       <div
         style={{
           backgroundColor: '#ffffff',
@@ -55,9 +55,14 @@ export const DashboardMetricCards: React.FC<DashboardMetricCardsProps> = ({ summ
           justifyContent: 'center',
         }}
       >
-        <span style={{ fontSize: '0.8rem', fontWeight: 800, color: '#334155', display: 'block' }}>
-          Total Output :
-        </span>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span style={{ fontSize: '0.8rem', fontWeight: 800, color: '#334155', display: 'block' }}>
+            Total Output :
+          </span>
+          <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#10b981', backgroundColor: 'rgba(16, 185, 129, 0.1)', padding: '0.15rem 0.4rem', borderRadius: '4px' }}>
+            Part Reuse
+          </span>
+        </div>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.3rem', marginTop: '0.2rem' }}>
           <span style={{ fontSize: '1.45rem', fontWeight: 900, color: 'var(--secondary-color, #e76114)', lineHeight: 1 }}>
             {isLoading ? '--' : `${outputKg.toLocaleString('id-ID')} kg`}
@@ -65,7 +70,7 @@ export const DashboardMetricCards: React.FC<DashboardMetricCardsProps> = ({ summ
         </div>
       </div>
 
-      {/* Metric Card 3: Waste */}
+      {/* Metric Card 3: Waste (Part No Reuse) */}
       <div
         style={{
           backgroundColor: '#ffffff',
@@ -78,9 +83,14 @@ export const DashboardMetricCards: React.FC<DashboardMetricCardsProps> = ({ summ
           justifyContent: 'center',
         }}
       >
-        <span style={{ fontSize: '0.8rem', fontWeight: 800, color: '#334155', display: 'block' }}>
-          Waste :
-        </span>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span style={{ fontSize: '0.8rem', fontWeight: 800, color: '#334155', display: 'block' }}>
+            Waste :
+          </span>
+          <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#ef4444', backgroundColor: 'rgba(239, 68, 68, 0.1)', padding: '0.15rem 0.4rem', borderRadius: '4px' }}>
+            Part No Reuse
+          </span>
+        </div>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.3rem', marginTop: '0.2rem' }}>
           <span
             style={{

@@ -91,12 +91,12 @@ export class RunnerMaterialService {
   }
 
   /**
-   * Gets monthly trend chart & transaction history for a specific material.
+   * Gets daily trend chart (with Shift Pagi & Shift Malam) & transaction history for a specific material.
    */
-  static async getAnalyticsDetail(materialName: string, year: number): Promise<RunnerMaterialAnalyticsDetailResponse> {
+  static async getAnalyticsDetail(materialName: string, year: number, month?: number): Promise<RunnerMaterialAnalyticsDetailResponse> {
     const response = await apiClient.get<{ success: boolean; data: RunnerMaterialAnalyticsDetailResponse }>(
       '/api/runner-material/analytics/detail',
-      { params: { material_name: materialName, year } }
+      { params: { material_name: materialName, year, month } }
     );
     return response.data.data;
   }

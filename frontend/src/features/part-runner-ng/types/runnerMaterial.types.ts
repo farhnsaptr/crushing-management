@@ -9,12 +9,13 @@ export interface MatchedSebangoDetail {
   act_pcs: number;
   berat_runner_gr: number;
   runner_weight_kg: number;
-  shifts: string[];
+  shift: 'Pagi' | 'Malam';
 }
 
 export interface MaterialRunnerPreviewItem {
   material_id: string | null;
   material_name: string;
+  shift: 'Pagi' | 'Malam';
   total_pcs: number;
   total_runner_weight_kg: number;
   sebango_count: number;
@@ -24,6 +25,7 @@ export interface MaterialRunnerPreviewItem {
 export interface UnmatchedSebangoItem {
   sebango_code: string;
   act_pcs: number;
+  shift?: string;
   reason: string;
 }
 
@@ -48,6 +50,7 @@ export interface RunnerMaterialSavePayload {
   items: Array<{
     material_id?: string | null;
     material_name: string;
+    shift?: 'Pagi' | 'Malam';
     total_pcs: number;
     total_runner_weight_kg: number;
   }>;
@@ -57,6 +60,7 @@ export interface RunnerMaterialRecord {
   id: string;
   material_id: string | null;
   material_name_snapshot: string;
+  shift: 'Pagi' | 'Malam';
   total_pcs: number;
   total_runner_weight_kg: number;
   transaction_date: string;
@@ -66,6 +70,7 @@ export interface RunnerMaterialRecord {
 
 export interface UpdateRunnerMaterialPayload {
   material_name_snapshot?: string;
+  shift?: 'Pagi' | 'Malam';
   total_pcs?: number;
   total_runner_weight_kg?: number;
   transaction_date?: string;
@@ -95,13 +100,21 @@ export interface RunnerMonthlyTrendItem {
   total_runner_weight_kg: number;
 }
 
+export interface RunnerDailyTrendItem {
+  day: string;
+  day_num: number;
+  pagi_kg: number;
+  malam_kg: number;
+  total_kg: number;
+}
+
 export interface RunnerMaterialAnalyticsDetailResponse {
   materialName: string;
   year: number;
+  month: number;
   totalWeightKg: number;
   totalTransactions: number;
+  dailyTrend: RunnerDailyTrendItem[];
   monthlyTrend: RunnerMonthlyTrendItem[];
   transactions: RunnerMaterialRecord[];
 }
-
-

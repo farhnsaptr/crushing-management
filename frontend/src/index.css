@@ -387,3 +387,18 @@ textarea {
     padding: 0.5rem;
   }
 }
+
+/* Solid White Background for Chart Hover Floating Tooltips */
+.recharts-default-tooltip,
+.recharts-tooltip-wrapper {
+  background-color: #ffffff !important;
+  background: #ffffff !important;
+  opacity: 1 !important;
+}
+
+.recharts-default-tooltip {
+  border-radius: 10px !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2) !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #0f172a !important;
+}

@@ -3,7 +3,7 @@ import { Modal } from '../../../components/common/Modal';
 import { Input } from '../../../components/common/Input';
 import { Button } from '../../../components/common/Button';
 import type { RunnerMaterialRecord, UpdateRunnerMaterialPayload } from '../types/runnerMaterial.types';
-import { Save, Layers, Calendar, Scale } from 'lucide-react';
+import { Save, Layers, Calendar, Scale, Sun, Moon } from 'lucide-react';
 
 interface RunnerMaterialEditModalProps {
   isOpen: boolean;
@@ -21,12 +21,14 @@ export const RunnerMaterialEditModal: React.FC<RunnerMaterialEditModalProps> = (
   isLoading,
 }) => {
   const [materialName, setMaterialName] = useState<string>('');
+  const [shift, setShift] = useState<'Pagi' | 'Malam'>('Pagi');
   const [runnerWeightKg, setRunnerWeightKg] = useState<number | ''>('');
   const [transactionDate, setTransactionDate] = useState<string>('');
 
   useEffect(() => {
     if (record) {
       setMaterialName(record.material_name_snapshot || '');
+      setShift(record.shift || 'Pagi');
       setRunnerWeightKg(Number(record.total_runner_weight_kg) || 0);
       setTransactionDate(record.transaction_date || '');
     }
@@ -40,6 +42,7 @@ export const RunnerMaterialEditModal: React.FC<RunnerMaterialEditModalProps> = (
 
     onSave(record.id, {
       material_name_snapshot: materialName.trim(),
+      shift,
       total_runner_weight_kg: typeof runnerWeightKg === 'number' ? runnerWeightKg : 0,
       transaction_date: transactionDate,
     });
@@ -60,6 +63,59 @@ export const RunnerMaterialEditModal: React.FC<RunnerMaterialEditModalProps> = (
             leftIcon={<Layers size={16} />}
             required
           />
+        </div>
+
+        {/* Shift Produksi */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+          <label style={{ fontSize: '0.825rem', fontWeight: 700, color: 'var(--text-main)' }}>
+            Shift Produksi <span style={{ color: '#ef4444' }}>*</span>
+          </label>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <button
+              type="button"
+              onClick={() => setShift('Pagi')}
+              style={{
+                flex: 1,
+                padding: '0.5rem',
+                borderRadius: 'var(--radius-md, 8px)',
+                border: `2px solid ${shift === 'Pagi' ? '#008d51' : 'var(--border-color, #cbd5e1)'}`,
+                backgroundColor: shift === 'Pagi' ? 'rgba(0, 141, 81, 0.1)' : 'var(--bg-card, #ffffff)',
+                color: shift === 'Pagi' ? '#008d51' : 'var(--text-muted, #64748b)',
+                fontWeight: 800,
+                fontSize: '0.85rem',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.4rem',
+                cursor: 'pointer',
+              }}
+            >
+              <Sun size={15} />
+              <span>Shift Pagi</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setShift('Malam')}
+              style={{
+                flex: 1,
+                padding: '0.5rem',
+                borderRadius: 'var(--radius-md, 8px)',
+                border: `2px solid ${shift === 'Malam' ? '#e76114' : 'var(--border-color, #cbd5e1)'}`,
+                backgroundColor: shift === 'Malam' ? 'rgba(231, 97, 20, 0.1)' : 'var(--bg-card, #ffffff)',
+                color: shift === 'Malam' ? '#e76114' : 'var(--text-muted, #64748b)',
+                fontWeight: 800,
+                fontSize: '0.85rem',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.4rem',
+                cursor: 'pointer',
+              }}
+            >
+              <Moon size={15} />
+              <span>Shift Malam</span>
+            </button>
+          </div>
         </div>
 
         {/* Tanggal Produksi */}
@@ -98,10 +154,10 @@ export const RunnerMaterialEditModal: React.FC<RunnerMaterialEditModalProps> = (
 
         {/* Form Action Buttons */}
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem', borderTop: '1px solid var(--border-color)', paddingTop: '1rem' }}>
-          <Button variant="secondary" onClick={onClose} disabled={isLoading}>
+          <Button variant="outline" onClick={onClose} disabled={isLoading}>
             Batal
           </Button>
-          <Button variant="primary" type="submit" isLoading={isLoading} leftIcon={<Save size={18} />}>
+          <Button variant="primary" type="submit" isLoading={isLoading} leftIcon={<Save size={16} />}>
             Simpan Perubahan
           </Button>
         </div>

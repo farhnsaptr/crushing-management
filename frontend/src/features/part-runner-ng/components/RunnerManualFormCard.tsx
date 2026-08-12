@@ -5,7 +5,7 @@ import { Button } from '../../../components/common/Button';
 import { Badge } from '../../../components/common/Badge';
 import { MaterialSearchInput } from './MaterialSearchInput';
 import { apiClient } from '../../../services/api.client';
-import { PlusCircle, Calendar, Scale, Save, Trash2, Plus, Hash } from 'lucide-react';
+import { PlusCircle, Calendar, Scale, Save, Trash2, Plus, Sun, Moon, Layers } from 'lucide-react';
 
 export interface MasterMaterialOption {
   id: string;
@@ -22,10 +22,12 @@ export interface ManualRunnerRowItem {
 
 export interface ManualRunnerBatchPayload {
   transaction_date: string;
+  shift: 'Pagi' | 'Malam';
   batch_ref: string;
   items: Array<{
     material_id?: string | null;
     material_name: string;
+    shift: 'Pagi' | 'Malam';
     total_pcs: number;
     total_runner_weight_kg: number;
   }>;
@@ -48,6 +50,7 @@ export const RunnerManualFormCard: React.FC<RunnerManualFormCardProps> = ({
   };
 
   const [transactionDate, setTransactionDate] = useState<string>(getTodayDate());
+  const [shift, setShift] = useState<'Pagi' | 'Malam'>('Pagi');
 
   // Initial row with unique ID
   const [rows, setRows] = useState<ManualRunnerRowItem[]>([
@@ -123,6 +126,7 @@ export const RunnerManualFormCard: React.FC<RunnerManualFormCardProps> = ({
     const payloadItems: Array<{
       material_id?: string | null;
       material_name: string;
+      shift: 'Pagi' | 'Malam';
       total_pcs: number;
       total_runner_weight_kg: number;
     }> = [];
@@ -157,6 +161,7 @@ export const RunnerManualFormCard: React.FC<RunnerManualFormCardProps> = ({
       payloadItems.push({
         material_id: finalMatId,
         material_name: finalMatName,
+        shift,
         total_pcs: 0,
         total_runner_weight_kg: r.totalRunnerWeightKg,
       });
@@ -169,16 +174,16 @@ export const RunnerManualFormCard: React.FC<RunnerManualFormCardProps> = ({
 
     await onSubmitManualBatch({
       transaction_date: transactionDate,
+      shift,
       batch_ref: autoBatchRef,
       items: payloadItems,
     });
 
-    // Reset Form to single row
-    const defaultMatId = materials.length > 0 ? materials[0].id : 'CUSTOM';
+    // Reset rows after submission
     setRows([
       {
         id: String(Date.now()),
-        selectedMaterialId: defaultMatId,
+        selectedMaterialId: materials.length > 0 ? materials[0].id : 'CUSTOM',
         customMaterialName: '',
         totalRunnerWeightKg: '',
       },
@@ -186,148 +191,239 @@ export const RunnerManualFormCard: React.FC<RunnerManualFormCardProps> = ({
   };
 
   return (
-    <Card style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-      {/* Form Header */}
+    <Card
+      style={{
+        padding: '1.5rem',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '1.25rem',
+        backgroundColor: '#ffffff',
+        borderRadius: '16px',
+        border: '1px solid #e2e8f0',
+        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.04)',
+      }}
+    >
+      {/* Header Area */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem' }}>
-        <div>
-          <h2 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-main, #0f172a)' }}>
-            Input Manual Part Runner NG
-          </h2>
-          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted, #64748b)', marginTop: '0.25rem' }}>
-            Tambah satu atau beberapa transaksi runner material sekaligus tanpa mengunggah file CSV.
-          </p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <div
+            style={{
+              width: '44px',
+              height: '44px',
+              borderRadius: '10px',
+              backgroundColor: 'rgba(231, 97, 20, 0.12)',
+              color: 'var(--secondary-color, #e76114)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 2px 8px rgba(231, 97, 20, 0.15)',
+            }}
+          >
+            <PlusCircle size={22} />
+          </div>
+          <div>
+            <h2 style={{ fontSize: '1.15rem', fontWeight: 900, color: 'var(--text-main, #0f172a)', margin: 0 }}>
+              Form Input Manual Part Runner NG
+            </h2>
+            <p style={{ fontSize: '0.825rem', color: 'var(--text-muted, #64748b)', margin: '0.2rem 0 0 0' }}>
+              Masukkan akumulasi berat runner per jenis material dan shift produksi.
+            </p>
+          </div>
         </div>
 
-
+        <div
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.4rem',
+            padding: '0.4rem 0.85rem',
+            borderRadius: '9999px',
+            backgroundColor: 'rgba(231, 97, 20, 0.1)',
+            color: 'var(--secondary-color, #e76114)',
+            fontSize: '0.8rem',
+            fontWeight: 800,
+            border: '1px solid rgba(231, 97, 20, 0.25)',
+          }}
+        >
+          <Layers size={14} />
+          <span>Multi-Material Batch ({rows.length} Material) — {calculateTotalWeight().toFixed(3)} kg</span>
+        </div>
       </div>
 
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-        {/* Transaction Date Section */}
-        <div style={{ maxWidth: '300px', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-          <label style={{ fontSize: '0.825rem', fontWeight: 700, color: 'var(--text-main)' }}>
-            Tanggal Produksi <span style={{ color: '#ef4444' }}>*</span>
-          </label>
-          <Input
-            type="date"
-            value={transactionDate}
-            onChange={(e) => setTransactionDate(e.target.value)}
-            leftIcon={<Calendar size={16} />}
-            required
-          />
-        </div>
+        {/* Top Controls: Transaction Date & Shift Selection */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
+          {/* Production Date */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+            <label style={{ fontSize: '0.825rem', fontWeight: 800, color: 'var(--text-main, #0f172a)' }}>
+              Tanggal Produksi <span style={{ color: '#ef4444' }}>*</span>
+            </label>
+            <Input
+              type="date"
+              value={transactionDate}
+              onChange={(e) => setTransactionDate(e.target.value)}
+              leftIcon={<Calendar size={18} />}
+              required
+            />
+          </div>
 
-        {/* Dynamic Material Rows List */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-          <label style={{ fontSize: '0.875rem', fontWeight: 800, color: 'var(--text-main)' }}>
-            Daftar Runner Material ({rows.length} Material)
-          </label>
-
-          {rows.map((row, idx) => {
-            const isCustomMat = row.selectedMaterialId === 'CUSTOM' || materials.length === 0;
-
-            return (
-              <div
-                key={row.id}
+          {/* Shift Selector Buttons */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+            <label style={{ fontSize: '0.825rem', fontWeight: 800, color: 'var(--text-main, #0f172a)' }}>
+              Shift Produksi <span style={{ color: '#ef4444' }}>*</span>
+            </label>
+            <div style={{ display: 'flex', gap: '0.65rem' }}>
+              <button
+                type="button"
+                onClick={() => setShift('Pagi')}
                 style={{
+                  flex: 1,
+                  padding: '0.6rem 0.85rem',
+                  borderRadius: '10px',
+                  border: `2px solid ${shift === 'Pagi' ? '#008d51' : '#cbd5e1'}`,
+                  backgroundColor: shift === 'Pagi' ? 'rgba(0, 141, 81, 0.12)' : '#f8fafc',
+                  color: shift === 'Pagi' ? '#008d51' : '#64748b',
+                  fontWeight: 800,
+                  fontSize: '0.85rem',
                   display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: '0.75rem',
-                  padding: '1rem',
-                  borderRadius: 'var(--radius-md, 8px)',
-                  backgroundColor: 'var(--bg-main, #f8fafc)',
-                  border: '1px solid var(--border-color, #e2e8f0)',
-                  flexWrap: 'wrap',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '0.45rem',
+                  cursor: 'pointer',
+                  boxShadow: shift === 'Pagi' ? '0 2px 8px rgba(0, 141, 81, 0.18)' : 'none',
+                  transition: 'all 0.2s ease',
                 }}
               >
-                <div style={{ paddingTop: '0.5rem', fontWeight: 800, color: 'var(--text-muted, #64748b)', fontSize: '0.85rem', width: '24px' }}>
-                  #{idx + 1}
-                </div>
+                <Sun size={17} color={shift === 'Pagi' ? '#008d51' : '#64748b'} />
+                <span>Shift Pagi (D)</span>
+              </button>
 
-                {/* Material Selection via Search Autocomplete */}
-                <div style={{ flex: '2', minWidth: '240px', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                  <label style={{ fontSize: '0.775rem', fontWeight: 700, color: 'var(--text-muted)' }}>
-                    Material <span style={{ color: '#ef4444' }}>*</span>
-                  </label>
-                  <MaterialSearchInput
-                    materials={materials}
-                    value={{
-                      selectedMaterialId: row.selectedMaterialId,
-                      customMaterialName: row.customMaterialName,
-                    }}
-                    onChange={(val) => {
-                      handleUpdateRow(row.id, 'selectedMaterialId', val.selectedMaterialId);
-                      handleUpdateRow(row.id, 'customMaterialName', val.customMaterialName);
-                    }}
-                    required
-                  />
-                </div>
-
-                {/* Runner Weight Input */}
-                <div style={{ flex: '1.5', minWidth: '180px', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                  <label style={{ fontSize: '0.775rem', fontWeight: 700, color: 'var(--text-muted)' }}>
-                    Total Berat Runner (kg) <span style={{ color: '#ef4444' }}>*</span>
-                  </label>
-                  <Input
-                    type="number"
-                    step="0.001"
-                    min={0.001}
-                    value={row.totalRunnerWeightKg}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      handleUpdateRow(row.id, 'totalRunnerWeightKg', val === '' ? '' : parseFloat(val) || '');
-                    }}
-                    placeholder="Total berat kg..."
-                    leftIcon={<Scale size={15} />}
-                    required
-                  />
-                </div>
-
-                {/* Remove Row Button */}
-                <div style={{ paddingTop: '1.5rem' }}>
-                  <Button
-                    type="button"
-                    variant="danger"
-                    size="sm"
-                    onClick={() => handleRemoveRow(row.id)}
-                    disabled={rows.length <= 1}
-                    title="Hapus baris ini"
-                    style={{ padding: '0.55rem', opacity: rows.length <= 1 ? 0.4 : 1 }}
-                  >
-                    <Trash2 size={16} />
-                  </Button>
-                </div>
-              </div>
-            );
-          })}
+              <button
+                type="button"
+                onClick={() => setShift('Malam')}
+                style={{
+                  flex: 1,
+                  padding: '0.6rem 0.85rem',
+                  borderRadius: '10px',
+                  border: `2px solid ${shift === 'Malam' ? '#e76114' : '#cbd5e1'}`,
+                  backgroundColor: shift === 'Malam' ? 'rgba(231, 97, 20, 0.12)' : '#f8fafc',
+                  color: shift === 'Malam' ? '#e76114' : '#64748b',
+                  fontWeight: 800,
+                  fontSize: '0.85rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '0.45rem',
+                  cursor: 'pointer',
+                  boxShadow: shift === 'Malam' ? '0 2px 8px rgba(231, 97, 20, 0.18)' : 'none',
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                <Moon size={17} color={shift === 'Malam' ? '#e76114' : '#64748b'} />
+                <span>Shift Malam (N)</span>
+              </button>
+            </div>
+          </div>
         </div>
 
-        {/* Add Row Button & Batch Summary */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem', borderTop: '1px solid var(--border-color)', paddingTop: '1rem' }}>
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={handleAddRow}
-            leftIcon={<Plus size={18} />}
-            style={{ fontWeight: 700 }}
-          >
-            Tambah Runner
-          </Button>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <div style={{ fontSize: '0.875rem', color: 'var(--text-main, #0f172a)' }}>
-              Total Akumulasi: <strong style={{ color: 'var(--secondary-color, #e76114)', fontSize: '1rem' }}>{calculateTotalWeight().toFixed(3)} kg</strong>
-            </div>
-
+        {/* Dynamic Material Rows Container */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span style={{ fontSize: '0.875rem', fontWeight: 800, color: 'var(--text-main, #0f172a)' }}>
+              Daftar Material Runner
+            </span>
             <Button
-              type="submit"
-              variant="primary"
-              isLoading={isLoading}
-              style={{ minWidth: '200px', padding: '0.75rem 1.5rem', fontSize: '0.95rem' }}
-              leftIcon={<Save size={18} />}
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleAddRow}
+              leftIcon={<Plus size={15} />}
+              style={{ fontWeight: 700, fontSize: '0.8rem' }}
             >
-              {isLoading ? 'Menyimpan...' : `Simpan (${rows.length}) Data Runner`}
+              + Tambah Runner Material
             </Button>
           </div>
+
+          {rows.map((rowItem, idx) => (
+            <div
+              key={rowItem.id}
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'minmax(240px, 2fr) minmax(180px, 1fr) auto',
+                gap: '0.85rem',
+                alignItems: 'end',
+                padding: '1rem',
+                borderRadius: '12px',
+                backgroundColor: '#f8fafc',
+                border: '1.5px solid #e2e8f0',
+                boxShadow: '0 2px 6px rgba(0, 0, 0, 0.02)',
+              }}
+            >
+              {/* Searchable Material Autocomplete Input */}
+              <MaterialSearchInput
+                materials={materials}
+                selectedMaterialId={rowItem.selectedMaterialId}
+                customMaterialName={rowItem.customMaterialName}
+                onSelectMaterialId={(val) => handleUpdateRow(rowItem.id, 'selectedMaterialId', val)}
+                onChangeCustomName={(val) => handleUpdateRow(rowItem.id, 'customMaterialName', val)}
+                rowLabel={`Baris #${idx + 1}`}
+              />
+
+              {/* Total Runner Weight (kg) Input */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                <label style={{ fontSize: '0.775rem', fontWeight: 700, color: 'var(--text-muted)' }}>
+                  Total Runner (kg) <span style={{ color: '#ef4444' }}>*</span>
+                </label>
+                <Input
+                  type="number"
+                  step="0.001"
+                  min="0.001"
+                  placeholder="0.000"
+                  value={rowItem.totalRunnerWeightKg}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    handleUpdateRow(
+                      rowItem.id,
+                      'totalRunnerWeightKg',
+                      val === '' ? '' : parseFloat(val)
+                    );
+                  }}
+                  leftIcon={<Scale size={16} />}
+                  required
+                />
+              </div>
+
+              {/* Remove Row Button */}
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => handleRemoveRow(rowItem.id)}
+                disabled={rows.length <= 1}
+                style={{ color: rows.length <= 1 ? '#cbd5e1' : '#ef4444', marginBottom: '0.15rem' }}
+                title="Hapus baris ini"
+              >
+                <Trash2 size={18} />
+              </Button>
+            </div>
+          ))}
+        </div>
+
+        {/* Submit Actions Area */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem', borderTop: '1px solid var(--border-color, #e2e8f0)', paddingTop: '1.25rem' }}>
+          <div style={{ fontSize: '0.85rem', color: 'var(--text-muted, #64748b)' }}>
+            Batch Reference akan ter-generate otomatis saat disimpan.
+          </div>
+
+          <Button
+            type="submit"
+            variant="secondary"
+            isLoading={isLoading}
+            leftIcon={<Save size={18} />}
+            style={{ fontWeight: 800, padding: '0.65rem 1.75rem', backgroundColor: '#e76114', color: '#ffffff' }}
+          >
+            Simpan Data Runner ({rows.length} Material)
+          </Button>
         </div>
       </form>
     </Card>

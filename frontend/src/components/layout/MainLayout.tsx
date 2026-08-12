@@ -10,7 +10,7 @@ export const MainLayout: React.FC = () => {
 
   // Find active title from navigation items
   const activeNavItem = NAVIGATION_ITEMS.find((item) => item.path === location.pathname);
-  const title = activeNavItem ? activeNavItem.title : 'Crushing Management';
+  const title = activeNavItem ? activeNavItem.title : 'Recycle Material Management';
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: 'var(--bg-main)' }}>

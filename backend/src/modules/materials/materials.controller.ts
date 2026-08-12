@@ -31,15 +31,25 @@ export class MaterialsController {
     }
   }
 
+  static async getParts(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      const id = String(req.params.id);
+      const result = await MaterialsService.getMaterialParts(id);
+      sendSuccess(res, result, 'Material parts list retrieved successfully');
+    } catch (error: any) {
+      sendError(res, error.message || 'Failed to get material parts', 500);
+    }
+  }
+
   static async create(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
-      const { material_name, description } = req.body;
+      const { material_name, description, recycle_type } = req.body;
       if (!material_name || !material_name.trim()) {
         sendError(res, 'material_name is required', 400);
         return;
       }
 
-      const material = await MaterialsService.createMaterial({ material_name, description });
+      const material = await MaterialsService.createMaterial({ material_name, description, recycle_type });
       sendSuccess(res, material, 'Material created successfully', 201);
     } catch (error: any) {
       sendError(res, error.message || 'Failed to create material', 400);

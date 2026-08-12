@@ -6,7 +6,9 @@ import type {
 } from '../types/runnerMaterial.types';
 
 export const useRunnerDetail = () => {
-  const currentYear = new Date().getFullYear();
+  const currentDate = new Date();
+  const currentYear = currentDate.getFullYear();
+  const currentMonth = currentDate.getMonth() + 1;
 
   const [selectedYear, setSelectedYear] = useState<number>(currentYear);
   const [selectedMonth, setSelectedMonth] = useState<number>(0); // 0 = All Months
@@ -18,6 +20,7 @@ export const useRunnerDetail = () => {
 
   // Detail Modal State
   const [selectedMaterialName, setSelectedMaterialName] = useState<string | null>(null);
+  const [detailSelectedMonth, setDetailSelectedMonth] = useState<number>(currentMonth);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [materialDetailData, setMaterialDetailData] = useState<RunnerMaterialAnalyticsDetailResponse | null>(null);
   const [isLoadingDetail, setIsLoadingDetail] = useState<boolean>(false);
@@ -41,14 +44,13 @@ export const useRunnerDetail = () => {
     fetchSummary();
   }, [fetchSummary]);
 
-  // Open modal and fetch detail & monthly chart
-  const openMaterialDetail = async (materialName: string) => {
-    setSelectedMaterialName(materialName);
-    setIsModalOpen(true);
+  // Fetch detail for a specific material and month
+  const fetchMaterialDetail = useCallback(async (materialName: string, targetMonth?: number) => {
     setIsLoadingDetail(true);
-
     try {
-      const detail = await RunnerMaterialService.getAnalyticsDetail(materialName, selectedYear);
+      const m = targetMonth && targetMonth >= 1 && targetMonth <= 12 ? targetMonth : (selectedMonth > 0 ? selectedMonth : currentMonth);
+      setDetailSelectedMonth(m);
+      const detail = await RunnerMaterialService.getAnalyticsDetail(materialName, selectedYear, m);
       setMaterialDetailData(detail);
     } catch (err) {
       console.error('Failed to load material detail analytics:', err);
@@ -56,6 +58,13 @@ export const useRunnerDetail = () => {
     } finally {
       setIsLoadingDetail(false);
     }
+  }, [selectedYear, selectedMonth, currentMonth]);
+
+  // Open modal and fetch detail
+  const openMaterialDetail = async (materialName: string, targetMonth?: number) => {
+    setSelectedMaterialName(materialName);
+    setIsModalOpen(true);
+    await fetchMaterialDetail(materialName, targetMonth);
   };
 
   const closeModal = () => {
@@ -96,6 +105,8 @@ export const useRunnerDetail = () => {
     openMaterialDetail,
     closeModal,
     selectedMaterialName,
+    detailSelectedMonth,
+    fetchMaterialDetail,
     materialDetailData,
     isLoadingDetail,
   };

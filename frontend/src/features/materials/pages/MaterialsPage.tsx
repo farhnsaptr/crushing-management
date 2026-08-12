@@ -1,7 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useMaterials } from '../hooks/useMaterials';
 import { MaterialsTable } from '../components/MaterialsTable';
 import { MaterialModal } from '../components/MaterialModal';
+import { MaterialPartListModal } from '../components/MaterialPartListModal';
+import { MaterialsService } from '../services/materials.service';
+import type { Material, MaterialPartsResponse } from '../types/materials.types';
 import { Card } from '../../../components/common/Card';
 import { Input } from '../../../components/common/Input';
 import { Button } from '../../../components/common/Button';
@@ -35,6 +38,25 @@ export const MaterialsPage: React.FC = () => {
     toast,
     setToast,
   } = useMaterials();
+
+  // State for Parts List Detail Modal
+  const [isPartsModalOpen, setIsPartsModalOpen] = useState<boolean>(false);
+  const [partsData, setPartsData] = useState<MaterialPartsResponse | null>(null);
+  const [isLoadingParts, setIsLoadingParts] = useState<boolean>(false);
+
+  const handleViewParts = async (material: Material) => {
+    setIsPartsModalOpen(true);
+    setIsLoadingParts(true);
+    try {
+      const data = await MaterialsService.getMaterialParts(material.id);
+      setPartsData(data);
+    } catch (err: any) {
+      console.error('Failed to load material parts list:', err);
+      setPartsData(null);
+    } finally {
+      setIsLoadingParts(false);
+    }
+  };
 
   // Helper to generate page numbers with ellipsis
   const getPageNumbers = (current: number, totalPagesCount: number) => {
@@ -222,16 +244,28 @@ export const MaterialsPage: React.FC = () => {
           isLoading={isLoading}
           onEdit={handleOpenEditModal}
           onDelete={handleDeleteMaterial}
+          onViewParts={handleViewParts}
         />
       </Card>
 
-      {/* Material Modal */}
+      {/* Material Create / Edit Modal */}
       <MaterialModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         editingMaterial={editingMaterial}
         onCreateSubmit={handleCreateMaterial}
         onUpdateSubmit={handleUpdateMaterial}
+      />
+
+      {/* Parts List Detail Modal */}
+      <MaterialPartListModal
+        isOpen={isPartsModalOpen}
+        onClose={() => {
+          setIsPartsModalOpen(false);
+          setPartsData(null);
+        }}
+        data={partsData}
+        isLoading={isLoadingParts}
       />
 
       {/* Toast Notification */}

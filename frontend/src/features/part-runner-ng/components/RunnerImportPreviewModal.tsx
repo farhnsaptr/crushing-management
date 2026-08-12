@@ -217,6 +217,7 @@ export const RunnerImportPreviewModal: React.FC<RunnerImportPreviewModalProps> =
                   <tr style={{ backgroundColor: 'var(--bg-main, #f1f5f9)', textAlign: 'left', color: 'var(--text-muted, #475569)' }}>
                     <th style={{ padding: '0.65rem 0.85rem' }}>No</th>
                     <th style={{ padding: '0.65rem 0.85rem' }}>Nama Material</th>
+                    <th style={{ padding: '0.65rem 0.85rem' }}>Shift</th>
                     <th style={{ padding: '0.65rem 0.85rem', textAlign: 'center' }}>Jumlah Sebango</th>
                     <th style={{ padding: '0.65rem 0.85rem', textAlign: 'right' }}>Total Runner (kg)</th>
                     <th style={{ padding: '0.65rem 0.85rem', textAlign: 'center' }}>Rincian</th>
@@ -228,7 +229,7 @@ export const RunnerImportPreviewModal: React.FC<RunnerImportPreviewModalProps> =
                     const details = mat.sebango_details || [];
 
                     return (
-                      <React.Fragment key={mat.material_name + idx}>
+                      <React.Fragment key={(mat.material_name || '') + (mat.shift || '') + idx}>
                         {/* Main Material Summary Row */}
                         <tr
                           onClick={() => toggleExpand(idx)}
@@ -247,6 +248,11 @@ export const RunnerImportPreviewModal: React.FC<RunnerImportPreviewModalProps> =
                               <Layers size={16} color="var(--primary-color, #008d51)" />
                               <span>{mat.material_name || 'Unassigned Material'}</span>
                             </div>
+                          </td>
+                          <td style={{ padding: '0.75rem 0.85rem' }}>
+                            <Badge variant={mat.shift === 'Malam' ? 'warning' : 'success'} size="sm">
+                              {mat.shift === 'Malam' ? 'Shift Malam' : 'Shift Pagi'}
+                            </Badge>
                           </td>
                           <td style={{ padding: '0.75rem 0.85rem', textAlign: 'center' }}>
                             <Badge variant="info" size="sm">
@@ -279,7 +285,7 @@ export const RunnerImportPreviewModal: React.FC<RunnerImportPreviewModalProps> =
                         {/* Sub-row for expanded sebango breakdown */}
                         {isExpanded && (
                           <tr>
-                            <td colSpan={5} style={{ padding: '0.75rem 1rem', backgroundColor: 'var(--bg-main, #f8fafc)', borderBottom: '2px solid var(--border-color, #cbd5e1)' }}>
+                            <td colSpan={6} style={{ padding: '0.75rem 1rem', backgroundColor: 'var(--bg-main, #f8fafc)', borderBottom: '2px solid var(--border-color, #cbd5e1)' }}>
                               <div style={{ padding: '0.75rem', borderRadius: 'var(--radius-md, 6px)', backgroundColor: 'var(--bg-card, #ffffff)', border: '1px solid var(--border-color, #e2e8f0)' }}>
                                 <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-main, #0f172a)', marginBottom: '0.5rem', display: 'block' }}>
                                   Rincian Sebango Kontributor untuk Material "{mat.material_name}":
@@ -304,8 +310,8 @@ export const RunnerImportPreviewModal: React.FC<RunnerImportPreviewModalProps> =
                                           {detail.part_name} <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>({detail.part_number})</span>
                                         </td>
                                         <td style={{ padding: '0.45rem 0.6rem' }}>
-                                          <Badge variant="secondary" size="sm">
-                                            {(detail.shifts || []).join(', ') || '-'}
+                                          <Badge variant={detail.shift === 'Malam' ? 'warning' : 'success'} size="sm">
+                                            {detail.shift === 'Malam' ? 'Shift Malam' : 'Shift Pagi'}
                                           </Badge>
                                         </td>
                                         <td style={{ padding: '0.45rem 0.6rem', textAlign: 'right', color: 'var(--text-main)' }}>

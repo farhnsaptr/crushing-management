@@ -13,6 +13,10 @@ export interface DashboardSummaryStats {
 export interface DailyRecycleChartItem {
   day: string;
   day_num: number;
+  pagi_ng_kg?: number;
+  pagi_runner_kg?: number;
+  malam_ng_kg?: number;
+  malam_runner_kg?: number;
   pagi_kg: number;
   malam_kg: number;
   pagi_pcs?: number;

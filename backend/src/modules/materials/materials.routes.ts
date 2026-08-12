@@ -8,6 +8,7 @@ router.use(verifyToken);
 
 router.get('/', MaterialsController.listAll);
 router.get('/:id', MaterialsController.getById);
+router.get('/:id/parts', MaterialsController.getParts);
 
 router.delete('/all', requireRole(['super-admin']), MaterialsController.deleteAll);
 

@@ -15,8 +15,8 @@ export const Header: React.FC<HeaderProps> = ({ title }) => {
     <header className="app-header">
       {/* Page Title & Subtitle */}
       <div className="header-title-container">
-        <h1 className="header-title" title={title || 'Crushing Management'}>
-          {title || 'Crushing Management'}
+        <h1 className="header-title" title={title || 'Recycle Material Management'}>
+          {title || 'Recycle Material Management'}
         </h1>
         <p className="header-subtitle" title="PT SUGITY CREATIVES - Recycle Material Management System">
           PT SUGITY CREATIVES - Recycle Material Management System

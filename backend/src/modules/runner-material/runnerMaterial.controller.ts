@@ -107,14 +107,15 @@ export class RunnerMaterialController {
     try {
       const materialName = (req.query.material_name as string) || '';
       const year = parseInt(req.query.year as string, 10) || new Date().getFullYear();
+      const month = req.query.month ? parseInt(req.query.month as string, 10) : undefined;
 
       if (!materialName) {
         sendError(res, 'Parameter `material_name` wajib diisi', 400);
         return;
       }
 
-      const result = await RunnerMaterialService.getMaterialAnalyticsDetail(materialName, year);
-      sendSuccess(res, result, 'Detail & tren bulanan runner material berhasil diambil');
+      const result = await RunnerMaterialService.getMaterialAnalyticsDetail(materialName, year, month);
+      sendSuccess(res, result, 'Detail & tren harian runner material berhasil diambil');
     } catch (error: any) {
       sendError(res, error.message || 'Gagal mengambil detail analitik runner material', 500);
     }

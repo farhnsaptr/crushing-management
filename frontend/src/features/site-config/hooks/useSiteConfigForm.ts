@@ -8,7 +8,7 @@ export const useSiteConfigForm = () => {
 
   // Initial loaded config state
   const [initialState, setInitialState] = useState({
-    siteTitle: 'Crushing Management - PT Sugity Creatives',
+    siteTitle: 'Recycle Material Management - PT Sugity Creatives',
     siteLogo: '/logo.png',
     siteBackground: '/background.jpg',
     lightPrimary: '#008d51',
@@ -17,7 +17,7 @@ export const useSiteConfigForm = () => {
   });
 
   // Current Form State
-  const [siteTitle, setSiteTitle] = useState<string>('Crushing Management - PT Sugity Creatives');
+  const [siteTitle, setSiteTitle] = useState<string>('Recycle Material Management - PT Sugity Creatives');
   const [siteLogo, setSiteLogo] = useState<string>('/logo.png');
   const [siteBackground, setSiteBackground] = useState<string>('/background.jpg');
 
@@ -40,7 +40,7 @@ export const useSiteConfigForm = () => {
     setIsLoading(true);
     try {
       const config = await SiteConfigService.getConfig();
-      const loadedTitle = config.site_title || 'Crushing Management - PT Sugity Creatives';
+      const loadedTitle = config.site_title || 'Recycle Material Management - PT Sugity Creatives';
       const loadedLogo = config.site_logo || '/logo.png';
       const loadedBg = config.site_background || '/background.jpg';
       const loadedPrimary = config.theme_light_primary || '#008d51';
@@ -177,7 +177,7 @@ export const useSiteConfigForm = () => {
   };
 
   const handleResetDefault = () => {
-    setSiteTitle('Crushing Management - PT Sugity Creatives');
+    setSiteTitle('Recycle Material Management - PT Sugity Creatives');
     setSiteLogo('/logo.png');
     setSiteBackground('/background.jpg');
     setLightPrimary('#008d51');

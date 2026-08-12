@@ -12,14 +12,22 @@ export interface ParsedCsvRowDto {
 export interface MaterialRunnerSaveItemDto {
   material_id?: string | null;
   material_name: string;
+  shift?: 'Pagi' | 'Malam';
   total_pcs: number;
   total_runner_weight_kg: number;
 }
 
+function normalizeShift(s?: string): 'Pagi' | 'Malam' {
+  if (!s) return 'Pagi';
+  const clean = s.trim().toUpperCase();
+  if (clean === 'N' || clean === 'MALAM' || clean === 'NIGHT') return 'Malam';
+  return 'Pagi';
+}
+
 export class RunnerMaterialService {
   /**
-   * Process raw CSV parsed rows, aggregate shift D & N per sebango,
-   * match against master parts, calculate runner weight, and group by material.
+   * Process raw CSV parsed rows, aggregate shift D & N per (sebango, shift),
+   * match against master parts, calculate runner weight, and group by (material, shift).
    */
   static async previewImport(parsedRows: ParsedCsvRowDto[]) {
     if (!parsedRows || parsedRows.length === 0) {
@@ -29,22 +37,29 @@ export class RunnerMaterialService {
     // 1. Determine dominant production date from CSV rows
     const firstValidDate = parsedRows.find((r) => r.date && r.date.trim() !== '')?.date || new Date().toISOString().substring(0, 10);
 
-    // 2. Aggregate ACT TOTAL per sebango_code across all shifts
-    const sebangoMap = new Map<string, { total_pcs: number; shifts: Set<string>; dates: Set<string> }>();
+    // 2. Aggregate ACT TOTAL per (sebango_code, shift)
+    const sebangoShiftMap = new Map<string, { sebango_code: string; shift: 'Pagi' | 'Malam'; total_pcs: number; dates: Set<string> }>();
 
     for (const row of parsedRows) {
       const cleanSebango = (row.sebango_code || '').trim();
       const pcs = Number(row.act_total_pcs) || 0;
       if (!cleanSebango || pcs <= 0) continue;
 
-      const existing = sebangoMap.get(cleanSebango) || { total_pcs: 0, shifts: new Set(), dates: new Set() };
+      const normShift = normalizeShift(row.shift);
+      const key = `${cleanSebango}__${normShift}`;
+
+      const existing = sebangoShiftMap.get(key) || {
+        sebango_code: cleanSebango,
+        shift: normShift,
+        total_pcs: 0,
+        dates: new Set(),
+      };
       existing.total_pcs += pcs;
-      if (row.shift) existing.shifts.add(row.shift.trim());
       if (row.date) existing.dates.add(row.date.trim());
-      sebangoMap.set(cleanSebango, existing);
+      sebangoShiftMap.set(key, existing);
     }
 
-    if (sebangoMap.size === 0) {
+    if (sebangoShiftMap.size === 0) {
       throw new Error('Tidak ada data sebango valid dengan ACT TOTAL > 0 dalam file CSV.');
     }
 
@@ -66,6 +81,7 @@ export class RunnerMaterialService {
     interface MaterialGroup {
       material_id: string | null;
       material_name: string;
+      shift: 'Pagi' | 'Malam';
       total_pcs: number;
       total_runner_weight_kg: number;
       sebango_count: number;
@@ -76,23 +92,25 @@ export class RunnerMaterialService {
         act_pcs: number;
         berat_runner_gr: number;
         runner_weight_kg: number;
-        shifts: string[];
+        shift: 'Pagi' | 'Malam';
       }>;
     }
 
     const materialMap = new Map<string, MaterialGroup>();
+    const unmatchedSebangosMap = new Map<string, { sebango_code: string; act_pcs: number; shift: string; reason: string }>();
 
-    const unmatchedSebangos: Array<{ sebango_code: string; act_pcs: number; reason: string }> = [];
-
-    for (const [sebangoCode, aggregated] of sebangoMap.entries()) {
-      const matchedPart = masterPartMap.get(sebangoCode);
+    for (const [key, aggregated] of sebangoShiftMap.entries()) {
+      const matchedPart = masterPartMap.get(aggregated.sebango_code);
 
       if (!matchedPart) {
-        unmatchedSebangos.push({
-          sebango_code: sebangoCode,
-          act_pcs: aggregated.total_pcs,
+        const existingUnmatched = unmatchedSebangosMap.get(aggregated.sebango_code) || {
+          sebango_code: aggregated.sebango_code,
+          act_pcs: 0,
+          shift: aggregated.shift,
           reason: 'Kode Sebango tidak ditemukan dalam Master Parts sistem',
-        });
+        };
+        existingUnmatched.act_pcs += aggregated.total_pcs;
+        unmatchedSebangosMap.set(aggregated.sebango_code, existingUnmatched);
         continue;
       }
 
@@ -102,9 +120,12 @@ export class RunnerMaterialService {
       const beratRunnerGr = Number(matchedPart.berat_runner_gr) || 0;
       const runnerWeightKg = Number(((aggregated.total_pcs * beratRunnerGr) / 1000).toFixed(3));
 
-      const existingMat: MaterialGroup = materialMap.get(materialName) || {
+      const groupKey = `${materialName}__${aggregated.shift}`;
+
+      const existingMat: MaterialGroup = materialMap.get(groupKey) || {
         material_id: materialId,
         material_name: materialName,
+        shift: aggregated.shift,
         total_pcs: 0,
         total_runner_weight_kg: 0,
         sebango_count: 0,
@@ -115,19 +136,20 @@ export class RunnerMaterialService {
       existingMat.total_runner_weight_kg = Number((existingMat.total_runner_weight_kg + runnerWeightKg).toFixed(3));
       existingMat.sebango_count += 1;
       existingMat.sebango_details.push({
-        sebango_code: sebangoCode,
+        sebango_code: aggregated.sebango_code,
         part_number: matchedPart.part_number,
         part_name: matchedPart.part_name,
         act_pcs: aggregated.total_pcs,
         berat_runner_gr: beratRunnerGr,
         runner_weight_kg: runnerWeightKg,
-        shifts: Array.from(aggregated.shifts),
+        shift: aggregated.shift,
       });
 
-      materialMap.set(materialName, existingMat);
+      materialMap.set(groupKey, existingMat);
     }
 
     const matchedMaterials = Array.from(materialMap.values());
+    const unmatchedSebangos = Array.from(unmatchedSebangosMap.values());
     const grandTotalRunnerKg = Number(matchedMaterials.reduce((acc, curr) => acc + curr.total_runner_weight_kg, 0).toFixed(3));
 
     return {
@@ -137,8 +159,8 @@ export class RunnerMaterialService {
       unmatched_sebangos: unmatchedSebangos,
       summary: {
         total_csv_rows: parsedRows.length,
-        unique_sebangos: sebangoMap.size,
-        matched_sebangos: sebangoMap.size - unmatchedSebangos.length,
+        unique_sebangos: sebangoShiftMap.size,
+        matched_sebangos: sebangoShiftMap.size - unmatchedSebangos.length,
         unmatched_sebangos: unmatchedSebangos.length,
         total_materials: matchedMaterials.length,
         total_runner_weight_kg: grandTotalRunnerKg,
@@ -165,14 +187,15 @@ export class RunnerMaterialService {
       const id = randomUUID();
       const matId = item.material_id || null;
       const matName = item.material_name.trim();
+      const normShift = normalizeShift(item.shift);
       const pcs = Number(item.total_pcs) || 0;
       const weightKg = Number(item.total_runner_weight_kg) || 0;
 
       await pool.query(
         `INSERT INTO runner_material_transactions
-         (id, material_id, material_name_snapshot, total_pcs, total_runner_weight_kg, transaction_date, import_batch_ref)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [id, matId, matName, pcs, weightKg, transactionDate, importBatch]
+         (id, material_id, material_name_snapshot, total_pcs, total_runner_weight_kg, transaction_date, shift, import_batch_ref)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [id, matId, matName, pcs, weightKg, transactionDate, normShift, importBatch]
       );
       successCount++;
     }
@@ -218,7 +241,7 @@ export class RunnerMaterialService {
         page,
         limit,
         total,
-        totalPages: Math.ceil(total / limit),
+        totalPages: Math.ceil(total / limit) || 1,
       },
     };
   }
@@ -230,6 +253,7 @@ export class RunnerMaterialService {
     id: string,
     payload: {
       material_name_snapshot?: string;
+      shift?: 'Pagi' | 'Malam';
       total_pcs?: number;
       total_runner_weight_kg?: number;
       transaction_date?: string;
@@ -251,31 +275,30 @@ export class RunnerMaterialService {
       updates.push('material_name_snapshot = ?');
       params.push(payload.material_name_snapshot.trim());
     }
-
+    if (payload.shift !== undefined) {
+      updates.push('shift = ?');
+      params.push(normalizeShift(payload.shift));
+    }
     if (payload.total_pcs !== undefined) {
       updates.push('total_pcs = ?');
       params.push(Number(payload.total_pcs) || 0);
     }
-
     if (payload.total_runner_weight_kg !== undefined) {
       updates.push('total_runner_weight_kg = ?');
       params.push(Number(payload.total_runner_weight_kg) || 0);
     }
-
     if (payload.transaction_date !== undefined) {
       updates.push('transaction_date = ?');
       params.push(payload.transaction_date);
     }
 
-    if (updates.length === 0) {
-      return { id };
+    if (updates.length > 0) {
+      params.push(id);
+      await pool.query(
+        `UPDATE runner_material_transactions SET ${updates.join(', ')} WHERE id = ?`,
+        params
+      );
     }
-
-    params.push(id);
-    await pool.query(
-      `UPDATE runner_material_transactions SET ${updates.join(', ')} WHERE id = ?`,
-      params
-    );
 
     return { id, ...payload };
   }
@@ -357,10 +380,11 @@ export class RunnerMaterialService {
   }
 
   /**
-   * Get monthly trend chart & transaction history for a specific material.
+   * Get daily trend chart (with shift Pagi & Malam breakdown) & transaction history for a specific material.
    */
-  static async getMaterialAnalyticsDetail(materialName: string, year: number) {
+  static async getMaterialAnalyticsDetail(materialName: string, year: number, month?: number) {
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+    const qMonth = month && month >= 1 && month <= 12 ? month : new Date().getMonth() + 1;
 
     // 1. Monthly trend breakdown
     const [trendRows] = await pool.query<RowDataPacket[]>(
@@ -388,13 +412,61 @@ export class RunnerMaterialService {
       };
     });
 
-    // 2. Transaction history list for this material
+    // 2. Daily breakdown for selected month (with Shift Pagi & Shift Malam)
+    const [dailyRows] = await pool.query<RowDataPacket[]>(
+      `SELECT 
+        DAY(transaction_date) AS day_num,
+        shift,
+        SUM(total_runner_weight_kg) AS total_kg
+       FROM runner_material_transactions
+       WHERE material_name_snapshot = ? AND YEAR(transaction_date) = ? AND MONTH(transaction_date) = ?
+       GROUP BY DAY(transaction_date), shift
+       ORDER BY day_num ASC`,
+      [materialName, year, qMonth]
+    );
+
+    const daysInMonth = new Date(year, qMonth, 0).getDate();
+    const dailyMap = new Map<number, { pagi_kg: number; malam_kg: number }>();
+
+    for (let d = 1; d <= daysInMonth; d++) {
+      dailyMap.set(d, { pagi_kg: 0, malam_kg: 0 });
+    }
+
+    for (const r of dailyRows) {
+      const dayNum = Number(r.day_num);
+      const entry = dailyMap.get(dayNum) || { pagi_kg: 0, malam_kg: 0 };
+      const weight = Number(r.total_kg) || 0;
+
+      if (r.shift === 'Malam') {
+        entry.malam_kg += weight;
+      } else {
+        entry.pagi_kg += weight;
+      }
+      dailyMap.set(dayNum, entry);
+    }
+
+    const dailyTrend = Array.from(dailyMap.entries()).map(([dayNum, data]) => {
+      const dayStr = dayNum < 10 ? `0${dayNum}` : `${dayNum}`;
+      const pagiKg = Number(data.pagi_kg.toFixed(3));
+      const malamKg = Number(data.malam_kg.toFixed(3));
+      const totalKg = Number((pagiKg + malamKg).toFixed(3));
+
+      return {
+        day: dayStr,
+        day_num: dayNum,
+        pagi_kg: pagiKg,
+        malam_kg: malamKg,
+        total_kg: totalKg,
+      };
+    });
+
+    // 3. Transaction history list for this material & month
     const [transactions] = await pool.query<RowDataPacket[]>(
       `SELECT *
        FROM runner_material_transactions
-       WHERE material_name_snapshot = ? AND YEAR(transaction_date) = ?
+       WHERE material_name_snapshot = ? AND YEAR(transaction_date) = ? AND MONTH(transaction_date) = ?
        ORDER BY transaction_date DESC, created_at DESC`,
-      [materialName, year]
+      [materialName, year, qMonth]
     );
 
     const totalWeightKg = transactions.reduce((sum, r) => sum + Number(r.total_runner_weight_kg || 0), 0);
@@ -402,12 +474,12 @@ export class RunnerMaterialService {
     return {
       materialName,
       year,
+      month: qMonth,
       totalWeightKg: Number(totalWeightKg.toFixed(3)),
       totalTransactions: transactions.length,
+      dailyTrend,
       monthlyTrend,
       transactions,
     };
   }
 }
-
-

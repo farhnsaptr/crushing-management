@@ -89,6 +89,7 @@ export const PartRunnerNgPage: React.FC = () => {
     sortedMaterials,
     isModalOpen: isDetailModalOpen,
     openMaterialDetail,
+    fetchMaterialDetail,
     closeModal: closeDetailModal,
     materialDetailData,
     isLoadingDetail,
@@ -335,6 +336,7 @@ export const PartRunnerNgPage: React.FC = () => {
                       <tr style={{ backgroundColor: 'var(--bg-main, #f1f5f9)', textAlign: 'left', color: 'var(--text-muted, #475569)' }}>
                         <th style={{ padding: '0.65rem 0.85rem' }}>No</th>
                         <th style={{ padding: '0.65rem 0.85rem' }}>Tanggal Produksi</th>
+                        <th style={{ padding: '0.65rem 0.85rem' }}>Shift</th>
                         <th style={{ padding: '0.65rem 0.85rem' }}>Nama Material</th>
                         <th style={{ padding: '0.65rem 0.85rem', textAlign: 'right' }}>Total Runner (kg)</th>
                         <th style={{ padding: '0.65rem 0.85rem' }}>Batch / Sumber</th>
@@ -352,6 +354,11 @@ export const PartRunnerNgPage: React.FC = () => {
                           </td>
                           <td style={{ padding: '0.65rem 0.85rem', fontWeight: 700, color: 'var(--text-main, #0f172a)' }}>
                             {rec.transaction_date || '-'}
+                          </td>
+                          <td style={{ padding: '0.65rem 0.85rem' }}>
+                            <Badge variant={rec.shift === 'Malam' ? 'warning' : 'success'}>
+                              {rec.shift === 'Malam' ? 'Shift Malam' : 'Shift Pagi'}
+                            </Badge>
                           </td>
                           <td style={{ padding: '0.65rem 0.85rem', fontWeight: 800, color: 'var(--primary-color, #008d51)' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
@@ -544,6 +551,11 @@ export const PartRunnerNgPage: React.FC = () => {
         materialDetail={materialDetailData}
         isLoading={isLoadingDetail}
         isAdminOrSuperAdmin={isAdminOrSuperAdmin}
+        onSelectMonth={(newMonth) => {
+          if (materialDetailData?.materialName) {
+            fetchMaterialDetail(materialDetailData.materialName, newMonth);
+          }
+        }}
         onEditRecord={(rec) => {
           setEditingRecord(rec);
           setIsEditingModalOpen(true);
@@ -551,7 +563,7 @@ export const PartRunnerNgPage: React.FC = () => {
         onDeleteRecord={async (id) => {
           await handleDeleteRecord(id);
           if (materialDetailData?.materialName) {
-            openMaterialDetail(materialDetailData.materialName);
+            fetchMaterialDetail(materialDetailData.materialName, materialDetailData.month);
           }
           fetchSummary();
         }}

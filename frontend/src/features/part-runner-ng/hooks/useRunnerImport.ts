@@ -114,6 +114,7 @@ export const useRunnerImport = () => {
       const payloadItems = previewData.matched_materials.map((m) => ({
         material_id: m.material_id || null,
         material_name: m.material_name,
+        shift: m.shift || 'Pagi',
         total_pcs: m.total_pcs,
         total_runner_weight_kg: m.total_runner_weight_kg,
       }));

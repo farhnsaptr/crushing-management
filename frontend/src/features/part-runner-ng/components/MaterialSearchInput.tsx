@@ -2,10 +2,20 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Search, Layers, Check, Plus, X } from 'lucide-react';
 import type { MasterMaterialOption } from './RunnerManualFormCard';
 
-interface MaterialSearchInputProps {
+export interface MaterialSearchInputValue {
+  selectedMaterialId: string;
+  customMaterialName: string;
+}
+
+export interface MaterialSearchInputProps {
   materials: MasterMaterialOption[];
-  value: { selectedMaterialId: string; customMaterialName: string };
-  onChange: (val: { selectedMaterialId: string; customMaterialName: string }) => void;
+  value?: MaterialSearchInputValue;
+  onChange?: (val: MaterialSearchInputValue) => void;
+  selectedMaterialId?: string;
+  customMaterialName?: string;
+  onSelectMaterialId?: (val: string) => void;
+  onChangeCustomName?: (val: string) => void;
+  rowLabel?: string;
   placeholder?: string;
   required?: boolean;
 }
@@ -14,26 +24,40 @@ export const MaterialSearchInput: React.FC<MaterialSearchInputProps> = ({
   materials,
   value,
   onChange,
+  selectedMaterialId,
+  customMaterialName,
+  onSelectMaterialId,
+  onChangeCustomName,
+  rowLabel,
   placeholder = 'Cari atau ketik nama material (misal: ABS, PP...)...',
   required = false,
 }) => {
+  const currentSelectedId = selectedMaterialId ?? value?.selectedMaterialId ?? '';
+  const currentCustomName = customMaterialName ?? value?.customMaterialName ?? '';
+
   const [query, setQuery] = useState<string>('');
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  const emitChange = (newId: string, newCustomName: string) => {
+    if (onSelectMaterialId) onSelectMaterialId(newId);
+    if (onChangeCustomName) onChangeCustomName(newCustomName);
+    if (onChange) onChange({ selectedMaterialId: newId, customMaterialName: newCustomName });
+  };
+
   // Sync displayed query with current selected material or custom name
   useEffect(() => {
-    if (value.selectedMaterialId && value.selectedMaterialId !== 'CUSTOM') {
-      const found = materials.find((m) => m.id === value.selectedMaterialId);
+    if (currentSelectedId && currentSelectedId !== 'CUSTOM') {
+      const found = materials.find((m) => m.id === currentSelectedId);
       if (found) {
         setQuery(found.material_name);
         return;
       }
     }
-    if (value.customMaterialName) {
-      setQuery(value.customMaterialName);
+    if (currentCustomName) {
+      setQuery(currentCustomName);
     }
-  }, [value.selectedMaterialId, value.customMaterialName, materials]);
+  }, [currentSelectedId, currentCustomName, materials]);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -56,14 +80,14 @@ export const MaterialSearchInput: React.FC<MaterialSearchInputProps> = ({
 
   const handleSelectMaterial = (mat: MasterMaterialOption) => {
     setQuery(mat.material_name);
-    onChange({ selectedMaterialId: mat.id, customMaterialName: '' });
+    emitChange(mat.id, '');
     setIsOpen(false);
   };
 
   const handleSelectCustom = (customName: string) => {
     const trimmed = customName.trim();
     setQuery(trimmed);
-    onChange({ selectedMaterialId: 'CUSTOM', customMaterialName: trimmed });
+    emitChange('CUSTOM', trimmed);
     setIsOpen(false);
   };
 
@@ -75,20 +99,26 @@ export const MaterialSearchInput: React.FC<MaterialSearchInputProps> = ({
     // Try exact match with existing materials
     const exactMatch = materials.find((m) => m.material_name.toLowerCase() === newQuery.trim().toLowerCase());
     if (exactMatch) {
-      onChange({ selectedMaterialId: exactMatch.id, customMaterialName: '' });
+      emitChange(exactMatch.id, '');
     } else {
-      onChange({ selectedMaterialId: 'CUSTOM', customMaterialName: newQuery });
+      emitChange('CUSTOM', newQuery);
     }
   };
 
   const handleClear = () => {
     setQuery('');
-    onChange({ selectedMaterialId: '', customMaterialName: '' });
+    emitChange('', '');
     setIsOpen(true);
   };
 
   return (
     <div ref={containerRef} style={{ position: 'relative', width: '100%' }}>
+      {rowLabel && (
+        <label style={{ fontSize: '0.775rem', fontWeight: 700, color: 'var(--text-muted, #64748b)', marginBottom: '0.3rem', display: 'block' }}>
+          Nama Material ({rowLabel}) <span style={{ color: '#ef4444' }}>*</span>
+        </label>
+      )}
+
       {/* Input Field with Search Icon */}
       <div
         style={{
@@ -163,7 +193,7 @@ export const MaterialSearchInput: React.FC<MaterialSearchInputProps> = ({
         >
           {filteredMaterials.length > 0 ? (
             filteredMaterials.map((mat) => {
-              const isSelected = value.selectedMaterialId === mat.id;
+              const isSelected = currentSelectedId === mat.id;
 
               return (
                 <div
@@ -179,7 +209,7 @@ export const MaterialSearchInput: React.FC<MaterialSearchInputProps> = ({
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    transition: 'background-color 0.1s ease',
+                    transition: 'background-color 0.15s ease',
                   }}
                   onMouseEnter={(e) => {
                     if (!isSelected) e.currentTarget.style.backgroundColor = 'var(--bg-main, #f1f5f9)';

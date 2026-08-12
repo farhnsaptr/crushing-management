@@ -1,8 +1,11 @@
 import { apiClient } from '../../../services/api.client';
-import type { Material, CreateMaterialPayload } from '../types/materials.types';
+import type { Material, CreateMaterialPayload, MaterialPartsResponse } from '../types/materials.types';
 
 export class MaterialsService {
-  static async getMaterials(page: number = 1, limit: number = 20, search: string = '') {
+  static async getMaterials(page: number = 1, limit: number = 20, search: string = ''): Promise<{
+    materials: Material[];
+    pagination: { page: number; limit: number; total: number; totalPages: number };
+  }> {
     const response = await apiClient.get('/api/materials', {
       params: { page, limit, search },
     });
@@ -11,6 +14,11 @@ export class MaterialsService {
 
   static async getMaterialById(id: string): Promise<Material> {
     const response = await apiClient.get(`/api/materials/${id}`);
+    return response.data.data;
+  }
+
+  static async getMaterialParts(id: string): Promise<MaterialPartsResponse> {
+    const response = await apiClient.get(`/api/materials/${id}/parts`);
     return response.data.data;
   }
 
