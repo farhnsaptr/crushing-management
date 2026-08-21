@@ -138,7 +138,7 @@ export const RunnerImportPreviewModal: React.FC<RunnerImportPreviewModalProps> =
               TOTAL WEIGHT RUNNER
             </span>
             <div style={{ fontSize: '1.35rem', fontWeight: 900, color: '#2563eb', marginTop: '0.2rem' }}>
-              {Number(summary.total_runner_weight_kg || 0).toFixed(3)} kg
+              {Number(summary.total_runner_weight_kg || 0).toFixed(2)} kg
             </div>
           </div>
 
@@ -260,7 +260,7 @@ export const RunnerImportPreviewModal: React.FC<RunnerImportPreviewModalProps> =
                             </Badge>
                           </td>
                           <td style={{ padding: '0.75rem 0.85rem', textAlign: 'right', fontWeight: 900, color: 'var(--secondary-color, #e76114)' }}>
-                            {Number(mat.total_runner_weight_kg || 0).toFixed(3)} kg
+                            {Number(mat.total_runner_weight_kg || 0).toFixed(2)} kg
                           </td>
                           <td style={{ padding: '0.75rem 0.85rem', textAlign: 'center', color: 'var(--text-muted, #64748b)' }}>
                             <button
@@ -318,7 +318,7 @@ export const RunnerImportPreviewModal: React.FC<RunnerImportPreviewModalProps> =
                                           {Number(detail.berat_runner_gr || 0)} gr
                                         </td>
                                         <td style={{ padding: '0.45rem 0.6rem', textAlign: 'right', fontWeight: 800, color: 'var(--secondary-color, #e76114)' }}>
-                                          {Number(detail.runner_weight_kg || 0).toFixed(3)} kg
+                                          {Number(detail.runner_weight_kg || 0).toFixed(2)} kg
                                         </td>
                                       </tr>
                                     ))}

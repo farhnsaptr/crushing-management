@@ -246,7 +246,7 @@ export const RunnerManualFormCard: React.FC<RunnerManualFormCardProps> = ({
           }}
         >
           <Layers size={14} />
-          <span>Multi-Material Batch ({rows.length} Material) — {calculateTotalWeight().toFixed(3)} kg</span>
+          <span>Multi-Material Batch ({rows.length} Material) — {calculateTotalWeight().toFixed(2)} kg</span>
         </div>
       </div>
 
@@ -376,9 +376,9 @@ export const RunnerManualFormCard: React.FC<RunnerManualFormCardProps> = ({
                 </label>
                 <Input
                   type="number"
-                  step="0.001"
-                  min="0.001"
-                  placeholder="0.000"
+                  step="0.01"
+                  min="0.01"
+                  placeholder="0.00"
                   value={rowItem.totalRunnerWeightKg}
                   onChange={(e) => {
                     const val = e.target.value;

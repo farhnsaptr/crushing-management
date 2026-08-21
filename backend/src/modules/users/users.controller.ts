@@ -16,19 +16,31 @@ export class UsersController {
 
   static async createUser(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
-      const { username, password, full_name, role } = req.body;
+      const { username, password, full_name, role, factory_id, department_id } = req.body;
 
       if (!username || !password || !full_name || !role) {
         sendError(res, 'username, password, full_name, and role are required', 400);
         return;
       }
 
-      if (!['super-admin', 'admin', 'operator'].includes(role)) {
-        sendError(res, 'Role must be super-admin, admin, or operator', 400);
+      if (!['super-admin', 'admin', 'operator', 'pengirim'].includes(role)) {
+        sendError(res, 'Role must be super-admin, admin, operator, or pengirim', 400);
         return;
       }
 
-      const user = await UsersService.createUser({ username, password, full_name, role });
+      if (role === 'pengirim' && (!factory_id || !department_id)) {
+        sendError(res, 'Role pengirim wajib memiliki factory_id dan department_id', 400);
+        return;
+      }
+
+      const user = await UsersService.createUser({
+        username,
+        password,
+        full_name,
+        role,
+        factory_id: factory_id || null,
+        department_id: department_id || null,
+      });
       sendSuccess(res, user, 'User created successfully', 201);
     } catch (error: any) {
       sendError(res, error.message || 'Failed to create user', 400);
@@ -38,19 +50,25 @@ export class UsersController {
   static async updateUser(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
       const userId = String(req.params.id);
-      const { full_name, role, password } = req.body;
+      const { full_name, role, factory_id, department_id, password } = req.body;
 
       if (!userId) {
         sendError(res, 'Invalid user ID', 400);
         return;
       }
 
-      if (role && !['super-admin', 'admin', 'operator'].includes(role)) {
-        sendError(res, 'Role must be super-admin, admin, or operator', 400);
+      if (role && !['super-admin', 'admin', 'operator', 'pengirim'].includes(role)) {
+        sendError(res, 'Role must be super-admin, admin, operator, or pengirim', 400);
         return;
       }
 
-      const user = await UsersService.updateUser(userId, { full_name, role, password });
+      const user = await UsersService.updateUser(userId, {
+        full_name,
+        role,
+        factory_id,
+        department_id,
+        password,
+      });
       sendSuccess(res, user, 'User updated successfully');
     } catch (error: any) {
       sendError(res, error.message || 'Failed to update user', 400);

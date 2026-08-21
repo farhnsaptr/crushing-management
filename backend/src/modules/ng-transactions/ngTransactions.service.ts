@@ -161,7 +161,7 @@ export class NgTransactionsService {
         model: row.model,
         plant_location: row.plant_location,
         allowance_kg: row.allowance_kg !== null ? Number(row.allowance_kg) : null,
-        total_weight_kg: Number(weight.toFixed(3)),
+        total_weight_kg: Number(weight.toFixed(2)),
         total_quantity_pcs: qty,
       });
     }
@@ -172,7 +172,7 @@ export class NgTransactionsService {
       mat.parts.sort((a, b) => b.total_weight_kg - a.total_weight_kg);
       return {
         ...mat,
-        total_weight_kg: Number(mat.total_weight_kg.toFixed(3)),
+        total_weight_kg: Number(mat.total_weight_kg.toFixed(2)),
       };
     });
 
@@ -260,9 +260,9 @@ export class NgTransactionsService {
 
     const dailyChart = Array.from(dailyMap.entries()).map(([dayNum, data]) => {
       const dayStr = dayNum < 10 ? `0${dayNum}` : `${dayNum}`;
-      const pagiKg = Number(data.pagi_kg.toFixed(3));
-      const malamKg = Number(data.malam_kg.toFixed(3));
-      const totalKg = Number((pagiKg + malamKg).toFixed(3));
+      const pagiKg = Number(data.pagi_kg.toFixed(2));
+      const malamKg = Number(data.malam_kg.toFixed(2));
+      const totalKg = Number((pagiKg + malamKg).toFixed(2));
       return {
         day: dayStr,
         day_num: dayNum,

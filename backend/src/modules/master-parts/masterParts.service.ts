@@ -28,45 +28,66 @@ export interface ParsedPartRow {
 }
 
 export class MasterPartsService {
-  static async searchParts(query: string) {
+  static async searchParts(query: string, factoryId?: string) {
     const searchTerm = `%${query}%`;
-    const [rows] = await pool.query<RowDataPacket[]>(
-      `SELECT DISTINCT mp.part_number, mp.part_name, mp.jenis_part, mp.material
-       FROM master_parts mp
-       WHERE (mp.part_number LIKE ? OR mp.part_name LIKE ?) AND mp.is_active = TRUE
-       LIMIT 20`,
-      [searchTerm, searchTerm]
-    );
+    let sql = `
+      SELECT DISTINCT mp.part_number, mp.part_name, mp.jenis_part, mp.material
+      FROM master_parts mp
+      JOIN machines mc ON mp.machine_id = mc.id
+      WHERE (mp.part_number LIKE ? OR mp.part_name LIKE ?) AND mp.is_active = TRUE
+    `;
+    const params: any[] = [searchTerm, searchTerm];
+    if (factoryId) {
+      sql += ' AND mc.factory_id = ?';
+      params.push(factoryId);
+    }
+    sql += ' LIMIT 20';
+
+    const [rows] = await pool.query<RowDataPacket[]>(sql, params);
     return rows;
   }
 
-  static async getJenisPartList(): Promise<string[]> {
-    const [rows] = await pool.query<RowDataPacket[]>(
-      `SELECT DISTINCT jenis_part
-       FROM master_parts
-       WHERE is_active = TRUE AND jenis_part IS NOT NULL AND jenis_part != '' AND jenis_part != '-'
-       ORDER BY jenis_part ASC`
-    );
+  static async getJenisPartList(factoryId?: string): Promise<string[]> {
+    let sql = `
+      SELECT DISTINCT mp.jenis_part
+      FROM master_parts mp
+      JOIN machines mc ON mp.machine_id = mc.id
+      WHERE mp.is_active = TRUE AND mp.jenis_part IS NOT NULL AND mp.jenis_part != '' AND mp.jenis_part != '-'
+    `;
+    const params: any[] = [];
+    if (factoryId) {
+      sql += ' AND mc.factory_id = ?';
+      params.push(factoryId);
+    }
+    sql += ' ORDER BY mp.jenis_part ASC';
+
+    const [rows] = await pool.query<RowDataPacket[]>(sql, params);
     return rows.map((r) => r.jenis_part);
   }
 
-  static async getModelsForPartNumber(partNumber: string) {
-    const [rows] = await pool.query<RowDataPacket[]>(
-      `SELECT mp.id AS master_part_id, mp.part_number, mp.part_name, mp.berat_part_gr, mp.image_url,
+  static async getModelsForPartNumber(partNumber: string, factoryId?: string) {
+    let sql = `
+      SELECT mp.id AS master_part_id, mp.part_number, mp.part_name, mp.berat_part_gr, mp.image_url,
               m.id AS model_id, m.model_code, mc.name AS machine_name, f.name AS factory_name
        FROM master_parts mp
        JOIN master_models m ON mp.model_id = m.id
        JOIN machines mc ON mp.machine_id = mc.id
        JOIN factories f ON mc.factory_id = f.id
-       WHERE mp.part_number = ? AND mp.is_active = TRUE`,
-      [partNumber]
-    );
+       WHERE mp.part_number = ? AND mp.is_active = TRUE
+    `;
+    const params: any[] = [partNumber];
+    if (factoryId) {
+      sql += ' AND mc.factory_id = ?';
+      params.push(factoryId);
+    }
+
+    const [rows] = await pool.query<RowDataPacket[]>(sql, params);
     return rows;
   }
 
-  static async getByQrCode(qrCodeValue: string) {
-    const [rows] = await pool.query<RowDataPacket[]>(
-      `SELECT mp.id AS master_part_id, mp.part_number, mp.part_name, mp.jenis_part, mp.material,
+  static async getByQrCode(qrCodeValue: string, factoryId?: string) {
+    let sql = `
+      SELECT mp.id AS master_part_id, mp.part_number, mp.part_name, mp.jenis_part, mp.material,
               mp.berat_part_gr, mp.image_url, mp.qr_code_value,
               m.id AS model_id, m.model_code, mc.name AS machine_name, f.name AS factory_name
        FROM master_parts mp
@@ -74,24 +95,36 @@ export class MasterPartsService {
        JOIN machines mc ON mp.machine_id = mc.id
        JOIN factories f ON mc.factory_id = f.id
        WHERE mp.qr_code_value = ? AND mp.is_active = TRUE
-       LIMIT 1`,
-      [qrCodeValue]
-    );
+    `;
+    const params: any[] = [qrCodeValue];
+    if (factoryId) {
+      sql += ' AND mc.factory_id = ?';
+      params.push(factoryId);
+    }
+    sql += ' LIMIT 1';
+
+    const [rows] = await pool.query<RowDataPacket[]>(sql, params);
     return rows[0] || null;
   }
 
-  static async getPartsByJenis(jenisPart: string) {
-    const [rows] = await pool.query<RowDataPacket[]>(
-      `SELECT mp.id AS master_part_id, mp.part_number, mp.part_name, mp.jenis_part, mp.material,
+  static async getPartsByJenis(jenisPart: string, factoryId?: string) {
+    let sql = `
+      SELECT mp.id AS master_part_id, mp.part_number, mp.part_name, mp.jenis_part, mp.material,
               mp.berat_part_gr, mp.image_url,
               m.model_code, mc.name AS machine_name, f.name AS factory_name
        FROM master_parts mp
        JOIN master_models m ON mp.model_id = m.id
        JOIN machines mc ON mp.machine_id = mc.id
        JOIN factories f ON mc.factory_id = f.id
-       WHERE mp.jenis_part = ? AND mp.is_active = TRUE`,
-      [jenisPart]
-    );
+       WHERE mp.jenis_part = ? AND mp.is_active = TRUE
+    `;
+    const params: any[] = [jenisPart];
+    if (factoryId) {
+      sql += ' AND mc.factory_id = ?';
+      params.push(factoryId);
+    }
+
+    const [rows] = await pool.query<RowDataPacket[]>(sql, params);
     return rows;
   }
 
@@ -101,7 +134,8 @@ export class MasterPartsService {
     search: string = '',
     jenis: string = '',
     sortBy: string = '',
-    sortOrder: string = 'asc'
+    sortOrder: string = 'asc',
+    factoryId?: string
   ) {
     const offset = (page - 1) * limit;
 
@@ -119,7 +153,17 @@ export class MasterPartsService {
       params.push(jenis.trim());
     }
 
-    const countQuery = `SELECT COUNT(*) AS total FROM master_parts mp ${whereClause}`;
+    if (factoryId) {
+      whereClause += ' AND mc.factory_id = ?';
+      params.push(factoryId);
+    }
+
+    const countQuery = `
+      SELECT COUNT(*) AS total
+      FROM master_parts mp
+      JOIN machines mc ON mp.machine_id = mc.id
+      ${whereClause}
+    `;
     const [countRows] = await pool.query<RowDataPacket[]>(countQuery, params);
     const total = countRows[0].total;
 
@@ -146,7 +190,7 @@ export class MasterPartsService {
       LIMIT ? OFFSET ?
     `;
 
-    const [rows] = await pool.query<RowDataPacket[]> (dataQuery, [...params, limit, offset]);
+    const [rows] = await pool.query<RowDataPacket[]>(dataQuery, [...params, limit, offset]);
 
     const formattedRows = rows.map((r) => ({
       ...r,
@@ -195,7 +239,7 @@ export class MasterPartsService {
     const shikakeVal = Number(data.shikake) || 1;
     const beratPartVal = Number(data.berat_part_gr) || 0;
     const stdQtyNg = shikakeVal * 2;
-    const allowanceKg = Number(((stdQtyNg * beratPartVal) / 1000).toFixed(3));
+    const allowanceKg = Number(((stdQtyNg * beratPartVal) / 1000).toFixed(2));
 
     // Auto-resolve or create Material in master_materials if material_id not provided
     let finalMaterialId: string | null = data.material_id || null;
@@ -283,7 +327,7 @@ export class MasterPartsService {
     const beratPartVal = data.berat_part_gr !== undefined ? Number(data.berat_part_gr) : current.berat_part_gr;
 
     const stdQtyNg = shikakeVal * 2;
-    const allowanceKg = Number(((stdQtyNg * beratPartVal) / 1000).toFixed(3));
+    const allowanceKg = Number(((stdQtyNg * beratPartVal) / 1000).toFixed(2));
 
     let finalMaterialId: string | null = data.material_id !== undefined ? data.material_id : current.material_id;
     const cleanMatName = data.material !== undefined ? data.material.trim() : current.material;
@@ -503,7 +547,7 @@ export class MasterPartsService {
 
       // Calculate Formulas
       const std_qty_ng = (shikake || 1) * 2;
-      const allowance_kg = Number(((std_qty_ng * berat_part_gr) / 1000).toFixed(3));
+      const allowance_kg = Number(((std_qty_ng * berat_part_gr) / 1000).toFixed(2));
 
       // Rule: Missing Sebango Code -> SKIP ROW
       let isValid = true;

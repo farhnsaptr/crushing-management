@@ -11,6 +11,8 @@ import { Search, UserPlus, RefreshCw } from 'lucide-react';
 export const UsersPage: React.FC = () => {
   const {
     users,
+    factories,
+    departments,
     searchQuery,
     setSearchQuery,
     isLoading,
@@ -43,7 +45,7 @@ export const UsersPage: React.FC = () => {
         >
           <div style={{ flex: 1, minWidth: '260px', maxWidth: '400px' }}>
             <Input
-              placeholder="Cari nama, username, atau role..."
+              placeholder="Cari nama, username, role, factory, departemen..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               leftIcon={<Search size={18} />}
@@ -90,12 +92,14 @@ export const UsersPage: React.FC = () => {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         editingUser={editingUser}
+        factories={factories}
+        departments={departments}
         onCreateSubmit={handleCreateUser}
         onUpdateSubmit={handleUpdateUser}
       />
 
       {/* Toast Notification */}
-      <Toast toast={toast} onClose={() => setToast(null)} />
+      {toast && <Toast toast={toast} onClose={() => setToast(null)} />}
     </div>
   );
 };

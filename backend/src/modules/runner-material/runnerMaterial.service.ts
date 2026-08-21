@@ -118,7 +118,7 @@ export class RunnerMaterialService {
       const materialName = matchedPart.master_material_name || matchedPart.material || 'Unassigned Material';
       const materialId = matchedPart.material_id || null;
       const beratRunnerGr = Number(matchedPart.berat_runner_gr) || 0;
-      const runnerWeightKg = Number(((aggregated.total_pcs * beratRunnerGr) / 1000).toFixed(3));
+      const runnerWeightKg = Number(((aggregated.total_pcs * beratRunnerGr) / 1000).toFixed(2));
 
       const groupKey = `${materialName}__${aggregated.shift}`;
 
@@ -133,7 +133,7 @@ export class RunnerMaterialService {
       };
 
       existingMat.total_pcs += aggregated.total_pcs;
-      existingMat.total_runner_weight_kg = Number((existingMat.total_runner_weight_kg + runnerWeightKg).toFixed(3));
+      existingMat.total_runner_weight_kg = Number((existingMat.total_runner_weight_kg + runnerWeightKg).toFixed(2));
       existingMat.sebango_count += 1;
       existingMat.sebango_details.push({
         sebango_code: aggregated.sebango_code,
@@ -150,7 +150,7 @@ export class RunnerMaterialService {
 
     const matchedMaterials = Array.from(materialMap.values());
     const unmatchedSebangos = Array.from(unmatchedSebangosMap.values());
-    const grandTotalRunnerKg = Number(matchedMaterials.reduce((acc, curr) => acc + curr.total_runner_weight_kg, 0).toFixed(3));
+    const grandTotalRunnerKg = Number(matchedMaterials.reduce((acc, curr) => acc + curr.total_runner_weight_kg, 0).toFixed(2));
 
     return {
       transaction_date: firstValidDate,
@@ -373,7 +373,7 @@ export class RunnerMaterialService {
     return {
       year,
       month: month || null,
-      grandTotalKg: Number(grandTotalKg.toFixed(3)),
+      grandTotalKg: Number(grandTotalKg.toFixed(2)),
       totalMaterialsCount: materials.length,
       materials,
     };
@@ -408,7 +408,7 @@ export class RunnerMaterialService {
       return {
         month: name,
         monthNum,
-        total_runner_weight_kg: Number((trendMap.get(monthNum) || 0).toFixed(3)),
+        total_runner_weight_kg: Number((trendMap.get(monthNum) || 0).toFixed(2)),
       };
     });
 
@@ -447,9 +447,9 @@ export class RunnerMaterialService {
 
     const dailyTrend = Array.from(dailyMap.entries()).map(([dayNum, data]) => {
       const dayStr = dayNum < 10 ? `0${dayNum}` : `${dayNum}`;
-      const pagiKg = Number(data.pagi_kg.toFixed(3));
-      const malamKg = Number(data.malam_kg.toFixed(3));
-      const totalKg = Number((pagiKg + malamKg).toFixed(3));
+      const pagiKg = Number(data.pagi_kg.toFixed(2));
+      const malamKg = Number(data.malam_kg.toFixed(2));
+      const totalKg = Number((pagiKg + malamKg).toFixed(2));
 
       return {
         day: dayStr,
@@ -475,7 +475,7 @@ export class RunnerMaterialService {
       materialName,
       year,
       month: qMonth,
-      totalWeightKg: Number(totalWeightKg.toFixed(3)),
+      totalWeightKg: Number(totalWeightKg.toFixed(2)),
       totalTransactions: transactions.length,
       dailyTrend,
       monthlyTrend,

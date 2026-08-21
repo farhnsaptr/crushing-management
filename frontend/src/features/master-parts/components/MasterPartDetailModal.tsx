@@ -184,7 +184,7 @@ export const MasterPartDetailModal: React.FC<MasterPartDetailModalProps> = ({
           <div style={{ padding: '0.75rem', backgroundColor: 'rgba(59, 130, 246, 0.08)', border: '1px solid rgba(59, 130, 246, 0.25)', borderRadius: 'var(--radius-md)' }}>
             <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#2563eb' }}>ALLOWANCE (KG)</span>
             <p style={{ fontWeight: 900, fontSize: '1.1rem', color: '#2563eb', marginTop: '0.15rem' }}>
-              {Number(part.allowance_kg ?? (((part.shikake || 1) * 2 * part.berat_part_gr) / 1000))} kg
+              {Number(part.allowance_kg ?? (((part.shikake || 1) * 2 * part.berat_part_gr) / 1000)).toFixed(2)} kg
             </p>
           </div>
         </div>

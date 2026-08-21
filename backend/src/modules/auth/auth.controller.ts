@@ -34,7 +34,32 @@ export class AuthController {
       sendError(res, 'Unauthorized', 401);
       return;
     }
-    sendSuccess(res, req.user, 'Current user retrieved');
+
+    try {
+      const freshUser = await AuthService.getFreshUserProfile(req.user.id);
+      if (!freshUser) {
+        sendError(res, 'User not found', 404);
+        return;
+      }
+
+      sendSuccess(
+        res,
+        {
+          id: freshUser.id,
+          username: freshUser.username,
+          full_name: freshUser.full_name,
+          role: freshUser.role,
+          factory_id: freshUser.factory_id || null,
+          factory_name: freshUser.factory_name || null,
+          department_id: freshUser.department_id || null,
+          department_name: freshUser.department_name || null,
+          last_login_at: freshUser.last_login_at || null,
+        },
+        'Current user retrieved'
+      );
+    } catch (err: any) {
+      sendError(res, err.message || 'Failed to retrieve current user', 500);
+    }
   }
 
   static async logout(req: Request, res: Response): Promise<void> {

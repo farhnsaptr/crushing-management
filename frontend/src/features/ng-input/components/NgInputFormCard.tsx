@@ -3,7 +3,8 @@ import { Card } from '../../../components/common/Card';
 import { Input } from '../../../components/common/Input';
 import { Button } from '../../../components/common/Button';
 import type { MasterPart } from '../types/ngInput.types';
-import { Save, Sun, Moon, Scale, Package, Calendar, AlertCircle } from 'lucide-react';
+import { Save, Sun, Moon, Scale, Package, Calendar, AlertCircle, Lock } from 'lucide-react';
+import { formatIndonesianDate } from '../../../config/shift.config';
 
 interface NgInputFormCardProps {
   selectedPart: MasterPart | null;
@@ -25,9 +26,7 @@ export const NgInputFormCard: React.FC<NgInputFormCardProps> = ({
   quantityPcs,
   onQuantityChange,
   shift,
-  onShiftChange,
   transactionDate,
-  onTransactionDateChange,
   notes,
   onNotesChange,
   estimatedWeightKg,
@@ -105,73 +104,49 @@ export const NgInputFormCard: React.FC<NgInputFormCardProps> = ({
             </div>
           </div>
 
-          {/* Shift Selection (Pagi / Malam) */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
-            <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-main)' }}>
-              Shift Kerja <span style={{ color: '#ef4444' }}>*</span>
-            </label>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-              <button
-                type="button"
-                onClick={() => onShiftChange('Pagi')}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '0.5rem',
-                  padding: '0.625rem 0.75rem',
-                  borderRadius: 'var(--radius-md)',
-                  fontSize: '0.85rem',
-                  fontWeight: shift === 'Pagi' ? 800 : 600,
-                  color: shift === 'Pagi' ? '#ffffff' : 'var(--text-main)',
-                  backgroundColor: shift === 'Pagi' ? '#f59e0b' : 'var(--bg-card)',
-                  border: shift === 'Pagi' ? '1px solid #d97706' : '1px solid var(--border-color)',
-                  cursor: 'pointer',
-                  transition: 'all 0.15s ease',
-                }}
-              >
-                <Sun size={16} />
-                <span>Shift Pagi</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => onShiftChange('Malam')}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '0.5rem',
-                  padding: '0.625rem 0.75rem',
-                  borderRadius: 'var(--radius-md)',
-                  fontSize: '0.85rem',
-                  fontWeight: shift === 'Malam' ? 800 : 600,
-                  color: shift === 'Malam' ? '#ffffff' : 'var(--text-main)',
-                  backgroundColor: shift === 'Malam' ? '#4f46e5' : 'var(--bg-card)',
-                  border: shift === 'Malam' ? '1px solid #4338ca' : '1px solid var(--border-color)',
-                  cursor: 'pointer',
-                  transition: 'all 0.15s ease',
-                }}
-              >
-                <Moon size={16} />
-                <span>Shift Malam</span>
-              </button>
+          {/* Operational Time & Shift Auto-Badge Card */}
+          <div
+            style={{
+              padding: '0.85rem 1rem',
+              backgroundColor: 'var(--bg-main)',
+              border: '1px solid var(--border-color)',
+              borderRadius: 'var(--radius-md)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '0.75rem',
+              flexWrap: 'wrap',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <Calendar size={18} style={{ color: 'var(--primary-color)' }} />
+              <div>
+                <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', display: 'block' }}>
+                  Tanggal Transaksi
+                </span>
+                <span style={{ fontSize: '0.875rem', fontWeight: 800, color: 'var(--text-main)' }}>
+                  {formatIndonesianDate(transactionDate)}
+                </span>
+              </div>
             </div>
-          </div>
 
-          {/* Tanggal Transaksi */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
-            <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-main)' }}>
-              Tanggal Transaksi <span style={{ color: '#ef4444' }}>*</span>
-            </label>
-            <Input
-              type="date"
-              value={transactionDate}
-              onChange={(e) => onTransactionDateChange(e.target.value)}
-              leftIcon={<Calendar size={16} />}
-              required
-            />
+            <div
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.4rem',
+                padding: '0.35rem 0.75rem',
+                borderRadius: 'var(--radius-md)',
+                backgroundColor: shift === 'Pagi' ? 'rgba(245, 158, 11, 0.12)' : 'rgba(79, 70, 229, 0.12)',
+                border: `1px solid ${shift === 'Pagi' ? 'rgba(245, 158, 11, 0.3)' : 'rgba(79, 70, 229, 0.3)'}`,
+                color: shift === 'Pagi' ? '#d97706' : '#4338ca',
+                fontSize: '0.825rem',
+                fontWeight: 800,
+              }}
+            >
+              {shift === 'Pagi' ? <Sun size={15} /> : <Moon size={15} />}
+              <span>Shift {shift}</span>
+            </div>
           </div>
 
           {/* Input Quantity NG (pcs) */}

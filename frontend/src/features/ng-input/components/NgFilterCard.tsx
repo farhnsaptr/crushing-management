@@ -2,7 +2,7 @@ import React from 'react';
 import { Card } from '../../../components/common/Card';
 import type { FilterMode, Factory } from '../types/ngInput.types';
 import { JENIS_PART_OPTIONS } from '../hooks/useNgInput';
-import { Layers, Building2 } from 'lucide-react';
+import { Layers, Building2, Filter } from 'lucide-react';
 
 interface NgFilterCardProps {
   filterMode: FilterMode;
@@ -32,9 +32,12 @@ export const NgFilterCard: React.FC<NgFilterCardProps> = ({
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
         {/* Top Segmented Toggle: Choose Filter Mode */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem' }}>
-          <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            Mode Pengelompokan (Pilih Salah Satu)
-          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            <Filter size={16} style={{ color: 'var(--primary-color)' }} />
+            <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--text-main)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Filter Kategori Part
+            </span>
+          </div>
 
           <div
             style={{
@@ -64,7 +67,7 @@ export const NgFilterCard: React.FC<NgFilterCardProps> = ({
               }}
             >
               <Layers size={14} />
-              <span>Berdasarkan Jenis Part</span>
+              <span>Jenis Part</span>
             </button>
 
             <button
@@ -86,63 +89,69 @@ export const NgFilterCard: React.FC<NgFilterCardProps> = ({
               }}
             >
               <Building2 size={14} />
-              <span>Berdasarkan Factory</span>
+              <span>Factory</span>
             </button>
           </div>
         </div>
 
-        {/* Chips Filter Options Bar */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center', paddingTop: '0.25rem' }}>
+        {/* Dropdown Selection Bar */}
+        <div>
           {filterMode === 'jenis' ? (
-            activeJenisList.map((jenis) => {
-              const isSelected = selectedJenis.toUpperCase() === jenis.toUpperCase();
-              return (
-                <button
-                  key={jenis}
-                  type="button"
-                  onClick={() => onSelectJenis(jenis)}
-                  style={{
-                    padding: '0.45rem 1rem',
-                    borderRadius: '2rem',
-                    fontSize: '0.8rem',
-                    fontWeight: isSelected ? 800 : 600,
-                    color: isSelected ? '#ffffff' : 'var(--text-main)',
-                    backgroundColor: isSelected ? 'var(--primary-color)' : 'var(--bg-main)',
-                    border: isSelected ? '1px solid var(--primary-color)' : '1px solid var(--border-color)',
-                    cursor: 'pointer',
-                    transition: 'all 0.15s ease',
-                    boxShadow: isSelected ? '0 2px 8px rgba(59, 130, 246, 0.25)' : 'none',
-                  }}
-                >
-                  {jenis}
-                </button>
-              );
-            })
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+              <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)' }}>
+                Pilih Kategori Jenis Part
+              </label>
+              <select
+                value={selectedJenis}
+                onChange={(e) => onSelectJenis(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '0.65rem 0.85rem',
+                  borderRadius: 'var(--radius-md)',
+                  border: '1.5px solid var(--border-color)',
+                  backgroundColor: 'var(--bg-card)',
+                  color: 'var(--text-main)',
+                  fontSize: '0.875rem',
+                  fontWeight: 700,
+                  outline: 'none',
+                  cursor: 'pointer',
+                }}
+              >
+                {activeJenisList.map((jenis) => (
+                  <option key={jenis} value={jenis}>
+                    {jenis}
+                  </option>
+                ))}
+              </select>
+            </div>
           ) : (
-            factories.map((fac) => {
-              const isSelected = selectedFactoryId === fac.id;
-              return (
-                <button
-                  key={fac.id}
-                  type="button"
-                  onClick={() => onSelectFactoryId(fac.id)}
-                  style={{
-                    padding: '0.45rem 1rem',
-                    borderRadius: '2rem',
-                    fontSize: '0.8rem',
-                    fontWeight: isSelected ? 800 : 600,
-                    color: isSelected ? '#ffffff' : 'var(--text-main)',
-                    backgroundColor: isSelected ? 'var(--primary-color)' : 'var(--bg-main)',
-                    border: isSelected ? '1px solid var(--primary-color)' : '1px solid var(--border-color)',
-                    cursor: 'pointer',
-                    transition: 'all 0.15s ease',
-                    boxShadow: isSelected ? '0 2px 8px rgba(59, 130, 246, 0.25)' : 'none',
-                  }}
-                >
-                  {fac.name} ({fac.code})
-                </button>
-              );
-            })
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+              <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)' }}>
+                Pilih Factory / Lokasi Pabrik
+              </label>
+              <select
+                value={selectedFactoryId}
+                onChange={(e) => onSelectFactoryId(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '0.65rem 0.85rem',
+                  borderRadius: 'var(--radius-md)',
+                  border: '1.5px solid var(--border-color)',
+                  backgroundColor: 'var(--bg-card)',
+                  color: 'var(--text-main)',
+                  fontSize: '0.875rem',
+                  fontWeight: 700,
+                  outline: 'none',
+                  cursor: 'pointer',
+                }}
+              >
+                {factories.map((fac) => (
+                  <option key={fac.id} value={fac.id}>
+                    {fac.name} ({fac.code})
+                  </option>
+                ))}
+              </select>
+            </div>
           )}
         </div>
       </div>

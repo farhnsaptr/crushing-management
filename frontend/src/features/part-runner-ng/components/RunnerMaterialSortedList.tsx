@@ -77,7 +77,7 @@ export const RunnerMaterialSortedList: React.FC<RunnerMaterialSortedListProps> =
           </div>
 
           <Badge variant="info">
-            Total {summaryData?.totalMaterialsCount || 0} Jenis Material ({grandTotal.toFixed(3)} kg)
+            Total {summaryData?.totalMaterialsCount || 0} Jenis Material ({grandTotal.toFixed(2)} kg)
           </Badge>
         </div>
 
@@ -249,7 +249,7 @@ export const RunnerMaterialSortedList: React.FC<RunnerMaterialSortedListProps> =
                       Total Berat Runner
                     </span>
                     <h4 style={{ fontSize: '1.25rem', fontWeight: 900, color: 'var(--secondary-color, #e76114)', margin: 0 }}>
-                      {mat.total_runner_weight_kg.toFixed(3)} <span style={{ fontSize: '0.85rem' }}>kg</span>
+                      {mat.total_runner_weight_kg.toFixed(2)} <span style={{ fontSize: '0.85rem' }}>kg</span>
                     </h4>
                   </div>
 

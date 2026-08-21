@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { DashboardService } from './dashboard.service';
 import { sendSuccess, sendError } from '../../utils/response.util';
+import { AuthenticatedRequest } from '../../middlewares/auth.middleware';
 
 export class DashboardController {
   static async getSummary(req: Request, res: Response): Promise<void> {
@@ -52,6 +53,36 @@ export class DashboardController {
       sendSuccess(res, topNgData, 'Top NG parts retrieved successfully');
     } catch (error: any) {
       sendError(res, error.message || 'Failed to get top NG parts', 500);
+    }
+  }
+
+  static async getDepartmentPareto(req: Request, res: Response): Promise<void> {
+    try {
+      const year = req.query.year ? parseInt(req.query.year as string, 10) : undefined;
+      const month = req.query.month ? parseInt(req.query.month as string, 10) : undefined;
+      const location = (req.query.location as string) === 'Karawang' ? 'Karawang' : 'Cibitung';
+
+      const data = await DashboardService.getDepartmentPareto(year, month, location);
+      sendSuccess(res, data, 'Department Pareto data retrieved successfully');
+    } catch (error: any) {
+      sendError(res, error.message || 'Failed to get department Pareto data', 500);
+    }
+  }
+
+  static async getSenderStats(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      if (!req.user) {
+        sendError(res, 'Unauthorized', 401);
+        return;
+      }
+
+      const year = req.query.year ? parseInt(req.query.year as string, 10) : undefined;
+      const month = req.query.month ? parseInt(req.query.month as string, 10) : undefined;
+
+      const data = await DashboardService.getSenderDashboardStats(req.user.id, year, month);
+      sendSuccess(res, data, 'Sender dashboard stats retrieved successfully');
+    } catch (error: any) {
+      sendError(res, error.message || 'Failed to get sender dashboard stats', 500);
     }
   }
 

@@ -5,17 +5,25 @@ import { RowDataPacket, ResultSetHeader } from 'mysql2';
 
 export class UsersService {
   static async listUsers(currentUserId?: string) {
+    let query = `
+      SELECT 
+        u.id, u.username, u.full_name, u.role, u.factory_id, f.name AS factory_name,
+        u.department_id, d.name AS department_name,
+        u.is_active, u.last_login_at, u.created_at, u.updated_at 
+      FROM users u
+      LEFT JOIN factories f ON u.factory_id = f.id
+      LEFT JOIN departments d ON u.department_id = d.id
+    `;
+    const params: any[] = [];
+
     if (currentUserId) {
-      const [rows] = await pool.query<RowDataPacket[]>(
-        'SELECT id, username, full_name, role, is_active, last_login_at, created_at, updated_at FROM users WHERE id != ? ORDER BY created_at DESC',
-        [currentUserId]
-      );
-      return rows;
+      query += ' WHERE u.id != ?';
+      params.push(currentUserId);
     }
 
-    const [rows] = await pool.query<RowDataPacket[]>(
-      'SELECT id, username, full_name, role, is_active, last_login_at, created_at, updated_at FROM users ORDER BY created_at DESC'
-    );
+    query += ' ORDER BY u.created_at DESC';
+
+    const [rows] = await pool.query<RowDataPacket[]>(query, params);
     return rows;
   }
 
@@ -23,7 +31,9 @@ export class UsersService {
     username: string;
     password: string;
     full_name: string;
-    role: 'super-admin' | 'admin' | 'operator';
+    role: 'super-admin' | 'admin' | 'operator' | 'pengirim';
+    factory_id?: string | null;
+    department_id?: string | null;
   }) {
     const [existing] = await pool.query<RowDataPacket[]>(
       'SELECT id FROM users WHERE username = ?',
@@ -34,11 +44,25 @@ export class UsersService {
       throw new Error('Username already exists');
     }
 
+    if (data.role === 'pengirim') {
+      if (!data.factory_id || !data.department_id) {
+        throw new Error('Pengguna dengan role Pengirim wajib memilih Factory dan Departemen');
+      }
+    }
+
     const id = randomUUID();
     const passwordHash = await bcrypt.hash(data.password, 10);
     await pool.query<ResultSetHeader>(
-      'INSERT INTO users (id, username, password_hash, full_name, role) VALUES (?, ?, ?, ?, ?)',
-      [id, data.username, passwordHash, data.full_name, data.role]
+      'INSERT INTO users (id, username, password_hash, full_name, role, factory_id, department_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [
+        id,
+        data.username,
+        passwordHash,
+        data.full_name,
+        data.role,
+        data.factory_id || null,
+        data.department_id || null,
+      ]
     );
 
     return {
@@ -46,6 +70,8 @@ export class UsersService {
       username: data.username,
       full_name: data.full_name,
       role: data.role,
+      factory_id: data.factory_id || null,
+      department_id: data.department_id || null,
       is_active: true,
     };
   }
@@ -54,21 +80,33 @@ export class UsersService {
     userId: string,
     data: {
       full_name?: string;
-      role?: 'super-admin' | 'admin' | 'operator';
+      role?: 'super-admin' | 'admin' | 'operator' | 'pengirim';
+      factory_id?: string | null;
+      department_id?: string | null;
       password?: string;
     }
   ) {
     const fields: string[] = [];
     const values: any[] = [];
 
-    if (data.full_name) {
+    if (data.full_name !== undefined) {
       fields.push('full_name = ?');
       values.push(data.full_name);
     }
 
-    if (data.role) {
+    if (data.role !== undefined) {
       fields.push('role = ?');
       values.push(data.role);
+    }
+
+    if (data.factory_id !== undefined) {
+      fields.push('factory_id = ?');
+      values.push(data.factory_id || null);
+    }
+
+    if (data.department_id !== undefined) {
+      fields.push('department_id = ?');
+      values.push(data.department_id || null);
     }
 
     if (data.password && data.password.trim() !== '') {
@@ -91,7 +129,14 @@ export class UsersService {
     }
 
     const [updatedRows] = await pool.query<RowDataPacket[]>(
-      'SELECT id, username, full_name, role, is_active, last_login_at, created_at, updated_at FROM users WHERE id = ?',
+      `SELECT 
+        u.id, u.username, u.full_name, u.role, u.factory_id, f.name AS factory_name,
+        u.department_id, d.name AS department_name,
+        u.is_active, u.last_login_at, u.created_at, u.updated_at 
+      FROM users u
+      LEFT JOIN factories f ON u.factory_id = f.id
+      LEFT JOIN departments d ON u.department_id = d.id
+      WHERE u.id = ?`,
       [userId]
     );
 

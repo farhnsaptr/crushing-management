@@ -6,14 +6,30 @@ import { DashboardMetricCards } from '../components/DashboardMetricCards';
 import { DailyRecycleChart } from '../components/DailyRecycleChart';
 import { ParetoMaterialTable } from '../components/ParetoMaterialTable';
 import { TopNgPartsTable } from '../components/TopNgPartsTable';
+import { DepartmentParetoTable } from '../components/DepartmentParetoTable';
+import { SenderDashboardView } from '../components/SenderDashboardView';
 import { ExportDateModal } from '../components/ExportDateModal';
+import { VerificationModal } from '../../verification/components/VerificationModal';
 import type { PlantLocation } from '../types/dashboard.types';
-import { PlusCircle, FileSpreadsheet, MapPin, Calendar, RefreshCw } from 'lucide-react';
+import {
+  PlusCircle,
+  FileSpreadsheet,
+  MapPin,
+  Calendar,
+  RefreshCw,
+  CheckSquare,
+  AlertTriangle,
+  CheckCircle2,
+  Info,
+  ClipboardCheck,
+  BarChart3,
+} from 'lucide-react';
 
 export const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [isExportModalOpen, setIsExportModalOpen] = useState<boolean>(false);
+  const [isVerificationModalOpen, setIsVerificationModalOpen] = useState<boolean>(false);
 
   const {
     selectedMonth,
@@ -26,11 +42,30 @@ export const DashboardPage: React.FC = () => {
     dailyChart,
     paretoMaterials,
     topParts,
+    departmentPareto,
+    senderStats,
+    verificationStatus,
     isLoading,
     isExporting,
     fetchDashboardData,
     handleExportExcel,
   } = useDashboard();
+
+  // If logged-in user is 'pengirim', render personalized Sender Dashboard View
+  if (user?.role === 'pengirim') {
+    return (
+      <SenderDashboardView
+        user={user}
+        stats={senderStats}
+        isLoading={isLoading}
+        selectedMonth={selectedMonth}
+        selectedYear={selectedYear}
+        monthOptions={MONTH_OPTIONS}
+        onMonthChange={setSelectedMonth}
+        onYearChange={setSelectedYear}
+      />
+    );
+  }
 
   // Formatted date text for top right header (e.g. "Jum'at, 31 Juli 2026")
   const formattedTodayDate = new Date().toLocaleDateString('id-ID', {
@@ -41,7 +76,7 @@ export const DashboardPage: React.FC = () => {
   });
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', width: '100%', minHeight: 'calc(100vh - 85px)' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', width: '100%', minHeight: 'calc(100vh - 85px)' }}>
       {/* Mobile Responsive & Single Screen Style Block */}
       <style>{`
         .dashboard-header-container {
@@ -114,7 +149,7 @@ export const DashboardPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Control & Action Bar: Location Toggle, Date Pickers, Add Data & Export Buttons */}
+      {/* Control & Action Bar: Location Toggle, Date Pickers, Verification Quick-Link & Export Buttons */}
       <div className="dashboard-controls-bar">
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', flexWrap: 'wrap' }}>
           {/* Plant Location Pill Toggle */}
@@ -224,9 +259,55 @@ export const DashboardPage: React.FC = () => {
           </button>
         </div>
 
-        {/* Action Buttons: + Add Data & Export */}
+        {/* Action Buttons: Verifikasi Tiket, + Add Data & Export */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', flexWrap: 'wrap' }}>
-          {/* + Add Data Button */}
+          {/* Verifikasi Tiket Masuk Button */}
+          <button
+            onClick={() => navigate('/approval-requests')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.4rem',
+              padding: '0.45rem 1.15rem',
+              borderRadius: '14px',
+              border: '1.5px solid var(--primary-color, #008d51)',
+              backgroundColor: 'var(--primary-color, #008d51)',
+              color: '#ffffff',
+              fontWeight: 800,
+              fontSize: '0.825rem',
+              cursor: 'pointer',
+              boxShadow: '0 2px 6px rgba(0, 141, 81, 0.2)',
+              transition: 'all 0.2s ease',
+            }}
+          >
+            <ClipboardCheck size={16} />
+            <span>Verifikasi Tiket</span>
+          </button>
+
+          {/* + Add Runner Data Button */}
+          <button
+            onClick={() => navigate('/part-runner-ng')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.4rem',
+              padding: '0.45rem 1.15rem',
+              borderRadius: '14px',
+              border: '1.5px solid var(--secondary-color, #e76114)',
+              backgroundColor: 'var(--secondary-color, #e76114)',
+              color: '#ffffff',
+              fontWeight: 800,
+              fontSize: '0.825rem',
+              cursor: 'pointer',
+              boxShadow: '0 2px 6px rgba(231, 97, 20, 0.2)',
+              transition: 'all 0.2s ease',
+            }}
+          >
+            <FileSpreadsheet size={16} />
+            <span>Input Part Runner</span>
+          </button>
+
+          {/* Detail Part NG Button */}
           <button
             onClick={() => navigate('/ng-input')}
             style={{
@@ -235,18 +316,18 @@ export const DashboardPage: React.FC = () => {
               gap: '0.4rem',
               padding: '0.45rem 1.15rem',
               borderRadius: '14px',
-              border: '1.5px solid var(--primary-color, #0f172a)',
-              backgroundColor: 'var(--primary-color, #0f172a)',
+              border: '1.5px solid #2563eb',
+              backgroundColor: '#2563eb',
               color: '#ffffff',
               fontWeight: 800,
               fontSize: '0.825rem',
               cursor: 'pointer',
-              boxShadow: '0 2px 6px rgba(15, 23, 42, 0.2)',
+              boxShadow: '0 2px 6px rgba(37, 99, 235, 0.2)',
               transition: 'all 0.2s ease',
             }}
           >
-            <PlusCircle size={16} />
-            <span>Add Data</span>
+            <BarChart3 size={16} />
+            <span>Detail Part NG</span>
           </button>
 
           {/* Export Excel Button (Opens Date Range Modal) */}
@@ -274,10 +355,75 @@ export const DashboardPage: React.FC = () => {
         </div>
       </div>
 
+      {/* Verification Status Reminder Banner */}
+      {verificationStatus && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '0.75rem',
+            backgroundColor:
+              verificationStatus.status === 'no_input'
+                ? '#f8fafc'
+                : verificationStatus.status === 'validated'
+                ? 'rgba(0, 141, 81, 0.08)'
+                : 'rgba(231, 97, 20, 0.08)',
+            border:
+              verificationStatus.status === 'no_input'
+                ? '1px solid #cbd5e1'
+                : verificationStatus.status === 'validated'
+                ? '1.5px solid #008d51'
+                : '1.5px solid #e76114',
+            padding: '0.75rem 1.15rem',
+            borderRadius: '14px',
+            fontSize: '0.85rem',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+            {verificationStatus.status === 'no_input' ? (
+              <Info size={22} color="#64748b" style={{ flexShrink: 0 }} />
+            ) : verificationStatus.status === 'validated' ? (
+              <CheckCircle2 size={22} color="#008d51" style={{ flexShrink: 0 }} />
+            ) : (
+              <AlertTriangle size={22} color="#e76114" style={{ flexShrink: 0 }} />
+            )}
+            <span style={{ fontWeight: 800, color: verificationStatus.status === 'no_input' ? '#475569' : '#0f172a' }}>
+              {verificationStatus.message}
+            </span>
+          </div>
+
+          {verificationStatus.status !== 'no_input' && (
+            <button
+              onClick={() => setIsVerificationModalOpen(true)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.4rem',
+                padding: '0.45rem 0.95rem',
+                borderRadius: '10px',
+                border: 'none',
+                backgroundColor: verificationStatus.status === 'validated' ? '#008d51' : '#e76114',
+                color: '#ffffff',
+                fontWeight: 800,
+                fontSize: '0.8rem',
+                cursor: 'pointer',
+                boxShadow: '0 2px 6px rgba(0, 0, 0, 0.15)',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              <CheckSquare size={16} />
+              <span>{verificationStatus.status === 'validated' ? 'Lihat / Edit Verifikasi' : 'Verifikasi Input Sekarang'}</span>
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Metric Summary Cards: Total Input, Total Output, Waste */}
       <DashboardMetricCards summary={summaryStats} isLoading={isLoading} />
 
-      {/* 1. Full-Width Daily Recycle Chart spanning full width */}
+      {/* 1. Full-Width Daily Recycle Chart */}
       <DailyRecycleChart
         data={dailyChart}
         isLoading={isLoading}
@@ -285,7 +431,10 @@ export const DashboardPage: React.FC = () => {
         year={selectedYear}
       />
 
-      {/* 2. Side-by-Side Tables Below Full-Width Chart */}
+      {/* 2. Department Pareto Table (Ranked NG Sources) */}
+      <DepartmentParetoTable data={departmentPareto} isLoading={isLoading} />
+
+      {/* 3. Side-by-Side Tables: Top NG Parts & Pareto Material */}
       <div className="dashboard-tables-grid">
         <TopNgPartsTable data={topParts} isLoading={isLoading} />
         <ParetoMaterialTable data={paretoMaterials} isLoading={isLoading} />
@@ -298,6 +447,13 @@ export const DashboardPage: React.FC = () => {
         defaultLocation={selectedLocation}
         isExporting={isExporting}
         onExport={handleExportExcel}
+      />
+
+      {/* Quick Input Verification Modal */}
+      <VerificationModal
+        isOpen={isVerificationModalOpen}
+        onClose={() => setIsVerificationModalOpen(false)}
+        onSuccessSave={fetchDashboardData}
       />
     </div>
   );

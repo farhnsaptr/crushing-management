@@ -9,17 +9,29 @@ import type {
 export class MasterPartsService {
   static async getParts(
     page: number = 1,
-    limit: number = 20,
+    limit: number = 100,
     search: string = '',
     jenis: string = '',
     sortBy: string = '',
-    sortOrder: string = 'asc'
-  ) {
+    sortOrder: string = 'asc',
+    factoryId?: string
+  ): Promise<{
+    parts: MasterPart[];
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      totalPages: number;
+    };
+  }> {
     const response = await apiClient.get('/api/master-parts', {
-      params: { page, limit, search, jenis, sortBy, sortOrder },
+      params: { page, limit, search, jenis, sortBy, sortOrder, factory_id: factoryId },
     });
-    return response.data.data;
+    return response.data.data || { parts: [], pagination: { page: 1, limit: 20, total: 0, totalPages: 1 } };
   }
+
+  // Alias for compatibility
+  static listParts = MasterPartsService.getParts;
 
   static async getJenisList(): Promise<string[]> {
     const response = await apiClient.get('/api/master-parts/jenis-list');

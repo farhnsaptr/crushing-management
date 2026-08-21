@@ -1,12 +1,28 @@
-import { LayoutDashboard, Building2, Cpu, Package, Layers, Users, FileText, Palette, PackageX, FileSpreadsheet } from 'lucide-react';
+import {
+  LayoutDashboard,
+  Building2,
+  Cpu,
+  Package,
+  Layers,
+  Users,
+  FileText,
+  Palette,
+  PackageX,
+  FileSpreadsheet,
+  CheckSquare,
+  Network,
+  Send,
+  ClipboardCheck,
+} from 'lucide-react';
 import React from 'react';
+import type { UserRole } from '../context/AuthContext';
 
 export interface NavigationItem {
   id: string;
   title: string;
   path: string;
   icon: React.ComponentType<{ size?: number; className?: string; style?: React.CSSProperties }>;
-  roles: ('super-admin' | 'admin' | 'operator')[];
+  roles: UserRole[];
   section: 'main' | 'master' | 'admin';
 }
 
@@ -16,12 +32,28 @@ export const NAVIGATION_ITEMS: NavigationItem[] = [
     title: 'Dashboard',
     path: '/dashboard',
     icon: LayoutDashboard,
+    roles: ['super-admin', 'admin', 'operator', 'pengirim'],
+    section: 'main',
+  },
+  {
+    id: 'requests',
+    title: 'Kirim Part NG',
+    path: '/requests',
+    icon: Send,
+    roles: ['pengirim'],
+    section: 'main',
+  },
+  {
+    id: 'request-approval',
+    title: 'Verifikasi Permintaan',
+    path: '/approval-requests',
+    icon: ClipboardCheck,
     roles: ['super-admin', 'admin', 'operator'],
     section: 'main',
   },
   {
     id: 'ng-input',
-    title: 'Input Part NG',
+    title: 'Detail Part NG',
     path: '/ng-input',
     icon: PackageX,
     roles: ['super-admin', 'admin', 'operator'],
@@ -34,6 +66,22 @@ export const NAVIGATION_ITEMS: NavigationItem[] = [
     icon: FileSpreadsheet,
     roles: ['super-admin', 'admin', 'operator'],
     section: 'main',
+  },
+  {
+    id: 'verification',
+    title: 'Verifikasi Input',
+    path: '/verification',
+    icon: CheckSquare,
+    roles: ['super-admin', 'admin', 'operator'],
+    section: 'main',
+  },
+  {
+    id: 'departments',
+    title: 'Department Management',
+    path: '/admin/departments',
+    icon: Network,
+    roles: ['super-admin', 'admin'],
+    section: 'master',
   },
   {
     id: 'factories',

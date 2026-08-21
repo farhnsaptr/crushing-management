@@ -12,8 +12,11 @@ import { ForbiddenPage } from './components/errors/ForbiddenPage';
 // Feature Pages
 import { LoginPage } from './features/auth/pages/LoginPage';
 import { DashboardPage } from './features/dashboard/pages/DashboardPage';
+import { SenderRequestsPage } from './features/crushing-requests/pages/SenderRequestsPage';
+import { RequestApprovalPage } from './features/crushing-requests/pages/RequestApprovalPage';
 import { NgInputPage } from './features/ng-input/pages/NgInputPage';
 import { PartRunnerNgPage } from './features/part-runner-ng/pages/PartRunnerNgPage';
+import { DepartmentsPage } from './features/departments/pages/DepartmentsPage';
 import { FactoriesPage } from './features/factories/pages/FactoriesPage';
 import { MachinesPage } from './features/machines/pages/MachinesPage';
 import { MaterialsPage } from './features/materials/pages/MaterialsPage';
@@ -22,6 +25,7 @@ import { UsersPage } from './features/users/pages/UsersPage';
 import { GlobalLogsPage } from './features/global-logs/pages/GlobalLogsPage';
 import { SiteConfigPage } from './features/site-config/pages/SiteConfigPage';
 import { SystemSignatureView } from './features/system/pages/SystemSignatureView';
+import { VerificationPage } from './features/verification/pages/VerificationPage';
 
 export const App: React.FC = () => {
   return (
@@ -36,18 +40,34 @@ export const App: React.FC = () => {
             {/* Error Pages */}
             <Route path="/forbidden" element={<ForbiddenPage />} />
 
-            {/* Protected Routes for ALL Authenticated Users (super-admin, admin, operator) */}
-            <Route element={<ProtectedRoute allowedRoles={['super-admin', 'admin', 'operator']} />}>
+            {/* Protected Route for Dashboard (Accessible by All Roles including Pengirim) */}
+            <Route element={<ProtectedRoute allowedRoles={['super-admin', 'admin', 'operator', 'pengirim']} />}>
               <Route element={<MainLayout />}>
                 <Route path="/dashboard" element={<DashboardPage />} />
+              </Route>
+            </Route>
+
+            {/* Protected Route for Pengirim Ticket Submission */}
+            <Route element={<ProtectedRoute allowedRoles={['pengirim']} />}>
+              <Route element={<MainLayout />}>
+                <Route path="/requests" element={<SenderRequestsPage />} />
+              </Route>
+            </Route>
+
+            {/* Protected Routes for Crushing Operations (super-admin, admin, operator) */}
+            <Route element={<ProtectedRoute allowedRoles={['super-admin', 'admin', 'operator']} />}>
+              <Route element={<MainLayout />}>
+                <Route path="/approval-requests" element={<RequestApprovalPage />} />
                 <Route path="/ng-input" element={<NgInputPage />} />
                 <Route path="/part-runner-ng" element={<PartRunnerNgPage />} />
+                <Route path="/verification" element={<VerificationPage />} />
               </Route>
             </Route>
 
             {/* Protected Routes for Master Data Management (super-admin, admin) */}
             <Route element={<ProtectedRoute allowedRoles={['super-admin', 'admin']} />}>
               <Route element={<MainLayout />}>
+                <Route path="/admin/departments" element={<DepartmentsPage />} />
                 <Route path="/admin/factories" element={<FactoriesPage />} />
                 <Route path="/admin/machines" element={<MachinesPage />} />
                 <Route path="/admin/materials" element={<MaterialsPage />} />

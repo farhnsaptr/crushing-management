@@ -3,7 +3,7 @@ import type { User } from '../types/users.types';
 import { Table, type Column } from '../../../components/common/Table';
 import { Badge } from '../../../components/common/Badge';
 import { Button } from '../../../components/common/Button';
-import { ToggleLeft, ToggleRight, Trash2, Pencil } from 'lucide-react';
+import { ToggleLeft, ToggleRight, Trash2, Pencil, Building2, Network } from 'lucide-react';
 
 interface UserTableProps {
   users: User[];
@@ -20,14 +20,29 @@ export const UserTable: React.FC<UserTableProps> = ({
   onToggleStatus,
   onDelete,
 }) => {
+  const getRoleBadgeVariant = (role: string) => {
+    switch (role) {
+      case 'super-admin':
+        return 'danger';
+      case 'admin':
+        return 'primary';
+      case 'operator':
+        return 'warning';
+      case 'pengirim':
+        return 'info';
+      default:
+        return 'neutral';
+    }
+  };
+
   const columns: Column<User>[] = [
     {
       header: 'Pengguna',
       accessorKey: 'full_name',
       cell: (user) => (
         <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <span style={{ fontWeight: 700, color: 'var(--text-main)' }}>{user.full_name}</span>
-          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>@{user.username}</span>
+          <span style={{ fontWeight: 700, color: 'var(--text-main, #0f172a)' }}>{user.full_name}</span>
+          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted, #64748b)' }}>@{user.username}</span>
         </div>
       ),
     },
@@ -35,9 +50,24 @@ export const UserTable: React.FC<UserTableProps> = ({
       header: 'Role',
       accessorKey: 'role',
       cell: (user) => (
-        <Badge variant={user.role === 'admin' ? 'primary' : 'info'} size="md">
+        <Badge variant={getRoleBadgeVariant(user.role) as any} size="md">
           {user.role.toUpperCase()}
         </Badge>
+      ),
+    },
+    {
+      header: 'Factory & Departemen',
+      cell: (user) => (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', fontSize: '0.8rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'var(--text-main, #0f172a)' }}>
+            <Building2 size={13} color="var(--secondary-color, #e76114)" />
+            <span>{user.factory_name || '-'}</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'var(--text-muted, #64748b)' }}>
+            <Network size={13} color="var(--primary-color, #008d51)" />
+            <span>{user.department_name || '-'}</span>
+          </div>
+        </div>
       ),
     },
     {
@@ -53,26 +83,13 @@ export const UserTable: React.FC<UserTableProps> = ({
       header: 'Login Terakhir',
       accessorKey: 'last_login_at',
       cell: (user) => (
-        <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+        <span style={{ fontSize: '0.85rem', color: 'var(--text-muted, #64748b)' }}>
           {user.last_login_at
             ? new Date(user.last_login_at).toLocaleString('id-ID', {
                 dateStyle: 'medium',
                 timeStyle: 'short',
               })
             : 'Belum pernah'}
-        </span>
-      ),
-    },
-    {
-      header: 'Tanggal Dibuat',
-      accessorKey: 'created_at',
-      cell: (user) => (
-        <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-          {new Date(user.created_at).toLocaleDateString('id-ID', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric',
-          })}
         </span>
       ),
     },

@@ -1,21 +1,33 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { UsersService } from '../services/users.service';
+import { FactoriesService } from '../../factories/services/factories.service';
+import { DepartmentsService } from '../../departments/services/departments.service';
 import type { User, CreateUserPayload, UpdateUserPayload } from '../types/users.types';
+import type { Factory } from '../../factories/types/factories.types';
+import type { Department } from '../../departments/types/departments.types';
 import type { ToastMessage } from '../../../components/common/Toast';
 
 export const useUsers = () => {
   const [users, setUsers] = useState<User[]>([]);
+  const [factories, setFactories] = useState<Factory[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [toast, setToast] = useState<ToastMessage | null>(null);
 
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     setIsLoading(true);
     try {
-      const data = await UsersService.getUsers();
-      setUsers(data);
+      const [usersData, factoriesData, departmentsData] = await Promise.all([
+        UsersService.getUsers(),
+        FactoriesService.getFactories(),
+        DepartmentsService.listDepartments(),
+      ]);
+      setUsers(usersData);
+      setFactories(factoriesData);
+      setDepartments(departmentsData);
     } catch (err: any) {
       setToast({
         id: Date.now().toString(),
@@ -25,11 +37,11 @@ export const useUsers = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchUsers();
-  }, []);
+  }, [fetchUsers]);
 
   const handleOpenCreateModal = () => {
     setEditingUser(null);
@@ -55,7 +67,7 @@ export const useUsers = () => {
       setToast({
         id: Date.now().toString(),
         type: 'error',
-        message: err.response?.data?.message || 'Gagal menambahkan pengguna.',
+        message: err.response?.data?.message || err.message || 'Gagal menambahkan pengguna.',
       });
     }
   };
@@ -75,7 +87,7 @@ export const useUsers = () => {
       setToast({
         id: Date.now().toString(),
         type: 'error',
-        message: err.response?.data?.message || 'Gagal memperbarui pengguna.',
+        message: err.response?.data?.message || err.message || 'Gagal memperbarui pengguna.',
       });
     }
   };
@@ -121,11 +133,15 @@ export const useUsers = () => {
     (u) =>
       u.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
       u.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      u.role.toLowerCase().includes(searchQuery.toLowerCase())
+      u.role.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (u.factory_name && u.factory_name.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (u.department_name && u.department_name.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   return {
     users: filteredUsers,
+    factories,
+    departments,
     searchQuery,
     setSearchQuery,
     isLoading,

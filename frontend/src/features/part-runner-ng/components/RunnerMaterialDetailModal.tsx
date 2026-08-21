@@ -111,15 +111,15 @@ export const RunnerMaterialDetailModal: React.FC<RunnerMaterialDetailModalProps>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', color: '#008d51', fontWeight: 800, marginBottom: '0.15rem' }}>
             <span>• Shift Pagi:</span>
-            <span>{pagiKg.toFixed(3)} kg</span>
+            <span>{pagiKg.toFixed(2)} kg</span>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', color: '#e76114', fontWeight: 800, marginBottom: '0.25rem' }}>
             <span>• Shift Malam:</span>
-            <span>{malamKg.toFixed(3)} kg</span>
+            <span>{malamKg.toFixed(2)} kg</span>
           </div>
           <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '0.25rem', fontWeight: 900, display: 'flex', justifyContent: 'space-between', color: '#0f172a' }}>
             <span>Total Harian:</span>
-            <span>{totalKg.toFixed(3)} kg</span>
+            <span>{totalKg.toFixed(2)} kg</span>
           </div>
         </div>
       );
@@ -211,7 +211,7 @@ export const RunnerMaterialDetailModal: React.FC<RunnerMaterialDetailModalProps>
                   Total Runner ({currentMonthLabel} {materialDetail.year})
                 </span>
                 <h4 style={{ fontSize: '1.1rem', fontWeight: 900, margin: 0, color: 'var(--secondary-color, #e76114)' }}>
-                  {materialDetail.totalWeightKg.toFixed(3)} kg
+                  {materialDetail.totalWeightKg.toFixed(2)} kg
                 </h4>
               </div>
             </div>
@@ -407,7 +407,7 @@ export const RunnerMaterialDetailModal: React.FC<RunnerMaterialDetailModalProps>
                           </Badge>
                         </td>
                         <td style={{ padding: '0.55rem 0.75rem', textAlign: 'right', fontWeight: 900, color: 'var(--secondary-color, #e76114)' }}>
-                          {Number(rec.total_runner_weight_kg || 0).toFixed(3)} kg
+                          {Number(rec.total_runner_weight_kg || 0).toFixed(2)} kg
                         </td>
                         <td style={{ padding: '0.55rem 0.75rem', fontSize: '0.775rem', color: 'var(--text-muted, #64748b)' }}>
                           <code>{rec.import_batch_ref || '-'}</code>

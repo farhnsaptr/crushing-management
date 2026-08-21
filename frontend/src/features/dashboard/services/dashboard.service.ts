@@ -4,6 +4,8 @@ import type {
   DailyRecycleChartResponse,
   ParetoMaterialItem,
   TopNgPartItem,
+  DepartmentParetoItem,
+  SenderDashboardStats,
   PlantLocation,
 } from '../types/dashboard.types';
 
@@ -52,12 +54,30 @@ export class DashboardService {
     return response.data.data || [];
   }
 
+  static async getDepartmentPareto(
+    year?: number,
+    month?: number,
+    location: PlantLocation = 'Cibitung'
+  ): Promise<DepartmentParetoItem[]> {
+    const response = await apiClient.get('/api/dashboard/departments-pareto', {
+      params: { year, month, location },
+    });
+    return response.data.data || [];
+  }
+
+  static async getSenderStats(year?: number, month?: number): Promise<SenderDashboardStats> {
+    const response = await apiClient.get('/api/dashboard/sender-stats', {
+      params: { year, month },
+    });
+    return response.data.data;
+  }
+
   static async downloadExcelReport(
     startDate: string,
     endDate: string,
     location: PlantLocation = 'Cibitung'
   ): Promise<void> {
-    const response = await apiClient.get('/api/dashboard/export-excel', {
+    const response = await apiClient.get('/api/dashboard/export', {
       params: { start_date: startDate, end_date: endDate, location },
       responseType: 'blob',
     });

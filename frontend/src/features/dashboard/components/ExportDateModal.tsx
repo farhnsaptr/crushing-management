@@ -230,15 +230,29 @@ export const ExportDateModal: React.FC<ExportDateModalProps> = ({
               border: '1px solid #e2e8f0',
               fontSize: '0.775rem',
               color: '#475569',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.6rem',
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontWeight: 800, color: '#0f172a', marginBottom: '0.35rem' }}>
-              <CheckCircle2 size={14} color="#059669" />
-              <span>Susunan Kolom File Excel :</span>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontWeight: 800, color: '#0f172a', marginBottom: '0.2rem' }}>
+                <CheckCircle2 size={14} color="#059669" />
+                <span>Sheet 1: Transaksi NG</span>
+              </div>
+              <p style={{ margin: 0, fontFamily: 'monospace', fontSize: '0.725rem', color: '#0f172a', fontWeight: 700 }}>
+                TANGGAL, SHIFT, SEBANGO, PART NAME, PART NUMBER, MODEL, BERAT PART, QTY PER PCS, BERAT OUTPUT
+              </p>
             </div>
-            <p style={{ margin: 0, fontFamily: 'monospace', fontSize: '0.75rem', color: '#0f172a', fontWeight: 700 }}>
-              tanggal, shift, sebango, part name, part number, model, berat part, qty per pcs, berat output
-            </p>
+            <div style={{ borderTop: '1px dashed #cbd5e1', paddingTop: '0.45rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontWeight: 800, color: '#0f172a', marginBottom: '0.2rem' }}>
+                <CheckCircle2 size={14} color="#059669" />
+                <span>Sheet 2: Transaksi Runner</span>
+              </div>
+              <p style={{ margin: 0, fontFamily: 'monospace', fontSize: '0.725rem', color: '#0f172a', fontWeight: 700 }}>
+                TANGGAL, SHIFT, NAMA MATERIAL, QTY PER PCS, BERAT OUTPUT, BATCH / SUMBER
+              </p>
+            </div>
           </div>
 
           {/* Action Buttons */}

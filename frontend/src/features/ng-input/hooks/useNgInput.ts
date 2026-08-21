@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { NgInputService } from '../services/ngInput.service';
 import type { FilterMode, MasterPart, Factory } from '../types/ngInput.types';
 import type { ToastMessage } from '../../../components/common/Toast';
+import { getAutoShiftAndDate } from '../../../config/shift.config';
 
 export const JENIS_PART_OPTIONS = [
   'BUMPER',
@@ -12,20 +13,6 @@ export const JENIS_PART_OPTIONS = [
   'SPOILER',
   'OTHERS',
 ];
-
-export const getDefaultShift = (): 'Pagi' | 'Malam' => {
-  const hour = new Date().getHours();
-  // 21:00 to 06:59 is Shift Malam, 07:00 to 20:59 is Shift Pagi
-  return hour >= 21 || hour < 7 ? 'Malam' : 'Pagi';
-};
-
-export const getTodayDateString = (): string => {
-  const today = new Date();
-  const year = today.getFullYear();
-  const month = String(today.getMonth() + 1).padStart(2, '0');
-  const day = String(today.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-};
 
 export const useNgInput = () => {
   // Mode Filter: 'jenis' (default) vs 'factory'
@@ -42,10 +29,11 @@ export const useNgInput = () => {
   // Selected Part for Form Right Side
   const [selectedPart, setSelectedPart] = useState<MasterPart | null>(null);
 
-  // Form State
+  // Form State initialized automatically from current time/date (8 PM to 7 AM is Malam)
+  const initialAuto = useMemo(() => getAutoShiftAndDate(), []);
   const [quantityPcs, setQuantityPcs] = useState<number | ''>('');
-  const [shift, setShift] = useState<'Pagi' | 'Malam'>(getDefaultShift());
-  const [transactionDate, setTransactionDate] = useState<string>(getTodayDateString());
+  const [shift, setShift] = useState<'Pagi' | 'Malam'>(initialAuto.shift);
+  const [transactionDate, setTransactionDate] = useState<string>(initialAuto.date);
   const [notes, setNotes] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 

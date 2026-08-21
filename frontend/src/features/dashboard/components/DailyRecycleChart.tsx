@@ -49,13 +49,13 @@ export const DailyRecycleChart: React.FC<DailyRecycleChartProps> = ({
 
     return {
       ...item,
-      pagi_ng_kg: Number(pagiNg.toFixed(3)),
-      pagi_runner_kg: Number(pagiRunner.toFixed(3)),
-      malam_ng_kg: Number(malamNg.toFixed(3)),
-      malam_runner_kg: Number(malamRunner.toFixed(3)),
-      pagi_kg: Number(pagiTotal.toFixed(3)),
-      malam_kg: Number(malamTotal.toFixed(3)),
-      total_kg: Number(grandTotal.toFixed(3)),
+      pagi_ng_kg: Number(pagiNg.toFixed(2)),
+      pagi_runner_kg: Number(pagiRunner.toFixed(2)),
+      malam_ng_kg: Number(malamNg.toFixed(2)),
+      malam_runner_kg: Number(malamRunner.toFixed(2)),
+      pagi_kg: Number(pagiTotal.toFixed(2)),
+      malam_kg: Number(malamTotal.toFixed(2)),
+      total_kg: Number(grandTotal.toFixed(2)),
     };
   });
 
@@ -99,16 +99,16 @@ export const DailyRecycleChart: React.FC<DailyRecycleChartProps> = ({
           <div style={{ marginBottom: '0.4rem' }}>
             <div style={{ fontWeight: 800, color: '#008d51', marginBottom: '0.15rem', display: 'flex', justifyContent: 'space-between' }}>
               <span>Shift Pagi</span>
-              <span>{pagiTotal.toFixed(3)} kg</span>
+              <span>{pagiTotal.toFixed(2)} kg</span>
             </div>
             <div style={{ paddingLeft: '0.5rem', fontSize: '0.75rem', color: '#475569', display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span>• Part NG Pagi:</span>
-                <strong>{pagiNg.toFixed(3)} kg</strong>
+                 <span>• Part NG Pagi:</span>
+                <strong>{pagiNg.toFixed(2)} kg</strong>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span>• Part Runner Pagi:</span>
-                <strong>{pagiRunner.toFixed(3)} kg</strong>
+                <strong>{pagiRunner.toFixed(2)} kg</strong>
               </div>
             </div>
           </div>
@@ -117,23 +117,23 @@ export const DailyRecycleChart: React.FC<DailyRecycleChartProps> = ({
           <div style={{ marginBottom: '0.4rem' }}>
             <div style={{ fontWeight: 800, color: '#e76114', marginBottom: '0.15rem', display: 'flex', justifyContent: 'space-between' }}>
               <span>Shift Malam</span>
-              <span>{malamTotal.toFixed(3)} kg</span>
+              <span>{malamTotal.toFixed(2)} kg</span>
             </div>
             <div style={{ paddingLeft: '0.5rem', fontSize: '0.75rem', color: '#475569', display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span>• Part NG Malam:</span>
-                <strong>{malamNg.toFixed(3)} kg</strong>
+                <strong>{malamNg.toFixed(2)} kg</strong>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span>• Part Runner Malam:</span>
-                <strong>{malamRunner.toFixed(3)} kg</strong>
+                <strong>{malamRunner.toFixed(2)} kg</strong>
               </div>
             </div>
           </div>
 
           <div style={{ paddingTop: '0.35rem', borderTop: '1px solid #e2e8f0', fontWeight: 900, display: 'flex', justifyContent: 'space-between', color: '#0f172a' }}>
             <span>Total Akumulasi:</span>
-            <span>{grandTotal.toFixed(3)} kg</span>
+            <span>{grandTotal.toFixed(2)} kg</span>
           </div>
         </div>
       );

@@ -367,7 +367,7 @@ export const PartRunnerNgPage: React.FC = () => {
                             </div>
                           </td>
                           <td style={{ padding: '0.65rem 0.85rem', textAlign: 'right', fontWeight: 900, color: 'var(--secondary-color, #e76114)' }}>
-                            {Number(rec.total_runner_weight_kg || 0).toFixed(3)} kg
+                            {Number(rec.total_runner_weight_kg || 0).toFixed(2)} kg
                           </td>
                           <td style={{ padding: '0.65rem 0.85rem', fontSize: '0.8rem', color: 'var(--text-muted, #64748b)' }}>
                             <code>{rec.import_batch_ref || '-'}</code>

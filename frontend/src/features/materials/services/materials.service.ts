@@ -12,6 +12,13 @@ export class MaterialsService {
     return response.data.data;
   }
 
+  static async listMaterials(page: number = 1, limit: number = 200, search: string = ''): Promise<Material[]> {
+    const response = await apiClient.get('/api/materials', {
+      params: { page, limit, search },
+    });
+    return response.data.data?.materials || [];
+  }
+
   static async getMaterialById(id: string): Promise<Material> {
     const response = await apiClient.get(`/api/materials/${id}`);
     return response.data.data;

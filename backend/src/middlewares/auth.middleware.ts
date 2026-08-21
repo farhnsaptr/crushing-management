@@ -3,11 +3,17 @@ import jwt from 'jsonwebtoken';
 import { env } from '../config/env.config';
 import { sendError } from '../utils/response.util';
 
+export type UserRole = 'super-admin' | 'admin' | 'operator' | 'pengirim';
+
 export interface JwtPayloadUser {
   id: string;
   username: string;
   full_name: string;
-  role: 'super-admin' | 'admin' | 'operator';
+  role: UserRole;
+  factory_id?: string | null;
+  factory_name?: string | null;
+  department_id?: string | null;
+  department_name?: string | null;
 }
 
 export interface AuthenticatedRequest extends Request {
@@ -69,7 +75,7 @@ export function preventReLogin(
   next();
 }
 
-export function requireRole(allowedRoles: ('super-admin' | 'admin' | 'operator')[]) {
+export function requireRole(allowedRoles: UserRole[]) {
   return (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
     if (!req.user) {
       sendError(res, 'Unauthorized', 401);

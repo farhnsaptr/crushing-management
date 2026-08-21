@@ -1,7 +1,7 @@
 import React from 'react';
 import { Badge } from './Badge';
 
-interface CardProps {
+interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;
   title?: string;
   subtitle?: string;
@@ -19,6 +19,7 @@ export const Card: React.FC<CardProps> = ({
   hasUnsavedChanges = false,
   className = '',
   style = {},
+  ...props
 }) => {
   return (
     <div
@@ -33,6 +34,7 @@ export const Card: React.FC<CardProps> = ({
         transition: 'all 0.25s ease',
         ...style,
       }}
+      {...props}
     >
       {(title || subtitle || action || hasUnsavedChanges) && (
         <div
