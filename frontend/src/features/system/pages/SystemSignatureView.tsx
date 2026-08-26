@@ -163,7 +163,7 @@ export const SystemSignatureView: React.FC = () => {
               paddingTop: '0.65rem',
             }}
           >
-            Recycle Material Management System — PT Sugity Creatives
+            Material Management System — PT Sugity Creatives
           </div>
         </div>
 

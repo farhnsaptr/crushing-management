@@ -1,11 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { MaterialsService } from '../services/materials.service';
+import { useDebounce } from '../../../hooks';
 import type { Material, CreateMaterialPayload } from '../types/materials.types';
 import type { ToastMessage } from '../../../components/common/Toast';
 
 export const useMaterials = () => {
   const [materials, setMaterials] = useState<Material[]>([]);
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const debouncedSearchQuery = useDebounce(searchQuery, 400);
 
   // Pagination State
   const [page, setPage] = useState<number>(1);
@@ -19,10 +21,10 @@ export const useMaterials = () => {
 
   const [toast, setToast] = useState<ToastMessage | null>(null);
 
-  const fetchMaterials = async () => {
+  const fetchMaterials = useCallback(async () => {
     setIsLoading(true);
     try {
-      const res = await MaterialsService.getMaterials(page, limit, searchQuery);
+      const res = await MaterialsService.getMaterials(page, limit, debouncedSearchQuery);
       setMaterials(res.materials || []);
       setTotal(res.pagination?.total || 0);
       setTotalPages(res.pagination?.totalPages || 1);
@@ -35,11 +37,11 @@ export const useMaterials = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [page, limit, debouncedSearchQuery]);
 
   useEffect(() => {
     fetchMaterials();
-  }, [page, searchQuery]);
+  }, [fetchMaterials]);
 
   const handleOpenCreateModal = () => {
     setEditingMaterial(null);

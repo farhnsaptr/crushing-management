@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { MasterPartsService } from '../services/masterParts.service';
 import { MachinesService } from '../../machines/services/machines.service';
+import { useDebounce } from '../../../hooks';
 import type {
   MasterPart,
   CreateMasterPartPayload,
@@ -15,6 +16,7 @@ export const useMasterParts = () => {
   const [machines, setMachines] = useState<Machine[]>([]);
   const [jenisList, setJenisList] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const debouncedSearchQuery = useDebounce(searchQuery, 400);
   const [selectedJenis, setSelectedJenis] = useState<string>('all');
   const [sortBy, setSortBy] = useState<string>('');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
@@ -50,10 +52,10 @@ export const useMasterParts = () => {
 
   const [toast, setToast] = useState<ToastMessage | null>(null);
 
-  const fetchParts = async () => {
+  const fetchParts = useCallback(async () => {
     setIsLoading(true);
     try {
-      const res = await MasterPartsService.getParts(page, limit, searchQuery, selectedJenis, sortBy, sortOrder);
+      const res = await MasterPartsService.getParts(page, limit, debouncedSearchQuery, selectedJenis, sortBy, sortOrder);
       const fetchedParts = res.parts || [];
       setParts(fetchedParts);
       setTotal(res.pagination?.total || 0);
@@ -78,7 +80,7 @@ export const useMasterParts = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [page, limit, debouncedSearchQuery, selectedJenis, sortBy, sortOrder]);
 
   const handleSelectPart = (part: MasterPart) => {
     setSelectedPart(part);
@@ -193,7 +195,7 @@ export const useMasterParts = () => {
 
   useEffect(() => {
     fetchParts();
-  }, [page, searchQuery, selectedJenis, sortBy, sortOrder]);
+  }, [fetchParts]);
 
   useEffect(() => {
     fetchMachines();

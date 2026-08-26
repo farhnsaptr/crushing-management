@@ -5,7 +5,7 @@ const options: swaggerJsdoc.Options = {
   definition: {
     openapi: '3.0.0',
     info: {
-      title: 'Recycle Material Management API',
+      title: 'Material Management API',
       version: '1.0.0',
       description:
         'RESTful API Documentation untuk Sistem Daur Ulang Material Plastik PT Sugity Creatives',

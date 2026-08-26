@@ -26,7 +26,7 @@ Mengembalikan daftar Part NG Terbanyak (Top 5).
 - **Query Params**: `year`, `month`, `location`
 
 ### 5. `GET /api/dashboard/export`
-Mendownload laporan spreadsheet Excel (`.xlsx`) yang berisi 2 worksheet:
-1. **Transaksi NG**: Berisi data riwayat transaksi NG dengan kolom huruf kapital (`TANGGAL`, `SHIFT`, `SEBANGO`, `PART NAME`, `PART NUMBER`, `MODEL`, `BERAT PART`, `QTY PER PCS`, `BERAT OUTPUT`).
-2. **Transaksi Runner**: Berisi data riwayat transaksi Runner per material dengan kolom huruf kapital (`TANGGAL`, `SHIFT`, `NAMA MATERIAL`, `QTY PER PCS`, `BERAT OUTPUT`, `BATCH / SUMBER`).
+Mendownload laporan spreadsheet Excel (.xlsx) yang berisi 2 worksheet:
+1. **Transaksi NG**: Berisi data riwayat transaksi NG dengan kolom huruf kapital (`TANGGAL`, `SHIFT`, `SEBANGO`, `PART NAME`, `PART NUMBER`, `MATERIAL`, `MODEL`, `BERAT PART`, `QTY PER PCS`, `ALLOWANCE`, `INPUT`, `OUTPUT`). Nilai `OUTPUT` mengambil nilai aktual hasil verifikasi/validasi operator per shift & material.
+2. **Transaksi Runner**: Berisi data riwayat transaksi Runner per material dengan kolom huruf kapital (`TANGGAL`, `SHIFT`, `NAMA MATERIAL`, `QTY PER PCS`, `INPUT`, `OUTPUT`, `BATCH / SUMBER`). Nilai `OUTPUT` mengambil nilai aktual hasil verifikasi/validasi operator.
 - **Query Params**: `start_date`, `end_date`, `location` (`Cibitung` | `Karawang`)

@@ -397,7 +397,7 @@ export class CrushingRequestsService {
         i.quantity_pcs, i.weight_kg, i.notes, i.created_at,
         mp.image_url
        FROM crushing_request_items i
-       LEFT JOIN master_parts mp ON i.master_part_id = mp.id
+       LEFT JOIN master_parts mp ON (i.master_part_id = mp.id OR (i.master_part_id IS NULL AND i.part_number_snapshot = mp.part_number))
        WHERE i.request_id = ?
        ORDER BY i.created_at ASC`,
       [id]

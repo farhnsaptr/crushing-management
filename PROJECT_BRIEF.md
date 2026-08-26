@@ -1,10 +1,10 @@
-# Project Brief: Recycle Material Management
+# Project Brief: Material Management
 
 Gunakan dokumen ini sebagai konteks utama sebelum mengerjakan task apapun di project ini. Ikuti aturan coding di `AGENTS.md` untuk semua kode yang ditulis.
 
 ## 1. Ringkasan Sistem
 
-Recycle Material Management adalah sistem untuk mencatat dan memantau alur material recycle di PT Sugity Creatives (Tier-1 automotive component manufacturer, MM2100, Bekasi). Sistem mencatat part NG (Not Good/reject) dari proses injection molding, menghitung berat material yang masuk ke proses crushing (penghancuran jadi material daur ulang), dan menampilkan ringkasannya lewat dashboard.
+Material Management adalah sistem untuk mencatat dan memantau alur material recycle di PT Sugity Creatives (Tier-1 automotive component manufacturer, MM2100, Bekasi). Sistem mencatat part NG (Not Good/reject) dari proses injection molding, menghitung berat material yang masuk ke proses crushing (penghancuran jadi material daur ulang), dan menampilkan ringkasannya lewat dashboard.
 
 ## 2. Tech Stack
 

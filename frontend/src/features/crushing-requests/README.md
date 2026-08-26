@@ -10,10 +10,11 @@ Fitur ini menyediakan sistem permohonan dan persetujuan tiket pengiriman materia
 ## Struktur Modul
 - `pages/SenderRequestsPage.tsx` — Halaman pengajuan tiket Part NG baru dan pelacakan riwayat untuk role `pengirim`.
 - `pages/RequestApprovalPage.tsx` — Halaman verifikasi dan persetujuan/penolakan tiket untuk role `operator`, `admin`, dan `super-admin`.
-- `components/CreateRequestForm.tsx` — Form pembuatan tiket Part NG dengan visual catalog terkunci sesuai pabrik pengirim.
+- `components/CreateRequestForm.tsx` — Form pembuatan tiket Part NG dengan layout tablet-based 16:10 non-scrolling single page dan katalog visual part.
+- `components/SubmitConfirmModal.tsx` — Modal konfirmasi ringkasan tiket dan verifikasi fisik sebelum submit final.
 - `components/MyRequestsTable.tsx` — Tabel daftar tiket milik pengirim dengan status tracking.
 - `components/PendingApprovalTable.tsx` — Tabel tiket masuk untuk diverifikasi oleh operator.
-- `components/RequestDetailModal.tsx` — Modal rincian tiket beserta tombol aksi Approve/Reject.
+- `components/RequestDetailModal.tsx` — Modal rincian tiket full-screen beserta visual foto part besar dan tombol aksi Approve/Reject.
 - `components/RejectReasonModal.tsx` — Modal konfirmasi alasan penolakan tiket.
 - `hooks/useCrushingRequests.ts` — Hook untuk logika formulir pengirim dan riwayat tiket.
 - `hooks/useRequestApproval.ts` — Hook untuk logika approval operator.

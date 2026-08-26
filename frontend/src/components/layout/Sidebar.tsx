@@ -89,7 +89,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapse 
                 SUGITY
               </span>
               <span style={{ fontSize: '0.725rem', fontWeight: 800, color: 'rgba(255, 255, 255, 0.9)', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-                RECYCLE MATERIAL MANAGEMENT
+                MATERIAL MANAGEMENT
               </span>
             </div>
           </div>

@@ -64,27 +64,26 @@ export const SenderRequestsPage: React.FC = () => {
   } = useCrushingRequests();
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', height: '100%', minHeight: 0 }}>
       {/* Toast Notification */}
       {toast && <Toast toast={toast} onClose={() => setToast(null)} />}
 
-      {/* Header Info Banner */}
+      {/* Compact Top Navigation Tab Header */}
       <div
         style={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
           flexWrap: 'wrap',
-          gap: '1rem',
-          borderBottom: '2px solid var(--border-color, #e2e8f0)',
-          paddingBottom: '1rem',
+          gap: '0.5rem',
+          flexShrink: 0,
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <div
             style={{
-              width: '44px',
-              height: '44px',
+              width: '32px',
+              height: '32px',
               borderRadius: 'var(--radius-md, 8px)',
               backgroundColor: 'rgba(231, 97, 20, 0.12)',
               color: 'var(--secondary-color, #e76114)',
@@ -93,15 +92,12 @@ export const SenderRequestsPage: React.FC = () => {
               justifyContent: 'center',
             }}
           >
-            <Send size={24} />
+            <Send size={18} />
           </div>
           <div>
-            <h1 style={{ fontSize: '1.35rem', fontWeight: 900, color: 'var(--text-main, #0f172a)' }}>
-              Kirim Part NG
-            </h1>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted, #64748b)' }}>
-              Sistem tiket pengajuan pengiriman Part NG reject ke area crushing untuk validasi operator.
-            </p>
+            <h2 style={{ fontSize: '1.1rem', fontWeight: 900, color: 'var(--text-main, #0f172a)', margin: 0, lineHeight: 1.2 }}>
+              Tiket Pengiriman Part NG
+            </h2>
           </div>
         </div>
 
@@ -110,9 +106,9 @@ export const SenderRequestsPage: React.FC = () => {
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '0.5rem',
+            gap: '0.35rem',
             backgroundColor: 'var(--card-bg, #ffffff)',
-            padding: '0.35rem',
+            padding: '0.25rem',
             borderRadius: 'var(--radius-md, 8px)',
             border: '1px solid var(--border-color, #cbd5e1)',
           }}
@@ -123,10 +119,10 @@ export const SenderRequestsPage: React.FC = () => {
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '0.4rem',
-              padding: '0.5rem 1rem',
+              gap: '0.35rem',
+              padding: '0.35rem 0.85rem',
               borderRadius: 'var(--radius-sm, 6px)',
-              fontSize: '0.875rem',
+              fontSize: '0.8rem',
               fontWeight: activeTab === 'create' ? 800 : 600,
               backgroundColor: activeTab === 'create' ? 'var(--secondary-color, #e76114)' : 'transparent',
               color: activeTab === 'create' ? '#ffffff' : 'var(--text-muted, #64748b)',
@@ -135,7 +131,7 @@ export const SenderRequestsPage: React.FC = () => {
               transition: 'all 0.15s ease',
             }}
           >
-            <PlusCircle size={16} />
+            <PlusCircle size={14} />
             <span>Buat Tiket Baru</span>
           </button>
 
@@ -145,10 +141,10 @@ export const SenderRequestsPage: React.FC = () => {
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '0.4rem',
-              padding: '0.5rem 1rem',
+              gap: '0.35rem',
+              padding: '0.35rem 0.85rem',
               borderRadius: 'var(--radius-sm, 6px)',
-              fontSize: '0.875rem',
+              fontSize: '0.8rem',
               fontWeight: activeTab === 'history' ? 800 : 600,
               backgroundColor: activeTab === 'history' ? 'var(--secondary-color, #e76114)' : 'transparent',
               color: activeTab === 'history' ? '#ffffff' : 'var(--text-muted, #64748b)',
@@ -157,7 +153,7 @@ export const SenderRequestsPage: React.FC = () => {
               transition: 'all 0.15s ease',
             }}
           >
-            <History size={16} />
+            <History size={14} />
             <span>Riwayat Pengajuan</span>
           </button>
         </div>

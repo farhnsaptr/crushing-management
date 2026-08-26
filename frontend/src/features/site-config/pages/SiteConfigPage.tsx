@@ -49,7 +49,7 @@ export const SiteConfigPage: React.FC = () => {
             {/* Title Web Input */}
             <Input
               label="Judul Web / Browser Tab Title"
-              placeholder="misal Recycle Material Management - PT Sugity Creatives"
+              placeholder="misal Material Management - PT Sugity Creatives"
               value={siteTitle}
               onChange={(e) => setSiteTitle(e.target.value)}
               leftIcon={<Type size={18} />}

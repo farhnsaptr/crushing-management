@@ -133,7 +133,7 @@ export const DashboardPage: React.FC = () => {
       {/* Top Header: Title & Date User Info */}
       <div className="dashboard-header-container">
         <div>
-          <h1 className="dashboard-title">RECYCLE MATERIAL MANAGEMENT</h1>
+          <h1 className="dashboard-title">MATERIAL MANAGEMENT</h1>
           <p style={{ fontSize: '0.775rem', color: 'var(--text-muted, #64748b)', margin: '0.15rem 0 0 0', fontWeight: 600 }}>
             Executive Overview & Data Analytics Daur Ulang Plastik — PT Sugity Creatives
           </p>

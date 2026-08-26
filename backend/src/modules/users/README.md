@@ -1,6 +1,6 @@
 # User Management Module (Backend)
 
-Modul ini mengelola data autentikasi dan otorisasi pengguna sistem Recycle Material Management.
+Modul ini mengelola data autentikasi dan otorisasi pengguna sistem Material Management.
 
 ## Peran Pengguna (Roles)
 1. **`pengirim`** — Pengguna yang mengirimkan part NG/runner, wajib terikat dengan `factory_id` dan `department_id`.

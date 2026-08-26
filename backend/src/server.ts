@@ -4,7 +4,7 @@ import { testDbConnection } from './config/database';
 import { initRedis } from './config/redis';
 
 async function startServer() {
-  console.log('[Server] Starting Recycle Material Management API Server...');
+  console.log('[Server] Starting Material Management API Server...');
 
   // Test Database Connection
   const dbConnected = await testDbConnection();

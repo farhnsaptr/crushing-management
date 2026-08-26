@@ -78,7 +78,7 @@ export const LoginPage: React.FC = () => {
               letterSpacing: '-0.02em',
             }}
           >
-            RECYCLE MATERIAL MANAGEMENT
+            MATERIAL MANAGEMENT
           </h2>
 
           <p

@@ -7,6 +7,8 @@ export interface ToastMessage {
   message: string;
 }
 
+export type ToastState = ToastMessage;
+
 interface ToastProps {
   toast?: ToastMessage | null;
   message?: string;

@@ -20,7 +20,7 @@ const DEFAULT_THEME: ThemeColors = {
   theme_dark_primary: '#008d51',
   theme_dark_secondary: '#E76114',
   theme_dark_accent: '#037233',
-  site_title: 'Recycle Material Management - PT Sugity Creatives',
+  site_title: 'Material Management - PT Sugity Creatives',
   site_logo: '/logo.png',
   site_background: '/background.jpg',
 };

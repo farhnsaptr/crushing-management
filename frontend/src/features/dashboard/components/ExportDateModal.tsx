@@ -241,7 +241,7 @@ export const ExportDateModal: React.FC<ExportDateModalProps> = ({
                 <span>Sheet 1: Transaksi NG</span>
               </div>
               <p style={{ margin: 0, fontFamily: 'monospace', fontSize: '0.725rem', color: '#0f172a', fontWeight: 700 }}>
-                TANGGAL, SHIFT, SEBANGO, PART NAME, PART NUMBER, MODEL, BERAT PART, QTY PER PCS, BERAT OUTPUT
+                TANGGAL, SHIFT, SEBANGO, PART NAME, PART NUMBER, MATERIAL, MODEL, BERAT PART, QTY PER PCS, ALLOWANCE, INPUT, OUTPUT
               </p>
             </div>
             <div style={{ borderTop: '1px dashed #cbd5e1', paddingTop: '0.45rem' }}>
@@ -250,7 +250,7 @@ export const ExportDateModal: React.FC<ExportDateModalProps> = ({
                 <span>Sheet 2: Transaksi Runner</span>
               </div>
               <p style={{ margin: 0, fontFamily: 'monospace', fontSize: '0.725rem', color: '#0f172a', fontWeight: 700 }}>
-                TANGGAL, SHIFT, NAMA MATERIAL, QTY PER PCS, BERAT OUTPUT, BATCH / SUMBER
+                TANGGAL, SHIFT, NAMA MATERIAL, QTY PER PCS, INPUT, OUTPUT, BATCH / SUMBER
               </p>
             </div>
           </div>

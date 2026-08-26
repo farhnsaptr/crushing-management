@@ -58,7 +58,7 @@ export function useCrushingRequests() {
   const [toast, setToast] = useState<ToastState | null>(null);
 
   // Ref to track draft auto-save debounce timer
-  const saveDraftTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const saveDraftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // 1. Fetch Draft from Server (Redis) on mount / user load
   const fetchServerDraft = useCallback(async () => {

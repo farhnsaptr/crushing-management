@@ -1,4 +1,4 @@
-# Frontend Web Application - PT Sugity Creatives Recycle Material Management
+# Frontend Web Application - PT Sugity Creatives Material Management
 
 Aplikasi web modern berbasis React (Vite + TypeScript + React Router DOM v7) untuk sistem manajemen daur ulang material plastik injection molding di PT Sugity Creatives.
 
@@ -26,7 +26,7 @@ frontend/
 ```
 
 ## Features
-- **Design Aesthetic**: Referensi dari `recycle-mate` dengan font **Outfit** dan skema warna resmi PT Sugity Creatives (`#008d51`, `#E76114`, `#037233`).
+- **Design Aesthetic**: font **Outfit** dan skema warna resmi PT Sugity Creatives (`#008d51`, `#E76114`, `#037233`).
 - **Dynamic Sidebar**: Menu sidebar terpusat di `navigation.config.ts` dan difilter otomatis berdasar role pengguna.
 - **Strict AGENTS.md**: Pemisahan tegas antara komponen UI murni (`*.tsx`) dan logika API/state (`hooks/` & `services/`).
 - **Shared Error Pages**: Komponen khusus untuk 404 Not Found dan 403 Forbidden.

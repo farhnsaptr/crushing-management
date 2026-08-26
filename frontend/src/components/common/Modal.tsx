@@ -43,7 +43,7 @@ export const Modal: React.FC<ModalProps> = ({
       case 'xl':
         return '900px';
       case 'full':
-        return '1150px';
+        return 'min(1440px, 98vw)';
       case 'md':
       default:
         return '550px';
@@ -59,7 +59,7 @@ export const Modal: React.FC<ModalProps> = ({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '1rem',
+        padding: size === 'full' ? '0.5rem' : '1rem',
         backgroundColor: 'rgba(15, 23, 42, 0.65)',
         backdropFilter: 'blur(4px)',
       }}
@@ -76,7 +76,8 @@ export const Modal: React.FC<ModalProps> = ({
           overflow: 'hidden',
           display: 'flex',
           flexDirection: 'column',
-          maxHeight: '90vh',
+          height: size === 'full' ? '95vh' : 'auto',
+          maxHeight: size === 'full' ? '96vh' : '90vh',
         }}
         onClick={(e) => e.stopPropagation()}
       >

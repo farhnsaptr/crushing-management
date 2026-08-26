@@ -1,4 +1,4 @@
-# Backend API - Recycle Material Management
+# Backend API - Material Management
 
 RESTful API service untuk sistem pencatatan dan pemantauan daur ulang material plastik injection molding di PT Sugity Creatives.
 

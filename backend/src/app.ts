@@ -57,7 +57,7 @@ app.use('/api', apiLimiter);
 
 // Health Check
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok', service: 'Recycle Material Management API', timestamp: new Date() });
+  res.json({ status: 'ok', service: 'Material Management API', timestamp: new Date() });
 });
 
 // API Routes Mount
