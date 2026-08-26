@@ -2,14 +2,14 @@ import { useState, useEffect, useCallback } from 'react';
 import { CrushingRequestsService } from '../services/crushingRequests.service';
 import { DepartmentsService } from '../../departments/services/departments.service';
 import { useDebounce } from '../../../hooks';
-import type { CrushingRequest } from '../types/crushingRequests.types';
+import type { CrushingRequest, ApproveCrushingRequestPayload } from '../types/crushingRequests.types';
 import type { Department } from '../../departments/types/departments.types';
 import type { ToastState } from '../../../components/common/Toast';
 
 export function useRequestApproval() {
   const [requests, setRequests] = useState<CrushingRequest[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
-  const [statusFilter, setStatusFilter] = useState<'pending' | 'approved' | 'rejected' | 'all'>('pending');
+  const [statusFilter, setStatusFilter] = useState<'pending' | 'approved' | 'all'>('pending');
   const [selectedDeptId, setSelectedDeptId] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const debouncedSearchQuery = useDebounce(searchQuery, 400);
@@ -23,10 +23,6 @@ export function useRequestApproval() {
   const [isDetailModalOpen, setIsDetailModalOpen] = useState<boolean>(false);
   const [isLoadingDetail, setIsLoadingDetail] = useState<boolean>(false);
   const [isActionLoading, setIsActionLoading] = useState<boolean>(false);
-
-  // Reject Prompt Modal
-  const [isRejectModalOpen, setIsRejectModalOpen] = useState<boolean>(false);
-  const [rejectionReason, setRejectionReason] = useState<string>('');
 
   const [toast, setToast] = useState<ToastState | null>(null);
 
@@ -54,7 +50,7 @@ export function useRequestApproval() {
     } catch (err: any) {
       setToast({
         type: 'error',
-        message: err.response?.data?.message || err.message || 'Gagal memuat daftar verifikasi permintaan',
+        message: err.response?.data?.message || err.message || 'Gagal memuat daftar verifikasi pengiriman',
       });
     } finally {
       setIsLoading(false);
@@ -78,20 +74,20 @@ export function useRequestApproval() {
     } catch (err: any) {
       setToast({
         type: 'error',
-        message: err.response?.data?.message || err.message || 'Gagal mengambil detail tiket',
+        message: err.response?.data?.message || err.message || 'Gagal mengambil detail pengiriman',
       });
     } finally {
       setIsLoadingDetail(false);
     }
   };
 
-  const handleApprove = async (requestId: string, notes?: string) => {
+  const handleApprove = async (requestId: string, payload?: ApproveCrushingRequestPayload) => {
     setIsActionLoading(true);
     try {
-      const approved = await CrushingRequestsService.approveRequest(requestId, notes);
+      const approved = await CrushingRequestsService.approveRequest(requestId, payload);
       setToast({
         type: 'success',
-        message: `Tiket '${approved.request_number}' berhasil disetujui & disinkronkan ke database transaksi!`,
+        message: `Pengiriman '${approved.request_number}' berhasil diverifikasi & disinkronkan ke transaksi crushing!`,
       });
       setIsDetailModalOpen(false);
       setSelectedRequest(null);
@@ -99,41 +95,7 @@ export function useRequestApproval() {
     } catch (err: any) {
       setToast({
         type: 'error',
-        message: err.response?.data?.message || err.message || 'Gagal menyetujui tiket',
-      });
-    } finally {
-      setIsActionLoading(false);
-    }
-  };
-
-  const handleOpenRejectModal = (req: CrushingRequest) => {
-    setSelectedRequest(req);
-    setRejectionReason('');
-    setIsRejectModalOpen(true);
-  };
-
-  const handleConfirmReject = async () => {
-    if (!selectedRequest) return;
-    if (!rejectionReason.trim()) {
-      setToast({ type: 'error', message: 'Silakan isi alasan penolakan tiket.' });
-      return;
-    }
-
-    setIsActionLoading(true);
-    try {
-      await CrushingRequestsService.rejectRequest(selectedRequest.id, rejectionReason.trim());
-      setToast({
-        type: 'info',
-        message: `Tiket '${selectedRequest.request_number}' telah ditolak.`,
-      });
-      setIsRejectModalOpen(false);
-      setIsDetailModalOpen(false);
-      setSelectedRequest(null);
-      fetchRequests();
-    } catch (err: any) {
-      setToast({
-        type: 'error',
-        message: err.response?.data?.message || err.message || 'Gagal menolak tiket',
+        message: err.response?.data?.message || err.message || 'Gagal memverifikasi pengiriman',
       });
     } finally {
       setIsActionLoading(false);
@@ -161,12 +123,6 @@ export function useRequestApproval() {
     isActionLoading,
     handleOpenDetailModal,
     handleApprove,
-    isRejectModalOpen,
-    setIsRejectModalOpen,
-    rejectionReason,
-    setRejectionReason,
-    handleOpenRejectModal,
-    handleConfirmReject,
     fetchRequests,
     toast,
     setToast,

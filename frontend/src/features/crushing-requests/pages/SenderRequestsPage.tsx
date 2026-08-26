@@ -22,6 +22,11 @@ export const SenderRequestsPage: React.FC = () => {
     setItemType,
     selectedPart,
     handleSelectPart,
+    handleQuickAddPart,
+    handleStepItemQty,
+    handleUpdateItemQty,
+    handleUpdateItemNotes,
+    getItemQuantityForPart,
     partQuantityPcs,
     setPartQuantityPcs,
     selectedMaterial,
@@ -96,7 +101,7 @@ export const SenderRequestsPage: React.FC = () => {
           </div>
           <div>
             <h2 style={{ fontSize: '1.1rem', fontWeight: 900, color: 'var(--text-main, #0f172a)', margin: 0, lineHeight: 1.2 }}>
-              Tiket Pengiriman Part NG
+              Pengiriman Part NG
             </h2>
           </div>
         </div>
@@ -132,7 +137,7 @@ export const SenderRequestsPage: React.FC = () => {
             }}
           >
             <PlusCircle size={14} />
-            <span>Buat Tiket Baru</span>
+            <span>Buat Pengiriman Baru</span>
           </button>
 
           <button
@@ -154,12 +159,12 @@ export const SenderRequestsPage: React.FC = () => {
             }}
           >
             <History size={14} />
-            <span>Riwayat Pengajuan</span>
+            <span>Riwayat Pengiriman</span>
           </button>
         </div>
       </div>
 
-      {/* TAB 1: FORM PENGAJUAN (Visual Grid Catalog + Form) */}
+      {/* TAB 1: FORM PENGAJUAN (Visual Grid/List Catalog + Interactive Cart List) */}
       {activeTab === 'create' && (
         <CreateRequestForm
           user={user}
@@ -174,6 +179,11 @@ export const SenderRequestsPage: React.FC = () => {
           onItemTypeChange={setItemType}
           selectedPart={selectedPart}
           onSelectPart={handleSelectPart}
+          onQuickAddPart={handleQuickAddPart}
+          onStepItemQty={handleStepItemQty}
+          onUpdateItemQty={handleUpdateItemQty}
+          onUpdateItemNotes={handleUpdateItemNotes}
+          getItemQuantityForPart={getItemQuantityForPart}
           partQuantityPcs={partQuantityPcs}
           onPartQuantityChange={setPartQuantityPcs}
           selectedMaterial={selectedMaterial}

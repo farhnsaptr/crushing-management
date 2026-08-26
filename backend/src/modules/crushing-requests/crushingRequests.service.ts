@@ -25,6 +25,18 @@ export interface CreateCrushingRequestDto {
   items: CreateRequestItemDto[];
 }
 
+export interface ApproveItemAdjustmentDto {
+  id: string;
+  verified_quantity_pcs?: number;
+  verified_weight_kg?: number;
+  adjustment_notes?: string;
+}
+
+export interface ApproveCrushingRequestDto {
+  notes?: string;
+  items?: ApproveItemAdjustmentDto[];
+}
+
 export interface CrushingRequestRow extends RowDataPacket {
   id: string;
   request_number: string;
@@ -40,11 +52,13 @@ export interface CrushingRequestRow extends RowDataPacket {
   request_type: 'part_ng' | 'runner_ng' | 'mixed';
   shift: 'Pagi' | 'Malam';
   request_date: string;
-  status: 'pending' | 'approved' | 'rejected';
+  status: 'pending' | 'approved';
   rejection_reason?: string | null;
   validated_by?: string | null;
   validator_name?: string | null;
   validated_at?: string | null;
+  submitted_total_weight_kg: number;
+  submitted_total_pcs: number;
   total_weight_kg: number;
   total_pcs: number;
   notes?: string | null;
@@ -66,16 +80,43 @@ export interface CrushingRequestItemRow extends RowDataPacket {
   berat_part_gr_snapshot: number | null;
   quantity_pcs: number;
   weight_kg: number;
+  verified_quantity_pcs: number | null;
+  verified_weight_kg: number | null;
+  adjustment_notes: string | null;
   notes: string | null;
   created_at: string;
   image_url?: string | null;
 }
 
+function getBackendAutoShiftAndDate(): { shift: 'Pagi' | 'Malam'; date: string } {
+  const now = new Date();
+  const hour = now.getHours();
+
+  let shift: 'Pagi' | 'Malam';
+  const targetDate = new Date(now);
+
+  if (hour >= 20) {
+    shift = 'Malam';
+  } else if (hour < 7) {
+    shift = 'Malam';
+    targetDate.setDate(targetDate.getDate() - 1);
+  } else {
+    shift = 'Pagi';
+  }
+
+  const year = targetDate.getFullYear();
+  const month = String(targetDate.getMonth() + 1).padStart(2, '0');
+  const day = String(targetDate.getDate()).padStart(2, '0');
+  const date = `${year}-${month}-${day}`;
+
+  return { shift, date };
+}
+
 export class CrushingRequestsService {
   private static generateRequestNumber(dateStr: string): string {
     const cleanDate = dateStr.replace(/-/g, '');
-    const randomSuffix = Math.floor(1000 + Math.random() * 9000);
-    return `REQ-${cleanDate}-${randomSuffix}`;
+    const rand = Math.floor(1000 + Math.random() * 9000);
+    return `REQ-${cleanDate}-${rand}`;
   }
 
   static async createRequest(user: JwtPayloadUser, dto: CreateCrushingRequestDto) {
@@ -93,8 +134,15 @@ export class CrushingRequestsService {
       throw new Error('Departemen pengirim tidak ditemukan pada akun Anda');
     }
 
+    // Auto-calculate shift and date based on current operational server time
+    const autoShiftDate = getBackendAutoShiftAndDate();
+    const finalShift: 'Pagi' | 'Malam' =
+      user.role === 'pengirim' ? autoShiftDate.shift : dto.shift === 'Malam' ? 'Malam' : 'Pagi';
+    const finalRequestDate: string =
+      user.role === 'pengirim' ? autoShiftDate.date : dto.request_date || autoShiftDate.date;
+
     const requestId = randomUUID();
-    const requestNumber = this.generateRequestNumber(dto.request_date);
+    const requestNumber = this.generateRequestNumber(finalRequestDate);
 
     // Process & calculate items in backend (AGENTS.md rule 4)
     let totalWeightKg = 0;
@@ -203,11 +251,11 @@ export class CrushingRequestsService {
         ? 'runner_ng'
         : 'mixed');
 
-    // Insert Header
+    // Insert Header with submitted totals preserved
     await pool.query(
       `INSERT INTO crushing_requests
-       (id, request_number, sender_id, factory_id, department_id, request_type, shift, request_date, status, total_weight_kg, total_pcs, notes)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?)`,
+       (id, request_number, sender_id, factory_id, department_id, request_type, shift, request_date, status, submitted_total_weight_kg, submitted_total_pcs, total_weight_kg, total_pcs, notes)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?)`,
       [
         requestId,
         requestNumber,
@@ -215,8 +263,10 @@ export class CrushingRequestsService {
         factoryId,
         departmentId,
         inferredType,
-        dto.shift,
-        dto.request_date,
+        finalShift,
+        finalRequestDate,
+        Number(totalWeightKg.toFixed(2)),
+        totalPcs,
         Number(totalWeightKg.toFixed(2)),
         totalPcs,
         dto.notes || null,
@@ -259,8 +309,8 @@ export class CrushingRequestsService {
       senderName: user.full_name,
       totalWeightKg,
       totalPcs,
-      shift: dto.shift,
-      status: 'pending',
+      factoryId,
+      departmentId,
     });
 
     return created;
@@ -269,7 +319,7 @@ export class CrushingRequestsService {
   static async listRequests(
     user: JwtPayloadUser,
     params: {
-      status?: 'pending' | 'approved' | 'rejected' | 'all';
+      status?: 'pending' | 'approved' | 'all';
       startDate?: string;
       endDate?: string;
       department_id?: string;
@@ -286,7 +336,7 @@ export class CrushingRequestsService {
     let whereClause = 'WHERE 1=1';
     const queryParams: any[] = [];
 
-    // Role-based sender isolation
+    // Role-based filtering
     if (user.role === 'pengirim') {
       whereClause += ' AND r.sender_id = ?';
       queryParams.push(user.id);
@@ -334,8 +384,9 @@ export class CrushingRequestsService {
         r.id, r.request_number, r.sender_id, u.full_name AS sender_name, u.username AS sender_username,
         r.factory_id, f.name AS factory_name, f.code AS factory_code,
         r.department_id, d.name AS department_name, d.code AS department_code,
-        r.request_type, r.shift, r.request_date, r.status, r.rejection_reason,
+        r.request_type, r.shift, r.request_date, r.status,
         r.validated_by, v.full_name AS validator_name, r.validated_at,
+        r.submitted_total_weight_kg, r.submitted_total_pcs,
         r.total_weight_kg, r.total_pcs, r.notes, r.created_at, r.updated_at,
         (SELECT COUNT(*) FROM crushing_request_items WHERE request_id = r.id) AS item_count
        FROM crushing_requests r
@@ -366,8 +417,9 @@ export class CrushingRequestsService {
         r.id, r.request_number, r.sender_id, u.full_name AS sender_name, u.username AS sender_username,
         r.factory_id, f.name AS factory_name, f.code AS factory_code,
         r.department_id, d.name AS department_name, d.code AS department_code,
-        r.request_type, r.shift, r.request_date, r.status, r.rejection_reason,
+        r.request_type, r.shift, r.request_date, r.status,
         r.validated_by, v.full_name AS validator_name, r.validated_at,
+        r.submitted_total_weight_kg, r.submitted_total_pcs,
         r.total_weight_kg, r.total_pcs, r.notes, r.created_at, r.updated_at
        FROM crushing_requests r
        JOIN users u ON r.sender_id = u.id
@@ -379,14 +431,14 @@ export class CrushingRequestsService {
     );
 
     if (rows.length === 0) {
-      throw new Error('Tiket request tidak ditemukan');
+      throw new Error('Pengajuan pengiriman tidak ditemukan');
     }
 
     const request = rows[0];
 
     // Access control: pengirim only sees own requests
     if (user.role === 'pengirim' && request.sender_id !== user.id) {
-      throw new Error('Akses ditolak. Anda tidak memiliki izin melihat tiket ini.');
+      throw new Error('Akses ditolak. Anda tidak memiliki izin melihat pengiriman ini.');
     }
 
     const [items] = await pool.query<CrushingRequestItemRow[]>(
@@ -394,7 +446,9 @@ export class CrushingRequestsService {
         i.id, i.request_id, i.item_type, i.master_part_id, i.material_id,
         i.part_number_snapshot, i.part_name_snapshot, i.model_snapshot,
         i.material_name_snapshot, i.berat_part_gr_snapshot,
-        i.quantity_pcs, i.weight_kg, i.notes, i.created_at,
+        i.quantity_pcs, i.weight_kg,
+        i.verified_quantity_pcs, i.verified_weight_kg, i.adjustment_notes,
+        i.notes, i.created_at,
         mp.image_url
        FROM crushing_request_items i
        LEFT JOIN master_parts mp ON (i.master_part_id = mp.id OR (i.master_part_id IS NULL AND i.part_number_snapshot = mp.part_number))
@@ -409,25 +463,118 @@ export class CrushingRequestsService {
     };
   }
 
-  static async approveRequest(requestId: string, validatorUser: JwtPayloadUser, notes?: string) {
+  /**
+   * Operator verification & approval with physical discrepancy adjustments
+   */
+  static async approveRequest(
+    requestId: string,
+    validatorUser: JwtPayloadUser,
+    payload?: ApproveCrushingRequestDto
+  ) {
     const request = await this.getRequestById(requestId, validatorUser);
 
     if (request.status !== 'pending') {
-      throw new Error(`Tiket request tidak dapat disetujui karena statusnya sudah '${request.status}'`);
+      throw new Error(`Pengiriman tidak dapat disetujui karena statusnya sudah '${request.status}'`);
     }
 
-    // 1. Update crushing_requests status
+    const itemAdjustments = payload?.items || [];
+    const adjMap = new Map<string, ApproveItemAdjustmentDto>();
+    for (const adj of itemAdjustments) {
+      adjMap.set(adj.id, adj);
+    }
+
+    let finalVerifiedTotalWeight = 0;
+    let finalVerifiedTotalPcs = 0;
+
+    // 1. Process and update each item's verified values
+    const verifiedItemsForTransaction: Array<{
+      item: CrushingRequestItemRow;
+      verifiedQty: number;
+      verifiedWeight: number;
+      adjustmentNotes: string | null;
+    }> = [];
+
+    for (const item of request.items) {
+      const adj = adjMap.get(item.id);
+
+      let verifiedQty: number;
+      let verifiedWeight: number;
+      let adjNotes: string | null = null;
+
+      if (item.item_type === 'part_ng') {
+        const beratGr = Number(item.berat_part_gr_snapshot) || 0;
+        if (adj && typeof adj.verified_quantity_pcs === 'number') {
+          verifiedQty = Math.max(0, adj.verified_quantity_pcs);
+        } else {
+          verifiedQty = item.quantity_pcs;
+        }
+
+        if (adj && typeof adj.verified_weight_kg === 'number') {
+          verifiedWeight = Math.max(0, Number(adj.verified_weight_kg.toFixed(2)));
+        } else {
+          verifiedWeight = beratGr > 0 ? Number(((verifiedQty * beratGr) / 1000).toFixed(2)) : item.weight_kg;
+        }
+
+        adjNotes = adj?.adjustment_notes?.trim() || null;
+      } else {
+        // runner_ng
+        verifiedQty = item.quantity_pcs || 0;
+        if (adj && typeof adj.verified_weight_kg === 'number') {
+          verifiedWeight = Math.max(0, Number(adj.verified_weight_kg.toFixed(2)));
+        } else {
+          verifiedWeight = item.weight_kg;
+        }
+        adjNotes = adj?.adjustment_notes?.trim() || null;
+      }
+
+      finalVerifiedTotalWeight += verifiedWeight;
+      finalVerifiedTotalPcs += verifiedQty;
+
+      // Update item in database
+      await pool.query(
+        `UPDATE crushing_request_items
+         SET verified_quantity_pcs = ?, verified_weight_kg = ?, adjustment_notes = ?
+         WHERE id = ?`,
+        [verifiedQty, verifiedWeight, adjNotes, item.id]
+      );
+
+      verifiedItemsForTransaction.push({
+        item,
+        verifiedQty,
+        verifiedWeight,
+        adjustmentNotes: adjNotes,
+      });
+    }
+
+    // 2. Update crushing_requests status & verified totals
     await pool.query(
       `UPDATE crushing_requests
-       SET status = 'approved', validated_by = ?, validated_at = CURRENT_TIMESTAMP, notes = COALESCE(?, notes)
+       SET status = 'approved',
+           total_weight_kg = ?,
+           total_pcs = ?,
+           validated_by = ?,
+           validated_at = CURRENT_TIMESTAMP,
+           notes = COALESCE(?, notes)
        WHERE id = ?`,
-      [validatorUser.id, notes || null, requestId]
+      [
+        Number(finalVerifiedTotalWeight.toFixed(2)),
+        finalVerifiedTotalPcs,
+        validatorUser.id,
+        payload?.notes || null,
+        requestId,
+      ]
     );
 
-    // 2. Automatically generate records in ng_transactions and runner_material_transactions
-    for (const item of request.items) {
-      if (item.item_type === 'part_ng' && item.master_part_id) {
+    // 3. Automatically generate records in ng_transactions and runner_material_transactions using VERIFIED counts
+    for (const { item, verifiedQty, verifiedWeight, adjustmentNotes } of verifiedItemsForTransaction) {
+      if (item.item_type === 'part_ng' && item.master_part_id && verifiedQty > 0) {
         const transId = randomUUID();
+        const noteText = adjustmentNotes
+          ? `[Pengiriman ${request.request_number}] ${adjustmentNotes}`
+          : item.notes
+          ? `[Pengiriman ${request.request_number}] ${item.notes}`
+          : `Pengiriman: ${request.request_number}`;
+
         await pool.query(
           `INSERT INTO ng_transactions
            (id, master_part_id, request_id, department_id, factory_id, part_number_snapshot, part_name_snapshot, model_snapshot, berat_part_gr_snapshot, quantity_pcs, shift, transaction_date, input_by, notes)
@@ -442,14 +589,14 @@ export class CrushingRequestsService {
             item.part_name_snapshot,
             item.model_snapshot,
             item.berat_part_gr_snapshot,
-            item.quantity_pcs,
+            verifiedQty,
             request.shift,
             request.request_date,
             request.sender_id,
-            item.notes ? `[Tiket ${request.request_number}] ${item.notes}` : `Tiket: ${request.request_number}`,
+            noteText,
           ]
         );
-      } else if (item.item_type === 'runner_ng') {
+      } else if (item.item_type === 'runner_ng' && verifiedWeight > 0) {
         const runnerId = randomUUID();
         await pool.query(
           `INSERT INTO runner_material_transactions
@@ -462,11 +609,11 @@ export class CrushingRequestsService {
             request.department_id,
             request.factory_id,
             item.material_name_snapshot || 'Runner Material',
-            item.quantity_pcs || 0,
-            item.weight_kg,
+            verifiedQty,
+            verifiedWeight,
             request.request_date,
             request.shift,
-            `Tiket: ${request.request_number}`,
+            `Pengiriman: ${request.request_number}`,
           ]
         );
       }
@@ -480,42 +627,38 @@ export class CrushingRequestsService {
       requestNumber: request.request_number,
       senderId: request.sender_id,
       validatorName: validatorUser.full_name,
-      totalWeightKg: request.total_weight_kg,
+      totalWeightKg: Number(finalVerifiedTotalWeight.toFixed(2)),
+      totalPcs: finalVerifiedTotalPcs,
     });
 
     return updated;
   }
 
-  static async rejectRequest(requestId: string, validatorUser: JwtPayloadUser, rejectionReason: string) {
-    if (!rejectionReason || rejectionReason.trim() === '') {
-      throw new Error('Alasan penolakan tiket wajib diisi');
-    }
+  /**
+   * Cancel / Delete a pending request (Undo functionality)
+   */
+  static async cancelRequest(requestId: string, user: JwtPayloadUser) {
+    const request = await this.getRequestById(requestId, user);
 
-    const request = await this.getRequestById(requestId, validatorUser);
+    if (user.role === 'pengirim' && request.sender_id !== user.id) {
+      throw new Error('Anda tidak memiliki akses untuk membatalkan pengiriman ini');
+    }
 
     if (request.status !== 'pending') {
-      throw new Error(`Tiket request tidak dapat ditolak karena statusnya sudah '${request.status}'`);
+      throw new Error(`Pengiriman tidak dapat dibatalkan karena statusnya sudah '${request.status}'`);
     }
 
-    await pool.query(
-      `UPDATE crushing_requests
-       SET status = 'rejected', rejection_reason = ?, validated_by = ?, validated_at = CURRENT_TIMESTAMP
-       WHERE id = ?`,
-      [rejectionReason.trim(), validatorUser.id, requestId]
-    );
-
-    const updated = await this.getRequestById(requestId, validatorUser);
+    await pool.query('DELETE FROM crushing_requests WHERE id = ?', [requestId]);
 
     // SSE Broadcast
-    broadcastSseEvent('crushing_request_rejected', {
+    broadcastSseEvent('crushing_request_cancelled', {
       requestId,
       requestNumber: request.request_number,
       senderId: request.sender_id,
-      validatorName: validatorUser.full_name,
-      rejectionReason: rejectionReason.trim(),
+      cancelledBy: user.full_name,
     });
 
-    return updated;
+    return { id: requestId, request_number: request.request_number, cancelled: true };
   }
 
   /**

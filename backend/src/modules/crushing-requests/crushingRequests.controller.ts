@@ -84,16 +84,16 @@ export class CrushingRequestsController {
       }
 
       const id = String(req.params.id);
-      const { notes } = req.body;
+      const { notes, items } = req.body;
 
-      const updated = await CrushingRequestsService.approveRequest(id, req.user, notes);
-      sendSuccess(res, updated, 'Tiket request berhasil disetujui & tercatat ke sistem crushing');
+      const updated = await CrushingRequestsService.approveRequest(id, req.user, { notes, items });
+      sendSuccess(res, updated, 'Pengiriman berhasil diverifikasi, disetujui & disinkronkan ke sistem crushing');
     } catch (error: any) {
-      sendError(res, error.message || 'Gagal menyetujui tiket request', 400);
+      sendError(res, error.message || 'Gagal menyetujui pengiriman', 400);
     }
   }
 
-  static async rejectRequest(req: AuthenticatedRequest, res: Response): Promise<void> {
+  static async cancelRequest(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
       if (!req.user) {
         sendError(res, 'Unauthorized', 401);
@@ -101,17 +101,10 @@ export class CrushingRequestsController {
       }
 
       const id = String(req.params.id);
-      const { rejection_reason } = req.body;
-
-      if (!rejection_reason || rejection_reason.trim() === '') {
-        sendError(res, 'Alasan penolakan wajib diisi', 400);
-        return;
-      }
-
-      const updated = await CrushingRequestsService.rejectRequest(id, req.user, rejection_reason);
-      sendSuccess(res, updated, 'Tiket request berhasil ditolak');
+      const result = await CrushingRequestsService.cancelRequest(id, req.user);
+      sendSuccess(res, result, 'Pengiriman berhasil dibatalkan');
     } catch (error: any) {
-      sendError(res, error.message || 'Gagal menolak tiket request', 400);
+      sendError(res, error.message || 'Gagal membatalkan pengiriman', 400);
     }
   }
 

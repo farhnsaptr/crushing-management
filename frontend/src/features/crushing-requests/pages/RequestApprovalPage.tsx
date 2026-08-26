@@ -2,7 +2,6 @@ import React from 'react';
 import { useRequestApproval } from '../hooks/useRequestApproval';
 import { PendingApprovalTable } from '../components/PendingApprovalTable';
 import { RequestDetailModal } from '../components/RequestDetailModal';
-import { RejectReasonModal } from '../components/RejectReasonModal';
 import { Toast } from '../../../components/common/Toast';
 import { ClipboardCheck } from 'lucide-react';
 
@@ -28,12 +27,6 @@ export const RequestApprovalPage: React.FC = () => {
     isActionLoading,
     handleOpenDetailModal,
     handleApprove,
-    isRejectModalOpen,
-    setIsRejectModalOpen,
-    rejectionReason,
-    setRejectionReason,
-    handleOpenRejectModal,
-    handleConfirmReject,
     fetchRequests,
     toast,
     setToast,
@@ -76,7 +69,7 @@ export const RequestApprovalPage: React.FC = () => {
               Verifikasi Permintaan Pengiriman
             </h1>
             <p style={{ fontSize: '0.85rem', color: 'var(--text-muted, #64748b)' }}>
-              Validasi fisik vs sistem dari tiket pengiriman part & runner NG oleh departemen pengirim.
+              Validasi fisik aktual vs pengajuan sistem dari pengiriman part & runner NG oleh departemen pengirim.
             </p>
           </div>
         </div>
@@ -98,33 +91,19 @@ export const RequestApprovalPage: React.FC = () => {
         totalRecords={totalRecords}
         isLoading={isLoading}
         onViewDetail={handleOpenDetailModal}
-        onQuickApprove={(id) => handleApprove(id)}
-        onQuickReject={(req) => handleOpenRejectModal(req)}
         isActionLoading={isActionLoading}
         onRefresh={fetchRequests}
       />
 
-      {/* Request Detail & Verification Modal */}
+      {/* Request Detail & Verification Modal with physical adjustments */}
       <RequestDetailModal
         isOpen={isDetailModalOpen}
         onClose={() => setIsDetailModalOpen(false)}
         request={selectedRequest}
         isLoading={isLoadingDetail}
         isOperatorOrAdmin={true}
-        onApprove={(id) => handleApprove(id)}
-        onReject={(req) => handleOpenRejectModal(req)}
+        onApprove={handleApprove}
         isActionLoading={isActionLoading}
-      />
-
-      {/* Reject Reason Confirmation Modal */}
-      <RejectReasonModal
-        isOpen={isRejectModalOpen}
-        onClose={() => setIsRejectModalOpen(false)}
-        request={selectedRequest}
-        rejectionReason={rejectionReason}
-        onRejectionReasonChange={setRejectionReason}
-        onConfirmReject={handleConfirmReject}
-        isLoading={isActionLoading}
       />
     </div>
   );

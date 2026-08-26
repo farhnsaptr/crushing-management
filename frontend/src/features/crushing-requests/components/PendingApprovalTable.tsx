@@ -8,10 +8,8 @@ import { Input } from '../../../components/common/Input';
 import {
   Clock,
   CheckCircle2,
-  XCircle,
   Eye,
   Check,
-  X,
   Search,
   ChevronLeft,
   ChevronRight,
@@ -19,13 +17,14 @@ import {
   Network,
   Scale,
   RefreshCw,
+  SlidersHorizontal,
 } from 'lucide-react';
 
 interface PendingApprovalTableProps {
   requests: CrushingRequest[];
   departments: Department[];
-  statusFilter: 'pending' | 'approved' | 'rejected' | 'all';
-  onStatusFilterChange: (status: 'pending' | 'approved' | 'rejected' | 'all') => void;
+  statusFilter: 'pending' | 'approved' | 'all';
+  onStatusFilterChange: (status: 'pending' | 'approved' | 'all') => void;
   selectedDeptId: string;
   onSelectDeptId: (deptId: string) => void;
   searchQuery: string;
@@ -36,8 +35,6 @@ interface PendingApprovalTableProps {
   totalRecords: number;
   isLoading: boolean;
   onViewDetail: (req: CrushingRequest) => void;
-  onQuickApprove: (id: string) => void;
-  onQuickReject: (req: CrushingRequest) => void;
   isActionLoading: boolean;
   onRefresh: () => void;
 }
@@ -57,8 +54,6 @@ export const PendingApprovalTable: React.FC<PendingApprovalTableProps> = ({
   totalRecords,
   isLoading,
   onViewDetail,
-  onQuickApprove,
-  onQuickReject,
   isActionLoading,
   onRefresh,
 }) => {
@@ -73,22 +68,13 @@ export const PendingApprovalTable: React.FC<PendingApprovalTableProps> = ({
             </div>
           </Badge>
         );
-      case 'rejected':
-        return (
-          <Badge variant="danger" size="md">
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-              <XCircle size={13} />
-              <span>Ditolak</span>
-            </div>
-          </Badge>
-        );
       case 'pending':
       default:
         return (
           <Badge variant="warning" size="md">
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
               <Clock size={13} />
-              <span>Menunggu Validasi</span>
+              <span>Menunggu Verifikasi</span>
             </div>
           </Badge>
         );
@@ -96,7 +82,7 @@ export const PendingApprovalTable: React.FC<PendingApprovalTableProps> = ({
   };
 
   const totalPages = Math.ceil(totalRecords / limit) || 1;
-  const startNumber = (page - 1) * limit + 1;
+  const startNumber = totalRecords === 0 ? 0 : (page - 1) * limit + 1;
   const endNumber = Math.min(page * limit, totalRecords);
 
   return (
@@ -118,10 +104,9 @@ export const PendingApprovalTable: React.FC<PendingApprovalTableProps> = ({
           >
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
               {[
-                { id: 'pending', label: 'Menunggu Verifikasi (Pending)' },
-                { id: 'approved', label: 'Sudah Disetujui (Approved)' },
-                { id: 'rejected', label: 'Ditolak (Rejected)' },
-                { id: 'all', label: 'Semua Tiket' },
+                { id: 'pending', label: 'Menunggu Verifikasi Fisik' },
+                { id: 'approved', label: 'Sudah Disetujui & Divalidasi' },
+                { id: 'all', label: 'Semua Pengiriman' },
               ].map((tab) => (
                 <button
                   key={tab.id}
@@ -149,8 +134,8 @@ export const PendingApprovalTable: React.FC<PendingApprovalTableProps> = ({
             </div>
 
             <Button
-              variant="outline"
               size="sm"
+              variant="outline"
               onClick={onRefresh}
               isLoading={isLoading}
               leftIcon={<RefreshCw size={14} />}
@@ -159,11 +144,11 @@ export const PendingApprovalTable: React.FC<PendingApprovalTableProps> = ({
             </Button>
           </div>
 
-          {/* Department Filter & Search Bar */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-            <div style={{ flex: 1, minWidth: '240px', maxWidth: '380px' }}>
+          {/* Search & Department Filters */}
+          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
+            <div style={{ flex: '1 1 280px' }}>
               <Input
-                placeholder="Cari no. tiket, nama pengirim, departemen..."
+                placeholder="Cari nomor pengiriman, pengirim, atau departemen..."
                 value={searchQuery}
                 onChange={(e) => {
                   onSearchQueryChange(e.target.value);
@@ -173,7 +158,7 @@ export const PendingApprovalTable: React.FC<PendingApprovalTableProps> = ({
               />
             </div>
 
-            <div style={{ width: '240px' }}>
+            <div style={{ flex: '0 1 240px' }}>
               <select
                 value={selectedDeptId}
                 onChange={(e) => {
@@ -182,17 +167,17 @@ export const PendingApprovalTable: React.FC<PendingApprovalTableProps> = ({
                 }}
                 style={{
                   width: '100%',
-                  padding: '0.6rem 0.75rem',
+                  padding: '0.6rem 0.85rem',
                   borderRadius: 'var(--radius-md, 8px)',
                   border: '1px solid var(--border-color, #cbd5e1)',
                   backgroundColor: 'var(--bg-card, #ffffff)',
                   color: 'var(--text-main, #0f172a)',
-                  fontSize: '0.85rem',
+                  fontSize: '0.875rem',
                   fontWeight: 600,
                   outline: 'none',
                 }}
               >
-                <option value="">-- Filter Semua Departemen --</option>
+                <option value="">Semua Departemen Asal</option>
                 {departments.map((d) => (
                   <option key={d.id} value={d.id}>
                     {d.name} ({d.code})
@@ -204,35 +189,23 @@ export const PendingApprovalTable: React.FC<PendingApprovalTableProps> = ({
         </div>
       </Card>
 
-      {/* Requests Table Card */}
-      <Card
-        title={
-          statusFilter === 'pending'
-            ? 'Tiket Pengiriman Menunggu Verifikasi Operator'
-            : statusFilter === 'approved'
-            ? 'Daftar Tiket Telah Disetujui'
-            : statusFilter === 'rejected'
-            ? 'Daftar Tiket Ditolak'
-            : 'Seluruh Riwayat Tiket Pengiriman'
-        }
-        subtitle={`Ditemukan ${totalRecords} data tiket pengiriman`}
-      >
-        {isLoading ? (
-          <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted, #64748b)' }}>
-            Memuat data tiket pengiriman...
+      {/* Main Table Card */}
+      <Card>
+        {isLoading && requests.length === 0 ? (
+          <div style={{ padding: '3.5rem', textAlign: 'center', color: 'var(--text-muted, #64748b)' }}>
+            Memuat daftar pengiriman...
           </div>
         ) : requests.length === 0 ? (
-          <div
-            style={{
-              padding: '3.5rem 1.5rem',
-              textAlign: 'center',
-              color: 'var(--text-muted, #64748b)',
-              backgroundColor: 'var(--bg-main, #f8fafc)',
-              borderRadius: 'var(--radius-md, 8px)',
-              border: '1px dashed var(--border-color, #cbd5e1)',
-            }}
-          >
-            Tidak ada tiket pengiriman ditemukan untuk filter saat ini.
+          <div style={{ padding: '3.5rem', textAlign: 'center', color: 'var(--text-muted, #64748b)' }}>
+            <Clock size={40} style={{ opacity: 0.35, marginBottom: '0.75rem' }} />
+            <div style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--text-main, #0f172a)' }}>
+              Tidak ada pengiriman yang ditemukan
+            </div>
+            <div style={{ fontSize: '0.85rem', marginTop: '0.25rem' }}>
+              {statusFilter === 'pending'
+                ? 'Semua pengiriman masuk telah diverifikasi dan disetujui!'
+                : 'Coba ubah kata kunci pencarian atau filter departemen di atas.'}
+            </div>
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -241,62 +214,72 @@ export const PendingApprovalTable: React.FC<PendingApprovalTableProps> = ({
                 <thead>
                   <tr
                     style={{
-                      backgroundColor: 'var(--bg-main, #f1f5f9)',
+                      borderBottom: '2px solid var(--border-color, #e2e8f0)',
                       textAlign: 'left',
                       color: 'var(--text-muted, #475569)',
-                      borderBottom: '1px solid var(--border-color, #cbd5e1)',
+                      backgroundColor: 'var(--bg-main, #f8fafc)',
                     }}
                   >
-                    <th style={{ padding: '0.75rem 0.85rem' }}>No. Tiket</th>
-                    <th style={{ padding: '0.75rem 0.85rem' }}>Pengirim</th>
-                    <th style={{ padding: '0.75rem 0.85rem' }}>Departemen & Pabrik</th>
+                    <th style={{ padding: '0.75rem 0.85rem', width: '50px' }}>No</th>
+                    <th style={{ padding: '0.75rem 0.85rem' }}>No. Pengiriman</th>
                     <th style={{ padding: '0.75rem 0.85rem' }}>Tanggal & Shift</th>
-                    <th style={{ padding: '0.75rem 0.85rem', textAlign: 'right' }}>Total Pcs</th>
+                    <th style={{ padding: '0.75rem 0.85rem' }}>Pengirim / Asal</th>
+                    <th style={{ padding: '0.75rem 0.85rem', textAlign: 'center' }}>Item Part</th>
                     <th style={{ padding: '0.75rem 0.85rem', textAlign: 'right' }}>Total Berat</th>
                     <th style={{ padding: '0.75rem 0.85rem', textAlign: 'center' }}>Status</th>
-                    <th style={{ padding: '0.75rem 0.85rem', textAlign: 'center' }}>Aksi Validasi</th>
+                    <th style={{ padding: '0.75rem 0.85rem', textAlign: 'center', width: '160px' }}>Aksi</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {requests.map((r) => (
+                  {requests.map((r, idx) => (
                     <tr
                       key={r.id}
                       style={{
                         borderBottom: '1px solid var(--border-color, #e2e8f0)',
-                        backgroundColor: r.status === 'pending' ? 'rgba(231, 97, 20, 0.02)' : 'transparent',
+                        transition: 'background-color 0.15s ease',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = 'var(--bg-main, #f8fafc)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = 'transparent';
                       }}
                     >
-                      <td style={{ padding: '0.75rem 0.85rem', fontWeight: 800, color: 'var(--primary-color, #008d51)' }}>
-                        <div>
-                          <code>{r.request_number}</code>
+                      <td style={{ padding: '0.75rem 0.85rem', color: 'var(--text-muted, #64748b)' }}>
+                        {startNumber + idx}
+                      </td>
+                      <td style={{ padding: '0.75rem 0.85rem' }}>
+                        <div style={{ fontWeight: 800, color: 'var(--primary-color, #008d51)' }}>
+                          {r.request_number}
                         </div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted, #64748b)', marginTop: '0.15rem' }}>
-                          {r.item_count || 1} item
+                        <div style={{ fontSize: '0.725rem', color: 'var(--text-muted, #64748b)' }}>
+                          {r.request_type === 'part_ng' ? 'Part NG' : r.request_type === 'runner_ng' ? 'Runner NG' : 'Campuran'}
                         </div>
                       </td>
                       <td style={{ padding: '0.75rem 0.85rem' }}>
-                        <div style={{ fontWeight: 700, color: 'var(--text-main, #0f172a)' }}>{r.sender_name}</div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted, #64748b)' }}>@{r.sender_username}</div>
-                      </td>
-                      <td style={{ padding: '0.75rem 0.85rem' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontWeight: 700 }}>
-                          <Network size={14} color="var(--primary-color, #008d51)" />
-                          <span>{r.department_name || '-'}</span>
+                        <div style={{ fontWeight: 700, color: 'var(--text-main, #0f172a)' }}>
+                          {r.request_date}
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.75rem', color: 'var(--text-muted, #64748b)' }}>
-                          <Building2 size={13} color="var(--secondary-color, #e76114)" />
-                          <span>{r.factory_name || '-'}</span>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted, #64748b)' }}>
+                          Shift {r.shift}
                         </div>
                       </td>
                       <td style={{ padding: '0.75rem 0.85rem' }}>
-                        <div style={{ fontWeight: 700, color: 'var(--text-main, #0f172a)' }}>{r.request_date}</div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted, #64748b)' }}>Shift {r.shift}</div>
+                        <div style={{ fontWeight: 700, color: 'var(--text-main, #0f172a)' }}>
+                          {r.sender_name || 'Pengirim'}
+                        </div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted, #64748b)', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                          <Building2 size={12} />
+                          <span>{r.department_name} ({r.factory_code || r.factory_name})</span>
+                        </div>
                       </td>
-                      <td style={{ padding: '0.75rem 0.85rem', textAlign: 'right', fontWeight: 700 }}>
-                        {r.total_pcs > 0 ? `${r.total_pcs} pcs` : '-'}
+                      <td style={{ padding: '0.75rem 0.85rem', textAlign: 'center' }}>
+                        <Badge variant="secondary" size="sm">
+                          {r.item_count || (r.items?.length || 0)} Item {r.total_pcs > 0 ? `(${r.total_pcs} pcs)` : ''}
+                        </Badge>
                       </td>
                       <td style={{ padding: '0.75rem 0.85rem', textAlign: 'right', fontWeight: 900, color: 'var(--secondary-color, #e76114)' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.25rem' }}>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
                           <Scale size={14} />
                           <span>{Number(r.total_weight_kg || 0).toFixed(2)} kg</span>
                         </div>
@@ -306,41 +289,32 @@ export const PendingApprovalTable: React.FC<PendingApprovalTableProps> = ({
                       </td>
                       <td style={{ padding: '0.75rem 0.85rem', textAlign: 'center' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}>
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            onClick={() => onViewDetail(r)}
-                            leftIcon={<Eye size={14} />}
-                            style={{ padding: '0.3rem 0.6rem', fontSize: '0.775rem' }}
-                          >
-                            Rincian
-                          </Button>
-
-                          {r.status === 'pending' && (
-                            <>
-                              <Button
-                                size="sm"
-                                variant="primary"
-                                onClick={() => onQuickApprove(r.id)}
-                                disabled={isActionLoading}
-                                title="Setujui Tiket"
-                                leftIcon={<Check size={14} />}
-                                style={{ padding: '0.3rem 0.6rem', fontSize: '0.775rem' }}
-                              >
-                                Setujui
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="danger"
-                                onClick={() => onQuickReject(r)}
-                                disabled={isActionLoading}
-                                title="Tolak Tiket"
-                                leftIcon={<X size={14} />}
-                                style={{ padding: '0.3rem 0.6rem', fontSize: '0.775rem' }}
-                              >
-                                Tolak
-                              </Button>
-                            </>
+                          {r.status === 'pending' ? (
+                            <Button
+                              size="sm"
+                              variant="primary"
+                              onClick={() => onViewDetail(r)}
+                              disabled={isActionLoading}
+                              style={{
+                                padding: '0.35rem 0.85rem',
+                                fontSize: '0.8rem',
+                                fontWeight: 800,
+                                backgroundColor: 'var(--primary-color, #008d51)',
+                                borderColor: 'var(--primary-color, #008d51)',
+                              }}
+                            >
+                              Verifikasi
+                            </Button>
+                          ) : (
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              onClick={() => onViewDetail(r)}
+                              leftIcon={<Eye size={14} />}
+                              style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem' }}
+                            >
+                              Rincian
+                            </Button>
                           )}
                         </div>
                       </td>

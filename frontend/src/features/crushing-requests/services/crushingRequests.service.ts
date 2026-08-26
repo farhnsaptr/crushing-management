@@ -47,18 +47,17 @@ export class CrushingRequestsService {
     return response.data.data;
   }
 
-  static async approveRequest(id: string, notes?: string): Promise<CrushingRequest> {
+  static async approveRequest(id: string, payload?: ApproveCrushingRequestPayload): Promise<CrushingRequest> {
     const response = await apiClient.patch<{ success: boolean; data: CrushingRequest }>(
       `/api/crushing-requests/${id}/approve`,
-      { notes }
+      payload
     );
     return response.data.data;
   }
 
-  static async rejectRequest(id: string, rejection_reason: string): Promise<CrushingRequest> {
-    const response = await apiClient.patch<{ success: boolean; data: CrushingRequest }>(
-      `/api/crushing-requests/${id}/reject`,
-      { rejection_reason }
+  static async cancelRequest(id: string): Promise<{ id: string; request_number: string; cancelled: boolean }> {
+    const response = await apiClient.delete<{ success: boolean; data: { id: string; request_number: string; cancelled: boolean } }>(
+      `/api/crushing-requests/${id}`
     );
     return response.data.data;
   }

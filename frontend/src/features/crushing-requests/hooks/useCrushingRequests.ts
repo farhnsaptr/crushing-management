@@ -60,18 +60,25 @@ export function useCrushingRequests() {
   // Ref to track draft auto-save debounce timer
   const saveDraftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // 1. Fetch Draft from Server (Redis) on mount / user load
+  // 1. Automatically sync shift & operational date based on real-time clock (every 10 seconds)
+  useEffect(() => {
+    const updateAutoShift = () => {
+      const current = getAutoShiftAndDate();
+      setShift((prevShift) => (prevShift !== current.shift ? current.shift : prevShift));
+      setRequestDate((prevDate) => (prevDate !== current.date ? current.date : prevDate));
+    };
+
+    updateAutoShift();
+    const interval = setInterval(updateAutoShift, 10000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // 2. Fetch Draft from Server (Redis) on mount / user load (restores items & notes)
   const fetchServerDraft = useCallback(async () => {
     if (!user?.id) return;
     try {
       const serverDraft = await CrushingRequestsService.getDraft();
       if (serverDraft) {
-        if (serverDraft.shift === 'Pagi' || serverDraft.shift === 'Malam') {
-          setShift(serverDraft.shift);
-        }
-        if (serverDraft.requestDate) {
-          setRequestDate(serverDraft.requestDate);
-        }
         if (typeof serverDraft.notes === 'string') {
           setNotes(serverDraft.notes);
         }
@@ -219,11 +226,126 @@ export function useCrushingRequests() {
     }
   };
 
-  // Add Item to Draft List
+  // 1-Click Quick Add Part directly to ticket items list
+  const handleQuickAddPart = useCallback((part: MasterPart, delta = 1) => {
+    const beratGr = Number(part.berat_part_gr) || 0;
+
+    setItems((prev) => {
+      const existingIdx = prev.findIndex(
+        (it) => it.item_type === 'part_ng' && it.master_part_id === part.id
+      );
+
+      if (existingIdx >= 0) {
+        const nextItems = [...prev];
+        const currentQty = nextItems[existingIdx].quantity_pcs || 0;
+        const newQty = Math.max(1, currentQty + delta);
+        const newWeight = Number(((newQty * beratGr) / 1000).toFixed(2));
+
+        nextItems[existingIdx] = {
+          ...nextItems[existingIdx],
+          part_number: nextItems[existingIdx].part_number || part.part_number,
+          model_code: nextItems[existingIdx].model_code || part.model_code,
+          image_url: nextItems[existingIdx].image_url || part.image_url,
+          berat_part_gr: beratGr,
+          quantity_pcs: newQty,
+          runner_weight_kg: newWeight,
+        };
+        return nextItems;
+      } else {
+        const initialQty = Math.max(1, delta);
+        const initialWeight = Number(((initialQty * beratGr) / 1000).toFixed(2));
+        return [
+          ...prev,
+          {
+            item_type: 'part_ng',
+            master_part_id: part.id,
+            material_name: part.part_name,
+            part_number: part.part_number,
+            model_code: part.model_code,
+            image_url: part.image_url,
+            berat_part_gr: beratGr,
+            quantity_pcs: initialQty,
+            runner_weight_kg: initialWeight,
+            notes: undefined,
+          },
+        ];
+      }
+    });
+
+    setToast({
+      type: 'success',
+      message: `Part '${part.part_name}' masuk ke rincian pengiriman.`,
+    });
+  }, []);
+
+  // Step Item Quantity (+ / -) in Ticket List
+  const handleStepItemQty = useCallback((index: number, delta: number) => {
+    setItems((prev) => {
+      if (index < 0 || index >= prev.length) return prev;
+      const target = prev[index];
+      const currentQty = target.quantity_pcs || 1;
+      const newQty = currentQty + delta;
+
+      if (newQty <= 0) {
+        return prev.filter((_, idx) => idx !== index);
+      }
+
+      const beratGr = target.berat_part_gr || 0;
+      const nextItems = [...prev];
+      nextItems[index] = {
+        ...target,
+        quantity_pcs: newQty,
+        runner_weight_kg: beratGr > 0 ? Number(((newQty * beratGr) / 1000).toFixed(2)) : target.runner_weight_kg,
+      };
+      return nextItems;
+    });
+  }, []);
+
+  // Update Item Quantity directly by input value in Ticket List
+  const handleUpdateItemQty = useCallback((index: number, newQty: number) => {
+    setItems((prev) => {
+      if (index < 0 || index >= prev.length) return prev;
+      const target = prev[index];
+      const validQty = Math.max(1, newQty);
+      const beratGr = target.berat_part_gr || 0;
+
+      const nextItems = [...prev];
+      nextItems[index] = {
+        ...target,
+        quantity_pcs: validQty,
+        runner_weight_kg: beratGr > 0 ? Number(((validQty * beratGr) / 1000).toFixed(2)) : target.runner_weight_kg,
+      };
+      return nextItems;
+    });
+  }, []);
+
+  // Update Item Defect Notes in Ticket List
+  const handleUpdateItemNotes = useCallback((index: number, newNotes: string) => {
+    setItems((prev) => {
+      if (index < 0 || index >= prev.length) return prev;
+      const nextItems = [...prev];
+      nextItems[index] = {
+        ...nextItems[index],
+        notes: newNotes,
+      };
+      return nextItems;
+    });
+  }, []);
+
+  // Get current quantity in ticket for a given part
+  const getItemQuantityForPart = useCallback(
+    (partId: string) => {
+      const found = items.find((it) => it.item_type === 'part_ng' && it.master_part_id === partId);
+      return found ? found.quantity_pcs : 0;
+    },
+    [items]
+  );
+
+  // Add Item to Draft List (Legacy/Runner Form Support)
   const handleAddItem = () => {
     if (itemType === 'part_ng') {
       if (!selectedPart) {
-        setToast({ type: 'error', message: 'Silakan pilih salah satu part dari grid terlebih dahulu.' });
+        setToast({ type: 'error', message: 'Silakan pilih salah satu part dari katalog terlebih dahulu.' });
         return;
       }
       const qty = typeof partQuantityPcs === 'number' ? partQuantityPcs : parseInt(partQuantityPcs, 10);
@@ -232,25 +354,10 @@ export function useCrushingRequests() {
         return;
       }
 
-      const calculatedWeight = Number(((qty * Number(selectedPart.berat_part_gr)) / 1000).toFixed(2));
-
-      setItems((prev) => [
-        ...prev,
-        {
-          item_type: 'part_ng',
-          master_part_id: selectedPart.id,
-          material_name: selectedPart.part_name,
-          quantity_pcs: qty,
-          runner_weight_kg: calculatedWeight,
-          notes: itemNotes.trim() || undefined,
-        },
-      ]);
-
-      // Reset item draft form
+      handleQuickAddPart(selectedPart, qty);
       setSelectedPart(null);
       setPartQuantityPcs(1);
       setItemNotes('');
-      setToast({ type: 'success', message: `Part '${selectedPart.part_name}' ditambahkan ke draf tiket.` });
     } else if (itemType === 'runner_ng') {
       const weight = typeof runnerWeightKg === 'number' ? runnerWeightKg : parseFloat(runnerWeightKg);
       if (!weight || weight <= 0) {
@@ -276,7 +383,7 @@ export function useCrushingRequests() {
       setSelectedMaterial(null);
       setRunnerWeightKg('');
       setItemNotes('');
-      setToast({ type: 'success', message: `Runner '${matName}' (${weight} kg) ditambahkan ke draf tiket.` });
+      setToast({ type: 'success', message: `Runner '${matName}' (${weight} kg) ditambahkan ke draf pengiriman.` });
     }
   };
 
@@ -300,7 +407,7 @@ export function useCrushingRequests() {
     setItems((prev) => [...prev, ...mapped]);
     setToast({
       type: 'success',
-      message: `${mapped.length} item material runner berhasil ditambahkan ke draf tiket.`,
+      message: `${mapped.length} item material runner berhasil ditambahkan ke draf pengiriman.`,
     });
   };
 
@@ -311,7 +418,7 @@ export function useCrushingRequests() {
   // Clear / Reset Draft
   const handleClearDraft = async () => {
     if (items.length > 0 || notes) {
-      if (!window.confirm('Apakah Anda yakin ingin mengosongkan draf tiket ini?')) {
+      if (!window.confirm('Apakah Anda yakin ingin mengosongkan draf pengiriman ini?')) {
         return;
       }
     }
@@ -328,41 +435,76 @@ export function useCrushingRequests() {
       console.warn('Failed to delete draft from server:', err);
     }
 
-    setToast({ type: 'info', message: 'Draf tiket pengiriman telah dikosongkan.' });
+    setToast({ type: 'info', message: 'Draf pengiriman telah dikosongkan.' });
   };
 
-  // Submit Request Ticket
+  // Submit Request with Undo Capability
   const handleSubmitRequest = async () => {
     if (items.length === 0) {
-      setToast({ type: 'error', message: 'Tambahkan minimal 1 item part atau runner ke daftar rincian tiket sebelum mengirim.' });
+      setToast({ type: 'error', message: 'Tambahkan minimal 1 item part atau runner ke daftar rincian pengiriman sebelum mengirim.' });
       return;
     }
+
+    const currentShiftDate = getAutoShiftAndDate();
+    const activeShift = currentShiftDate.shift;
+    const activeDate = currentShiftDate.date;
+
+    const backupItems = [...items];
+    const backupNotes = notes;
+    const backupShift = activeShift;
+    const backupDate = activeDate;
 
     setIsSubmitting(true);
     try {
       const newReq = await CrushingRequestsService.createRequest({
-        shift,
-        request_date: requestDate,
+        shift: activeShift,
+        request_date: activeDate,
         notes: notes.trim() || undefined,
         items,
       });
 
-      setToast({
-        type: 'success',
-        message: `Tiket request '${newReq.request_number}' berhasil dibuat! Menunggu validasi operator crushing.`,
-      });
-
-      // Clear form (backend automatically deletes Redis draft)
+      // Clear form
       setItems([]);
       setNotes('');
       setSelectedPart(null);
 
-      setActiveTab('history');
+      // Refresh history list in background
       fetchHistory();
+
+      // Show Success Toast with Interactive Undo Action
+      setToast({
+        type: 'success',
+        message: `Pengiriman '${newReq.request_number}' (${backupItems.length} item) berhasil dikirim!`,
+        durationMs: 7000,
+        action: {
+          label: 'Undo',
+          onClick: async () => {
+            try {
+              await CrushingRequestsService.cancelRequest(newReq.id);
+              // Restore backup draft state into form
+              setItems(backupItems);
+              setNotes(backupNotes);
+              setShift(backupShift);
+              setRequestDate(backupDate);
+              setActiveTab('create');
+              fetchHistory();
+              setToast({
+                type: 'info',
+                message: `Pengiriman '${newReq.request_number}' dibatalkan. Draf item telah dipulihkan.`,
+              });
+            } catch (err: any) {
+              setToast({
+                type: 'error',
+                message: err.response?.data?.message || err.message || 'Gagal membatalkan pengiriman',
+              });
+            }
+          },
+        },
+      });
     } catch (err: any) {
       setToast({
         type: 'error',
-        message: err.response?.data?.message || err.message || 'Gagal membuat tiket request',
+        message: err.response?.data?.message || err.message || 'Gagal membuat pengiriman',
       });
     } finally {
       setIsSubmitting(false);
@@ -379,7 +521,7 @@ export function useCrushingRequests() {
     } catch (err: any) {
       setToast({
         type: 'error',
-        message: err.response?.data?.message || err.message || 'Gagal memuat rincian tiket',
+        message: err.response?.data?.message || err.message || 'Gagal memuat detail pengiriman',
       });
     } finally {
       setIsLoadingDetail(false);
@@ -410,6 +552,11 @@ export function useCrushingRequests() {
     setItemType,
     selectedPart,
     handleSelectPart,
+    handleQuickAddPart,
+    handleStepItemQty,
+    handleUpdateItemQty,
+    handleUpdateItemNotes,
+    getItemQuantityForPart,
     partQuantityPcs,
     setPartQuantityPcs,
     selectedMaterial,

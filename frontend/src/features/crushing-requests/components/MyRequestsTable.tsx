@@ -83,9 +83,8 @@ export const MyRequestsTable: React.FC<MyRequestsTableProps> = ({
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
           {[
             { id: 'all', label: 'Semua Status' },
-            { id: 'pending', label: 'Menunggu Validasi' },
+            { id: 'pending', label: 'Menunggu Verifikasi' },
             { id: 'approved', label: 'Disetujui' },
-            { id: 'rejected', label: 'Ditolak' },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -113,13 +112,13 @@ export const MyRequestsTable: React.FC<MyRequestsTableProps> = ({
         </div>
 
         <div style={{ fontSize: '0.825rem', color: 'var(--text-muted, #64748b)' }}>
-          Total <strong>{total}</strong> Tiket
+          Total <strong>{total}</strong> Pengiriman
         </div>
       </div>
 
       {isLoading ? (
         <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted, #64748b)' }}>
-          Memuat riwayat pengajuan tiket...
+          Memuat riwayat pengiriman...
         </div>
       ) : requests.length === 0 ? (
         <div
@@ -132,7 +131,7 @@ export const MyRequestsTable: React.FC<MyRequestsTableProps> = ({
             border: '1px dashed var(--border-color, #cbd5e1)',
           }}
         >
-          Belum ada riwayat pengajuan tiket untuk filter ini.
+          Belum ada riwayat pengiriman untuk filter ini.
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -147,7 +146,7 @@ export const MyRequestsTable: React.FC<MyRequestsTableProps> = ({
                     borderBottom: '1px solid var(--border-color, #cbd5e1)',
                   }}
                 >
-                  <th style={{ padding: '0.65rem 0.85rem' }}>No. Tiket</th>
+                  <th style={{ padding: '0.65rem 0.85rem' }}>No. Pengiriman</th>
                   <th style={{ padding: '0.65rem 0.85rem' }}>Tanggal & Shift</th>
                   <th style={{ padding: '0.65rem 0.85rem' }}>Pabrik & Dept</th>
                   <th style={{ padding: '0.65rem 0.85rem', textAlign: 'right' }}>Total Pcs</th>

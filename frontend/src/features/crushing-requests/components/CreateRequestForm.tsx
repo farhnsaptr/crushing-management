@@ -1,19 +1,14 @@
 import React, { useState } from 'react';
-import { Card } from '../../../components/common/Card';
 import { Input } from '../../../components/common/Input';
 import { Button } from '../../../components/common/Button';
 import { Badge } from '../../../components/common/Badge';
 import { Spinner } from '../../../components/common/Spinner';
-import { SubmitConfirmModal } from './SubmitConfirmModal';
 import type { CreateRequestItemPayload } from '../types/crushingRequests.types';
 import type { MasterPart } from '../../master-parts/types/masterParts.types';
 import type { Material } from '../../materials/types/materials.types';
 import type { UserProfile } from '../../../context/AuthContext';
 import {
   PackagePlus,
-  Building2,
-  Network,
-  PlusCircle,
   Plus,
   Minus,
   Trash2,
@@ -22,13 +17,15 @@ import {
   Search,
   Scale,
   Package,
-  CheckCircle2,
   Sun,
   Moon,
   AlertCircle,
   X,
   RotateCcw,
   Check,
+  LayoutGrid,
+  List,
+  FileText,
 } from 'lucide-react';
 import { formatIndonesianDate } from '../../../config/shift.config';
 
@@ -45,6 +42,11 @@ interface CreateRequestFormProps {
   onItemTypeChange: (type: 'part_ng' | 'runner_ng') => void;
   selectedPart: MasterPart | null;
   onSelectPart: (part: MasterPart) => void;
+  onQuickAddPart?: (part: MasterPart, delta?: number) => void;
+  onStepItemQty?: (index: number, delta: number) => void;
+  onUpdateItemQty?: (index: number, qty: number) => void;
+  onUpdateItemNotes?: (index: number, notes: string) => void;
+  getItemQuantityForPart?: (partId: string) => number;
   partQuantityPcs: number | '';
   onPartQuantityChange: (qty: number | '') => void;
   selectedMaterial: Material | null;
@@ -80,27 +82,18 @@ export const CreateRequestForm: React.FC<CreateRequestFormProps> = ({
   notes,
   onNotesChange,
   items,
-  itemType,
-  onItemTypeChange,
-  selectedPart,
-  onSelectPart,
-  partQuantityPcs,
-  onPartQuantityChange,
-  selectedMaterial,
-  onSelectMaterial,
-  runnerWeightKg,
-  onRunnerWeightChange,
-  itemNotes,
-  onItemNotesChange,
+  onQuickAddPart,
+  onStepItemQty,
+  onUpdateItemQty,
+  onUpdateItemNotes,
+  getItemQuantityForPart,
   filteredParts,
   jenisOptions,
   selectedJenis,
   onSelectJenis,
-  availableMaterials,
   isLoadingParts,
   partSearchQuery,
   onPartSearchQueryChange,
-  onAddItem,
   onRemoveItem,
   onClearDraft,
   isSubmitting,
@@ -108,34 +101,19 @@ export const CreateRequestForm: React.FC<CreateRequestFormProps> = ({
   estimatedTotalWeightKg,
   estimatedTotalPcs,
 }) => {
-  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState<boolean>(false);
-
-  // Live calculated weight for currently selected part draft
-  const currentPartLiveWeightKg = selectedPart
-    ? Number(((Number(partQuantityPcs || 0) * Number(selectedPart.berat_part_gr)) / 1000).toFixed(2))
-    : 0;
+  const [catalogViewMode, setCatalogViewMode] = useState<'grid' | 'list'>('grid');
 
   const hasDraftContent = items.length > 0 || notes.trim() !== '';
 
-  const handleStepQty = (delta: number) => {
-    const current = typeof partQuantityPcs === 'number' ? partQuantityPcs : 0;
-    const nextVal = Math.max(1, current + delta);
-    onPartQuantityChange(nextVal);
-  };
-
-  const handleAddPresetQty = (amount: number) => {
-    const current = typeof partQuantityPcs === 'number' ? partQuantityPcs : 0;
-    onPartQuantityChange(current + amount);
-  };
-
-  const handleConfirmSubmit = () => {
-    setIsConfirmModalOpen(false);
-    onSubmitRequest();
+  const handleCardClick = (part: MasterPart) => {
+    if (onQuickAddPart) {
+      onQuickAddPart(part, 1);
+    }
   };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-      {/* Top Tablet Info Bar (Sender Identity, Shift, Date, Reset) */}
+      {/* Top Identity & Shift Bar */}
       <div
         style={{
           display: 'flex',
@@ -169,7 +147,7 @@ export const CreateRequestForm: React.FC<CreateRequestFormProps> = ({
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
               <span style={{ fontSize: '1rem', fontWeight: 900, color: 'var(--text-main, #0f172a)' }}>
-                Pengajuan Tiket Part NG
+                Pengajuan Pengiriman Part NG
               </span>
               <span style={{ fontSize: '0.8rem', color: 'var(--text-muted, #64748b)' }}>
                 • Pengirim: <strong>{user?.full_name}</strong> (@{user?.username})
@@ -181,21 +159,23 @@ export const CreateRequestForm: React.FC<CreateRequestFormProps> = ({
           </div>
         </div>
 
-        {/* Right Badges & Controls */}
+        {/* Right Shift & Reset Controls */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+          {/* Automatic Shift Indicator (Read-only for sender) */}
           <div
             style={{
               display: 'inline-flex',
               alignItems: 'center',
-              gap: '0.35rem',
-              padding: '0.3rem 0.7rem',
+              gap: '0.4rem',
+              padding: '0.35rem 0.8rem',
               borderRadius: '8px',
-              backgroundColor: shift === 'Pagi' ? 'rgba(245, 158, 11, 0.12)' : 'rgba(79, 70, 229, 0.12)',
-              border: `1px solid ${shift === 'Pagi' ? 'rgba(245, 158, 11, 0.3)' : 'rgba(79, 70, 229, 0.3)'}`,
-              color: shift === 'Pagi' ? '#d97706' : '#4338ca',
-              fontSize: '0.8rem',
+              backgroundColor: shift === 'Pagi' ? 'rgba(0, 141, 81, 0.1)' : 'rgba(231, 97, 20, 0.1)',
+              border: `1.5px solid ${shift === 'Pagi' ? 'rgba(0, 141, 81, 0.3)' : 'rgba(231, 97, 20, 0.3)'}`,
+              color: shift === 'Pagi' ? '#008d51' : '#e76114',
               fontWeight: 800,
+              fontSize: '0.8rem',
             }}
+            title="Shift ditentukan otomatis berdasarkan jam operasional sistem saat ini"
           >
             {shift === 'Pagi' ? <Sun size={14} /> : <Moon size={14} />}
             <span>Shift {shift}</span>
@@ -226,26 +206,26 @@ export const CreateRequestForm: React.FC<CreateRequestFormProps> = ({
               onClick={onClearDraft}
               leftIcon={<RotateCcw size={14} />}
               style={{ fontSize: '0.775rem' }}
-              title="Reset seluruh draf tiket"
+              title="Reset seluruh draf pengiriman"
             >
-              Reset Draf
+              Kosongkan Draf
             </Button>
           )}
         </div>
       </div>
 
-      {/* Main 2-Column Responsive Layout (Left: Catalog, Right: Sticky Input & Draft) */}
+      {/* Main 2-Column Responsive Layout */}
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'minmax(0, 1.2fr) minmax(360px, 1fr)',
+          gridTemplateColumns: 'minmax(0, 1.3fr) minmax(380px, 1fr)',
           gap: '1.25rem',
           alignItems: 'start',
         }}
       >
-        {/* ================= COLUMN 1: VISUAL CATALOG (LEFT) ================= */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          {/* Catalog Top Filter Row */}
+        {/* ================= COLUMN 1: KATALOG MASTER PART (LEFT) ================= */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+          {/* Catalog Filter & Search Row */}
           <div
             style={{
               padding: '0.75rem 1rem',
@@ -253,7 +233,7 @@ export const CreateRequestForm: React.FC<CreateRequestFormProps> = ({
               borderRadius: 'var(--radius-lg, 12px)',
               border: '1px solid var(--border-color, #e2e8f0)',
               display: 'grid',
-              gridTemplateColumns: '1.3fr 1fr',
+              gridTemplateColumns: '1.2fr 1fr auto',
               gap: '0.75rem',
               alignItems: 'center',
               boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
@@ -312,9 +292,59 @@ export const CreateRequestForm: React.FC<CreateRequestFormProps> = ({
                 </option>
               ))}
             </select>
+
+            {/* View Mode Switcher (Grid vs List) */}
+            <div
+              style={{
+                display: 'flex',
+                backgroundColor: '#f1f5f9',
+                padding: '3px',
+                borderRadius: '8px',
+                border: '1px solid #cbd5e1',
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => setCatalogViewMode('grid')}
+                style={{
+                  padding: '6px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  backgroundColor: catalogViewMode === 'grid' ? '#ffffff' : 'transparent',
+                  color: catalogViewMode === 'grid' ? '#0f172a' : '#64748b',
+                  boxShadow: catalogViewMode === 'grid' ? '0 1px 2px rgba(0,0,0,0.1)' : 'none',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+                title="Tampilan Grid Kartu"
+              >
+                <LayoutGrid size={16} />
+              </button>
+              <button
+                type="button"
+                onClick={() => setCatalogViewMode('list')}
+                style={{
+                  padding: '6px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  backgroundColor: catalogViewMode === 'list' ? '#ffffff' : 'transparent',
+                  color: catalogViewMode === 'list' ? '#0f172a' : '#64748b',
+                  boxShadow: catalogViewMode === 'list' ? '0 1px 2px rgba(0,0,0,0.1)' : 'none',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+                title="Tampilan List Baris"
+              >
+                <List size={16} />
+              </button>
+            </div>
           </div>
 
-          {/* Catalog Grid Cards List */}
+          {/* Catalog Content */}
           <div
             style={{
               backgroundColor: 'var(--bg-card, #ffffff)',
@@ -328,8 +358,8 @@ export const CreateRequestForm: React.FC<CreateRequestFormProps> = ({
               <span style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--text-main, #0f172a)' }}>
                 Katalog Master Part ({filteredParts.length} Item)
               </span>
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted, #64748b)' }}>
-                Klik kartu part untuk memilih
+              <span style={{ fontSize: '0.75rem', color: 'var(--secondary-color, #e76114)', fontWeight: 700 }}>
+                💡 Klik kartu part untuk langsung memasukkan ke rincian pengiriman
               </span>
             </div>
 
@@ -356,76 +386,81 @@ export const CreateRequestForm: React.FC<CreateRequestFormProps> = ({
                   Coba ubah kata kunci pencarian atau kategori filter jenis part.
                 </p>
               </div>
-            ) : (
+            ) : catalogViewMode === 'grid' ? (
+              /* GRID VIEW */
               <div
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))',
-                  gap: '1rem',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+                  gap: '0.85rem',
                 }}
               >
                 {filteredParts.map((part) => {
-                  const isSelected = selectedPart?.id === part.id;
+                  const currentQty = getItemQuantityForPart ? getItemQuantityForPart(part.id) : 0;
+                  const isInTicket = currentQty > 0;
+
                   return (
                     <div
                       key={part.id}
-                      onClick={() => onSelectPart(part)}
+                      onClick={() => handleCardClick(part)}
                       style={{
                         display: 'flex',
                         flexDirection: 'column',
-                        minHeight: '240px',
-                        backgroundColor: isSelected ? 'rgba(231, 97, 20, 0.08)' : 'var(--bg-card, #ffffff)',
-                        border: isSelected ? '2.5px solid var(--secondary-color, #e76114)' : '1.5px solid var(--border-color, #e2e8f0)',
+                        minHeight: '235px',
+                        backgroundColor: isInTicket ? 'rgba(0, 141, 81, 0.04)' : 'var(--bg-card, #ffffff)',
+                        border: isInTicket ? '2px solid #008d51' : '1.5px solid var(--border-color, #e2e8f0)',
                         borderRadius: 'var(--radius-lg, 12px)',
                         overflow: 'hidden',
                         cursor: 'pointer',
-                        transition: 'transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease',
+                        transition: 'all 0.15s ease',
                         position: 'relative',
-                        boxShadow: isSelected ? '0 6px 16px rgba(231, 97, 20, 0.25)' : '0 2px 6px rgba(0,0,0,0.04)',
+                        boxShadow: isInTicket ? '0 4px 12px rgba(0, 141, 81, 0.18)' : '0 2px 5px rgba(0,0,0,0.03)',
                       }}
                       onMouseEnter={(e) => {
-                        if (!isSelected) {
+                        if (!isInTicket) {
                           e.currentTarget.style.borderColor = 'var(--secondary-color, #e76114)';
                           e.currentTarget.style.transform = 'translateY(-2px)';
                           e.currentTarget.style.boxShadow = '0 6px 14px rgba(0,0,0,0.08)';
                         }
                       }}
                       onMouseLeave={(e) => {
-                        if (!isSelected) {
+                        if (!isInTicket) {
                           e.currentTarget.style.borderColor = 'var(--border-color, #e2e8f0)';
                           e.currentTarget.style.transform = 'translateY(0)';
-                          e.currentTarget.style.boxShadow = '0 2px 6px rgba(0,0,0,0.04)';
+                          e.currentTarget.style.boxShadow = '0 2px 5px rgba(0,0,0,0.03)';
                         }
                       }}
                     >
-                      {/* Selected Indicator Badge */}
-                      {isSelected && (
+                      {/* Active Quantity Badge in Top-Right */}
+                      {isInTicket && (
                         <div
                           style={{
                             position: 'absolute',
                             top: '8px',
                             right: '8px',
                             zIndex: 3,
-                            backgroundColor: 'var(--secondary-color, #e76114)',
+                            backgroundColor: '#008d51',
                             color: '#ffffff',
-                            borderRadius: '50%',
-                            width: '24px',
-                            height: '24px',
+                            borderRadius: '12px',
+                            padding: '0.2rem 0.55rem',
+                            fontSize: '0.725rem',
+                            fontWeight: 900,
                             display: 'flex',
                             alignItems: 'center',
-                            justifyContent: 'center',
-                            boxShadow: '0 2px 6px rgba(0,0,0,0.25)',
+                            gap: '0.25rem',
+                            boxShadow: '0 2px 6px rgba(0, 141, 81, 0.35)',
                           }}
                         >
-                          <Check size={15} strokeWidth={3} />
+                          <Check size={12} strokeWidth={3} />
+                          <span>{currentQty} pcs</span>
                         </div>
                       )}
 
-                      {/* Large Part Image Container (140px height) */}
+                      {/* Part Image Container */}
                       <div
                         style={{
                           width: '100%',
-                          height: '140px',
+                          height: '125px',
                           backgroundColor: '#f8fafc',
                           display: 'flex',
                           alignItems: 'center',
@@ -451,8 +486,8 @@ export const CreateRequestForm: React.FC<CreateRequestFormProps> = ({
                           />
                         ) : (
                           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', color: '#94a3b8', gap: '4px' }}>
-                            <Package size={36} style={{ opacity: 0.4 }} />
-                            <span style={{ fontSize: '0.725rem', fontWeight: 600 }}>Foto Part</span>
+                            <Package size={32} style={{ opacity: 0.4 }} />
+                            <span style={{ fontSize: '0.7rem', fontWeight: 600 }}>Foto Part</span>
                           </div>
                         )}
 
@@ -464,8 +499,8 @@ export const CreateRequestForm: React.FC<CreateRequestFormProps> = ({
                                 backgroundColor: 'rgba(15, 23, 42, 0.82)',
                                 color: '#ffffff',
                                 borderRadius: '4px',
-                                padding: '0.15rem 0.45rem',
-                                fontSize: '0.7rem',
+                                padding: '0.15rem 0.4rem',
+                                fontSize: '0.675rem',
                                 fontWeight: 800,
                               }}
                             >
@@ -476,18 +511,18 @@ export const CreateRequestForm: React.FC<CreateRequestFormProps> = ({
                       </div>
 
                       {/* Part Details Info */}
-                      <div style={{ padding: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.35rem', flex: 1 }}>
+                      <div style={{ padding: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.3rem', flex: 1 }}>
                         <div
                           style={{
                             fontWeight: 800,
-                            fontSize: '0.875rem',
+                            fontSize: '0.85rem',
                             color: 'var(--text-main, #0f172a)',
-                            lineHeight: '1.3',
+                            lineHeight: '1.25',
                             display: '-webkit-box',
                             WebkitLineClamp: 2,
                             WebkitBoxOrient: 'vertical',
                             overflow: 'hidden',
-                            minHeight: '2.3rem',
+                            minHeight: '2.15rem',
                           }}
                           title={part.part_name}
                         >
@@ -497,11 +532,11 @@ export const CreateRequestForm: React.FC<CreateRequestFormProps> = ({
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 'auto', paddingTop: '0.35rem' }}>
                           <code
                             style={{
-                              fontSize: '0.75rem',
+                              fontSize: '0.725rem',
                               fontWeight: 700,
                               color: 'var(--text-main, #0f172a)',
                               backgroundColor: '#f1f5f9',
-                              padding: '0.15rem 0.4rem',
+                              padding: '0.15rem 0.35rem',
                               borderRadius: '4px',
                               border: '1px solid #e2e8f0',
                             }}
@@ -509,10 +544,261 @@ export const CreateRequestForm: React.FC<CreateRequestFormProps> = ({
                             {part.part_number}
                           </code>
 
-                          <span style={{ fontSize: '0.8rem', color: 'var(--secondary-color, #e76114)', fontWeight: 900 }}>
+                          <span style={{ fontSize: '0.775rem', color: 'var(--secondary-color, #e76114)', fontWeight: 900 }}>
                             {Number(part.berat_part_gr)} gr
                           </span>
                         </div>
+
+                        {/* Quick Add Button / Counter */}
+                        <div style={{ marginTop: '0.5rem' }}>
+                          {isInTicket ? (
+                            <div
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                backgroundColor: '#f0fdf4',
+                                border: '1px solid #bbf7d0',
+                                borderRadius: '6px',
+                                padding: '2px 4px',
+                              }}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const idx = items.findIndex((it) => it.item_type === 'part_ng' && it.master_part_id === part.id);
+                                  if (idx >= 0 && onStepItemQty) onStepItemQty(idx, -1);
+                                }}
+                                style={{
+                                  width: '26px',
+                                  height: '24px',
+                                  borderRadius: '4px',
+                                  border: '1px solid #86efac',
+                                  backgroundColor: '#ffffff',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  cursor: 'pointer',
+                                  color: '#15803d',
+                                }}
+                              >
+                                <Minus size={12} />
+                              </button>
+                              <span style={{ fontSize: '0.8rem', fontWeight: 900, color: '#15803d' }}>
+                                {currentQty} pcs
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const idx = items.findIndex((it) => it.item_type === 'part_ng' && it.master_part_id === part.id);
+                                  if (idx >= 0 && onStepItemQty) onStepItemQty(idx, 1);
+                                  else handleCardClick(part);
+                                }}
+                                style={{
+                                  width: '26px',
+                                  height: '24px',
+                                  borderRadius: '4px',
+                                  border: '1px solid #86efac',
+                                  backgroundColor: '#16a34a',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  cursor: 'pointer',
+                                  color: '#ffffff',
+                                }}
+                              >
+                                <Plus size={12} />
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleCardClick(part);
+                              }}
+                              style={{
+                                width: '100%',
+                                padding: '0.35rem',
+                                borderRadius: '6px',
+                                border: '1px solid #cbd5e1',
+                                backgroundColor: '#f8fafc',
+                                color: '#334155',
+                                fontSize: '0.75rem',
+                                fontWeight: 800,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '0.25rem',
+                                cursor: 'pointer',
+                                transition: 'all 0.15s ease',
+                              }}
+                            >
+                              <Plus size={13} color="var(--secondary-color, #e76114)" />
+                              <span>+ Masukkan</span>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              /* LIST VIEW */
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+                {filteredParts.map((part) => {
+                  const currentQty = getItemQuantityForPart ? getItemQuantityForPart(part.id) : 0;
+                  const isInTicket = currentQty > 0;
+
+                  return (
+                    <div
+                      key={part.id}
+                      onClick={() => handleCardClick(part)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '0.55rem 0.85rem',
+                        backgroundColor: isInTicket ? 'rgba(0, 141, 81, 0.04)' : 'var(--bg-card, #ffffff)',
+                        border: isInTicket ? '1.5px solid #008d51' : '1px solid var(--border-color, #e2e8f0)',
+                        borderRadius: '8px',
+                        gap: '0.75rem',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease',
+                      }}
+                    >
+                      {/* Left: Thumbnail & Name */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: 0, flex: 1 }}>
+                        <div
+                          style={{
+                            width: '44px',
+                            height: '44px',
+                            borderRadius: '6px',
+                            backgroundColor: '#f8fafc',
+                            border: '1px solid #e2e8f0',
+                            overflow: 'hidden',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0,
+                            padding: '2px',
+                          }}
+                        >
+                          {part.image_url ? (
+                            <img
+                              src={part.image_url}
+                              alt={part.part_name}
+                              style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).src = '/no-images.jpg';
+                              }}
+                            />
+                          ) : (
+                            <Package size={20} color="#94a3b8" />
+                          )}
+                        </div>
+
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontWeight: 800, fontSize: '0.85rem', color: 'var(--text-main, #0f172a)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {part.part_name}
+                          </div>
+                          <div style={{ fontSize: '0.725rem', color: 'var(--text-muted, #64748b)', display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.1rem' }}>
+                            <code>{part.part_number}</code>
+                            {part.model_code && (
+                              <span style={{ backgroundColor: '#f1f5f9', padding: '0.05rem 0.35rem', borderRadius: '4px', fontWeight: 700, color: '#334155' }}>
+                                {part.model_code}
+                              </span>
+                            )}
+                            <span>• {Number(part.berat_part_gr)} gr</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Right: Add/Counter Button */}
+                      <div onClick={(e) => e.stopPropagation()} style={{ flexShrink: 0 }}>
+                        {isInTicket ? (
+                          <div
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.35rem',
+                              backgroundColor: '#f0fdf4',
+                              border: '1px solid #bbf7d0',
+                              borderRadius: '6px',
+                              padding: '2px 4px',
+                            }}
+                          >
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const idx = items.findIndex((it) => it.item_type === 'part_ng' && it.master_part_id === part.id);
+                                if (idx >= 0 && onStepItemQty) onStepItemQty(idx, -1);
+                              }}
+                              style={{
+                                width: '26px',
+                                height: '24px',
+                                borderRadius: '4px',
+                                border: '1px solid #86efac',
+                                backgroundColor: '#ffffff',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifySelf: 'center',
+                                cursor: 'pointer',
+                                color: '#15803d',
+                              }}
+                            >
+                              <Minus size={12} />
+                            </button>
+                            <span style={{ fontSize: '0.8rem', fontWeight: 900, color: '#15803d', minWidth: '42px', textAlign: 'center' }}>
+                              {currentQty} pcs
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const idx = items.findIndex((it) => it.item_type === 'part_ng' && it.master_part_id === part.id);
+                                if (idx >= 0 && onStepItemQty) onStepItemQty(idx, 1);
+                                else handleCardClick(part);
+                              }}
+                              style={{
+                                width: '26px',
+                                height: '24px',
+                                borderRadius: '4px',
+                                border: '1px solid #86efac',
+                                backgroundColor: '#16a34a',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                cursor: 'pointer',
+                                color: '#ffffff',
+                              }}
+                            >
+                              <Plus size={12} />
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handleCardClick(part)}
+                            style={{
+                              padding: '0.35rem 0.75rem',
+                              borderRadius: '6px',
+                              border: '1px solid #cbd5e1',
+                              backgroundColor: '#ffffff',
+                              color: '#0f172a',
+                              fontSize: '0.775rem',
+                              fontWeight: 800,
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.25rem',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            <Plus size={13} color="var(--secondary-color, #e76114)" />
+                            <span>+ Masukkan</span>
+                          </button>
+                        )}
                       </div>
                     </div>
                   );
@@ -522,7 +808,7 @@ export const CreateRequestForm: React.FC<CreateRequestFormProps> = ({
           </div>
         </div>
 
-        {/* ================= COLUMN 2: INPUT CONTROLLER & DRAFT (RIGHT) ================= */}
+        {/* ================= COLUMN 2: RINCIAN ITEM TIKET (INTERACTIVE CART LIST) ================= */}
         <div
           style={{
             position: 'sticky',
@@ -532,268 +818,22 @@ export const CreateRequestForm: React.FC<CreateRequestFormProps> = ({
             gap: '1rem',
           }}
         >
-          {/* Card 1: Active Selected Part Input Box */}
+          {/* Main Cart List Box */}
           <div
             style={{
               backgroundColor: 'var(--bg-card, #ffffff)',
               borderRadius: 'var(--radius-lg, 12px)',
               border: '1px solid var(--border-color, #e2e8f0)',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
-              padding: '1rem 1.15rem',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '0.85rem',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <h4 style={{ fontSize: '0.95rem', fontWeight: 900, color: 'var(--text-main, #0f172a)', margin: 0 }}>
-                Input Kuantitas Reject
-              </h4>
-              {selectedPart && (
-                <Badge variant="primary" size="sm">
-                  Part Dipilih
-                </Badge>
-              )}
-            </div>
-
-            {!selectedPart ? (
-              <div
-                style={{
-                  padding: '2rem 1rem',
-                  textAlign: 'center',
-                  color: 'var(--text-muted, #64748b)',
-                  backgroundColor: 'var(--bg-main, #f8fafc)',
-                  borderRadius: 'var(--radius-md, 8px)',
-                  border: '1.5px dashed var(--border-color, #cbd5e1)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '0.4rem',
-                }}
-              >
-                <AlertCircle size={28} style={{ color: 'var(--secondary-color, #e76114)', opacity: 0.7 }} />
-                <span style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--text-main, #0f172a)' }}>
-                  Pilih Part pada Katalog di Sebelah Kiri
-                </span>
-                <span style={{ fontSize: '0.775rem', color: '#64748b' }}>
-                  Klik salah satu kartu part untuk memasukkan quantity reject ke tiket pengiriman.
-                </span>
-              </div>
-            ) : (
-              <>
-                {/* Selected Part Mini Header Banner with 64px Photo Preview */}
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    backgroundColor: 'rgba(231, 97, 20, 0.06)',
-                    border: '1.5px solid rgba(231, 97, 20, 0.25)',
-                    padding: '0.65rem 0.85rem',
-                    borderRadius: '10px',
-                    gap: '0.75rem',
-                  }}
-                >
-                  {/* Photo Preview */}
-                  <div
-                    style={{
-                      width: '64px',
-                      height: '64px',
-                      borderRadius: '8px',
-                      backgroundColor: '#ffffff',
-                      border: '1px solid rgba(231, 97, 20, 0.3)',
-                      overflow: 'hidden',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      flexShrink: 0,
-                      padding: '2px',
-                    }}
-                  >
-                    {selectedPart.image_url ? (
-                      <img
-                        src={selectedPart.image_url}
-                        alt={selectedPart.part_name}
-                        style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).src = '/no-images.jpg';
-                        }}
-                      />
-                    ) : (
-                      <Package size={24} color="#94a3b8" />
-                    )}
-                  </div>
-
-                  {/* Info Details */}
-                  <div style={{ minWidth: 0, flex: 1 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: '0.925rem', fontWeight: 900, color: 'var(--text-main, #0f172a)' }}>
-                        {selectedPart.part_name}
-                      </span>
-                      {selectedPart.model_code && (
-                        <span style={{ fontSize: '0.7rem', fontWeight: 800, backgroundColor: '#ffffff', border: '1px solid rgba(231, 97, 20, 0.3)', padding: '0.1rem 0.4rem', borderRadius: '4px', color: 'var(--secondary-color, #e76114)' }}>
-                          {selectedPart.model_code}
-                        </span>
-                      )}
-                    </div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted, #64748b)', marginTop: '0.15rem' }}>
-                      No: <code>{selectedPart.part_number}</code> • {Number(selectedPart.berat_part_gr)} gr/pcs
-                    </div>
-                  </div>
-
-                  {/* Live Weight Calculation */}
-                  <div style={{ textAlign: 'right', flexShrink: 0, backgroundColor: '#ffffff', padding: '0.4rem 0.75rem', borderRadius: '8px', border: '1px solid rgba(231, 97, 20, 0.2)' }}>
-                    <span style={{ fontSize: '0.675rem', color: 'var(--text-muted, #64748b)', fontWeight: 700, display: 'block', textTransform: 'uppercase' }}>
-                      Estimasi Berat
-                    </span>
-                    <span style={{ fontSize: '1.2rem', fontWeight: 900, color: 'var(--secondary-color, #e76114)' }}>
-                      {currentPartLiveWeightKg.toFixed(2)} <span style={{ fontSize: '0.8rem', fontWeight: 700 }}>kg</span>
-                    </span>
-                  </div>
-                </div>
-
-                {/* Touch Stepper & Quantity Controller */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                  <label style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-main, #0f172a)' }}>
-                    Jumlah Reject (Pcs) <span style={{ color: '#ef4444' }}>*</span>
-                  </label>
-
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    {/* Decrement Stepper Button */}
-                    <button
-                      type="button"
-                      onClick={() => handleStepQty(-1)}
-                      style={{
-                        width: '46px',
-                        height: '42px',
-                        borderRadius: '8px',
-                        border: '1.5px solid #cbd5e1',
-                        backgroundColor: '#f8fafc',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        cursor: 'pointer',
-                        color: '#0f172a',
-                        fontWeight: 900,
-                        flexShrink: 0,
-                      }}
-                      title="Kurangi 1 pcs"
-                    >
-                      <Minus size={18} />
-                    </button>
-
-                    {/* Numeric Quantity Input */}
-                    <div style={{ flex: 1 }}>
-                      <Input
-                        type="number"
-                        min={1}
-                        placeholder="Jumlah pcs..."
-                        value={partQuantityPcs}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          onPartQuantityChange(val === '' ? '' : Math.max(1, parseInt(val, 10) || 1));
-                        }}
-                        style={{ textAlign: 'center', fontSize: '1.1rem', fontWeight: 900, height: '42px' }}
-                      />
-                    </div>
-
-                    {/* Increment Stepper Button */}
-                    <button
-                      type="button"
-                      onClick={() => handleStepQty(1)}
-                      style={{
-                        width: '46px',
-                        height: '42px',
-                        borderRadius: '8px',
-                        border: '1.5px solid #cbd5e1',
-                        backgroundColor: '#f8fafc',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        cursor: 'pointer',
-                        color: '#0f172a',
-                        fontWeight: 900,
-                        flexShrink: 0,
-                      }}
-                      title="Tambah 1 pcs"
-                    >
-                      <Plus size={18} />
-                    </button>
-                  </div>
-
-                  {/* Touch Fast Presets (Quick Chips) */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: '0.725rem', fontWeight: 700, color: 'var(--text-muted, #64748b)' }}>
-                      Quick Add:
-                    </span>
-                    {[1, 5, 10, 25, 50, 100].map((preset) => (
-                      <button
-                        key={preset}
-                        type="button"
-                        onClick={() => handleAddPresetQty(preset)}
-                        style={{
-                          padding: '0.25rem 0.6rem',
-                          borderRadius: '6px',
-                          border: '1px solid rgba(231, 97, 20, 0.3)',
-                          backgroundColor: 'rgba(231, 97, 20, 0.06)',
-                          color: 'var(--secondary-color, #e76114)',
-                          fontSize: '0.75rem',
-                          fontWeight: 800,
-                          cursor: 'pointer',
-                          transition: 'all 0.15s ease',
-                        }}
-                      >
-                        +{preset}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Defect Notes */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                  <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-main, #0f172a)' }}>
-                    Catatan Defect (Opsional)
-                  </label>
-                  <Input
-                    type="text"
-                    placeholder="Contoh: Bumper baret, flash tebal, short shot..."
-                    value={itemNotes}
-                    onChange={(e) => onItemNotesChange(e.target.value)}
-                  />
-                </div>
-
-                {/* Add to Ticket Button */}
-                <Button
-                  type="button"
-                  variant="primary"
-                  size="md"
-                  onClick={onAddItem}
-                  leftIcon={<PlusCircle size={18} />}
-                  style={{ width: '100%', fontWeight: 800, padding: '0.7rem' }}
-                >
-                  + Tambahkan ke Rincian Tiket
-                </Button>
-              </>
-            )}
-          </div>
-
-          {/* Card 2: Draft Ticket Items & Final Submit Action */}
-          <div
-            style={{
-              backgroundColor: 'var(--bg-card, #ffffff)',
-              borderRadius: 'var(--radius-lg, 12px)',
-              border: '1px solid var(--border-color, #e2e8f0)',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
+              boxShadow: '0 4px 16px rgba(0,0,0,0.04)',
               display: 'flex',
               flexDirection: 'column',
               overflow: 'hidden',
             }}
           >
-            {/* Draft Header */}
+            {/* Cart Header */}
             <div
               style={{
-                padding: '0.75rem 1rem',
+                padding: '0.85rem 1.15rem',
                 borderBottom: '1px solid var(--border-color, #e2e8f0)',
                 backgroundColor: 'var(--bg-main, #f8fafc)',
                 display: 'flex',
@@ -801,93 +841,249 @@ export const CreateRequestForm: React.FC<CreateRequestFormProps> = ({
                 justifyContent: 'space-between',
               }}
             >
-              <span style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--text-main, #0f172a)' }}>
-                Rincian Item Tiket ({items.length} Item)
-              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <span style={{ fontSize: '0.95rem', fontWeight: 900, color: 'var(--text-main, #0f172a)' }}>
+                  Rincian Pengiriman
+                </span>
+                <span
+                  style={{
+                    backgroundColor: items.length > 0 ? 'var(--secondary-color, #e76114)' : '#cbd5e1',
+                    color: '#ffffff',
+                    fontSize: '0.75rem',
+                    fontWeight: 900,
+                    padding: '0.1rem 0.45rem',
+                    borderRadius: '12px',
+                  }}
+                >
+                  {items.length}
+                </span>
+              </div>
 
               {items.length > 0 && (
-                <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--primary-color, #008d51)' }}>
+                <span style={{ fontSize: '0.825rem', fontWeight: 800, color: '#008d51' }}>
                   {estimatedTotalPcs} Pcs • {estimatedTotalWeightKg.toFixed(2)} kg
                 </span>
               )}
             </div>
 
-            {/* Draft Items Table / List */}
-            <div style={{ maxHeight: '280px', overflowY: 'auto' }}>
+            {/* Cart Items List */}
+            <div
+              style={{
+                maxHeight: '440px',
+                overflowY: 'auto',
+                padding: items.length === 0 ? '0' : '0.75rem',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.6rem',
+              }}
+            >
               {items.length === 0 ? (
                 <div
                   style={{
-                    padding: '2.5rem 1rem',
+                    padding: '3rem 1.5rem',
                     textAlign: 'center',
                     color: 'var(--text-muted, #64748b)',
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    gap: '0.4rem',
+                    gap: '0.5rem',
                   }}
                 >
-                  <PackagePlus size={32} style={{ opacity: 0.4 }} />
-                  <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-main, #0f172a)' }}>
-                    Belum ada item ditambahkan
+                  <PackagePlus size={36} style={{ color: 'var(--secondary-color, #e76114)', opacity: 0.6 }} />
+                  <span style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--text-main, #0f172a)' }}>
+                    Rincian Pengiriman Masih Kosong
                   </span>
-                  <span style={{ fontSize: '0.775rem', color: '#94a3b8' }}>
-                    Pilih part pada katalog lalu klik '+ Tambahkan ke Rincian Tiket'
+                  <span style={{ fontSize: '0.775rem', color: '#94a3b8', maxWidth: '280px' }}>
+                    Cukup klik kartu part pada katalog di sebelah kiri untuk langsung memasukkannya ke rincian ini.
                   </span>
                 </div>
               ) : (
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.825rem' }}>
-                  <thead>
-                    <tr style={{ backgroundColor: '#f8fafc', textAlign: 'left', color: '#64748b', borderBottom: '1px solid #e2e8f0' }}>
-                      <th style={{ padding: '0.5rem 0.75rem', width: '30px' }}>No</th>
-                      <th style={{ padding: '0.5rem 0.75rem' }}>Nama Part</th>
-                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>Qty</th>
-                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>Berat</th>
-                      <th style={{ padding: '0.5rem 0.75rem', width: '40px', textAlign: 'center' }}></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {items.map((it, idx) => (
-                      <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                        <td style={{ padding: '0.6rem 0.75rem', color: '#94a3b8' }}>{idx + 1}</td>
-                        <td style={{ padding: '0.6rem 0.75rem', fontWeight: 800, color: 'var(--text-main, #0f172a)' }}>
-                          <div>{it.material_name}</div>
-                          {it.notes && (
-                            <div style={{ fontSize: '0.725rem', color: 'var(--text-muted, #64748b)', fontStyle: 'italic', fontWeight: 500 }}>
-                              {it.notes}
-                            </div>
+                items.map((it, idx) => {
+                  const itemWeightKg = Number(it.runner_weight_kg || 0).toFixed(2);
+
+                  return (
+                    <div
+                      key={idx}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        backgroundColor: '#ffffff',
+                        border: '1.5px solid #e2e8f0',
+                        borderRadius: '8px',
+                        padding: '0.45rem 0.75rem',
+                        gap: '0.5rem',
+                        boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
+                        transition: 'all 0.15s ease',
+                      }}
+                    >
+                      {/* Left: Index + Part Name + Model */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', minWidth: 0, flex: 1 }}>
+                        <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#94a3b8', minWidth: '16px' }}>
+                          {idx + 1}.
+                        </span>
+                        <div style={{ minWidth: 0, display: 'flex', alignItems: 'center', gap: '0.35rem', overflow: 'hidden' }}>
+                          <span
+                            style={{
+                              fontWeight: 800,
+                              fontSize: '0.85rem',
+                              color: 'var(--text-main, #0f172a)',
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                            }}
+                            title={it.material_name}
+                          >
+                            {it.material_name}
+                          </span>
+                          {it.model_code && (
+                            <span
+                              style={{
+                                backgroundColor: '#f1f5f9',
+                                border: '1px solid #e2e8f0',
+                                padding: '0.1rem 0.35rem',
+                                borderRadius: '4px',
+                                fontWeight: 800,
+                                fontSize: '0.675rem',
+                                color: 'var(--secondary-color, #e76114)',
+                                whiteSpace: 'nowrap',
+                                flexShrink: 0,
+                              }}
+                            >
+                              {it.model_code}
+                            </span>
                           )}
-                        </td>
-                        <td style={{ padding: '0.6rem 0.75rem', textAlign: 'right', fontWeight: 700 }}>
-                          {it.quantity_pcs > 0 ? `${it.quantity_pcs} pcs` : '-'}
-                        </td>
-                        <td style={{ padding: '0.6rem 0.75rem', textAlign: 'right', fontWeight: 900, color: 'var(--secondary-color, #e76114)' }}>
-                          {Number(it.runner_weight_kg || 0).toFixed(2)} kg
-                        </td>
-                        <td style={{ padding: '0.6rem 0.75rem', textAlign: 'center' }}>
+                        </div>
+                      </div>
+
+                      {/* Right: Stepper [-] [Qty] [+] + Weight + Delete */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexShrink: 0 }}>
+                        {/* Stepper (+ / -) */}
+                        <div
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '2px',
+                            backgroundColor: '#f8fafc',
+                            padding: '2px',
+                            borderRadius: '6px',
+                            border: '1px solid #cbd5e1',
+                          }}
+                        >
                           <button
                             type="button"
-                            onClick={() => onRemoveItem(idx)}
+                            onClick={() => onStepItemQty && onStepItemQty(idx, -1)}
                             style={{
+                              width: '24px',
+                              height: '24px',
+                              borderRadius: '4px',
                               border: 'none',
-                              background: 'transparent',
-                              color: '#ef4444',
+                              backgroundColor: '#ffffff',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
                               cursor: 'pointer',
-                              padding: '4px',
+                              color: '#0f172a',
+                              fontWeight: 900,
+                              boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
                             }}
-                            title="Hapus Item"
+                            title="Kurangi 1 pcs"
                           >
-                            <Trash2 size={16} />
+                            <Minus size={12} />
                           </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+
+                          <input
+                            type="number"
+                            min={1}
+                            value={it.quantity_pcs}
+                            onChange={(e) => {
+                              const val = parseInt(e.target.value, 10);
+                              if (onUpdateItemQty) onUpdateItemQty(idx, isNaN(val) ? 1 : val);
+                            }}
+                            style={{
+                              width: '42px',
+                              height: '24px',
+                              border: 'none',
+                              backgroundColor: 'transparent',
+                              textAlign: 'center',
+                              fontSize: '0.825rem',
+                              fontWeight: 900,
+                              color: '#0f172a',
+                              outline: 'none',
+                            }}
+                          />
+
+                          <button
+                            type="button"
+                            onClick={() => onStepItemQty && onStepItemQty(idx, 1)}
+                            style={{
+                              width: '24px',
+                              height: '24px',
+                              borderRadius: '4px',
+                              border: 'none',
+                              backgroundColor: '#ffffff',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              cursor: 'pointer',
+                              color: '#0f172a',
+                              fontWeight: 900,
+                              boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                            }}
+                            title="Tambah 1 pcs"
+                          >
+                            <Plus size={12} />
+                          </button>
+                        </div>
+
+                        {/* Weight (kg) */}
+                        <span
+                          style={{
+                            fontSize: '0.8rem',
+                            fontWeight: 900,
+                            color: 'var(--secondary-color, #e76114)',
+                            minWidth: '52px',
+                            textAlign: 'right',
+                          }}
+                        >
+                          {itemWeightKg} <span style={{ fontSize: '0.675rem', fontWeight: 700 }}>kg</span>
+                        </span>
+
+                        {/* Delete Button */}
+                        <button
+                          type="button"
+                          onClick={() => onRemoveItem(idx)}
+                          style={{
+                            border: 'none',
+                            background: 'transparent',
+                            color: '#94a3b8',
+                            cursor: 'pointer',
+                            padding: '3px',
+                            borderRadius: '4px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            transition: 'color 0.15s ease',
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.color = '#ef4444';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.color = '#94a3b8';
+                          }}
+                          title="Hapus part dari daftar"
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
               )}
             </div>
 
-            {/* Bottom Summary Bar & Big Submit Button */}
+            {/* Bottom Summary & Notes & Submit */}
             <div
               style={{
                 padding: '0.85rem 1rem',
@@ -898,51 +1094,62 @@ export const CreateRequestForm: React.FC<CreateRequestFormProps> = ({
                 gap: '0.75rem',
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <Scale size={22} color="var(--secondary-color, #e76114)" />
-                  <div>
-                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted, #64748b)', fontWeight: 700, textTransform: 'uppercase' }}>
-                      Total Akumulasi
-                    </div>
-                    <div style={{ fontSize: '1.15rem', fontWeight: 900, color: 'var(--secondary-color, #e76114)' }}>
-                      {estimatedTotalWeightKg.toFixed(2)} kg <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 600 }}>({estimatedTotalPcs} pcs)</span>
-                    </div>
-                  </div>
+              {/* General Notes */}
+              <div>
+                <label style={{ fontSize: '0.775rem', fontWeight: 800, color: 'var(--text-main, #0f172a)', display: 'block', marginBottom: '0.25rem' }}>
+                  Catatan Pengiriman (Opsional)
+                </label>
+                <textarea
+                  rows={2}
+                  placeholder="Catatan tambahan untuk operator crushing..."
+                  value={notes}
+                  onChange={(e) => onNotesChange(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '0.45rem 0.65rem',
+                    borderRadius: '8px',
+                    border: '1.5px solid #cbd5e1',
+                    fontSize: '0.8rem',
+                    color: '#0f172a',
+                    outline: 'none',
+                    resize: 'none',
+                    fontFamily: 'inherit',
+                  }}
+                />
+              </div>
+
+              {/* Total Summary */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.5rem 0.75rem', backgroundColor: '#ffffff', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  <Scale size={20} color="var(--secondary-color, #e76114)" />
+                  <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase' }}>
+                    Total Akumulasi
+                  </span>
+                </div>
+                <div style={{ fontSize: '1.15rem', fontWeight: 900, color: 'var(--secondary-color, #e76114)' }}>
+                  {estimatedTotalWeightKg.toFixed(2)} kg{' '}
+                  <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 700 }}>
+                    ({estimatedTotalPcs} pcs)
+                  </span>
                 </div>
               </div>
 
-              {/* Submit Button (Opens Confirmation Modal) */}
+              {/* Final Submit Button */}
               <Button
                 variant="primary"
                 size="lg"
-                onClick={() => setIsConfirmModalOpen(true)}
+                onClick={onSubmitRequest}
                 disabled={items.length === 0 || isSubmitting}
                 isLoading={isSubmitting}
                 leftIcon={<Send size={18} />}
-                style={{ width: '100%', fontWeight: 800, padding: '0.75rem', fontSize: '0.95rem' }}
+                style={{ width: '100%', fontWeight: 900, padding: '0.75rem', fontSize: '0.95rem' }}
               >
-                Kirim Tiket ({items.length} Item Ditambahkan)
+                Kirim Pengajuan
               </Button>
             </div>
           </div>
         </div>
       </div>
-
-      {/* Confirmation Modal Before Final Submit */}
-      <SubmitConfirmModal
-        isOpen={isConfirmModalOpen}
-        onClose={() => setIsConfirmModalOpen(false)}
-        onConfirm={handleConfirmSubmit}
-        isLoading={isSubmitting}
-        user={user}
-        shift={shift}
-        requestDate={requestDate}
-        notes={notes}
-        items={items}
-        totalWeightKg={estimatedTotalWeightKg}
-        totalPcs={estimatedTotalPcs}
-      />
     </div>
   );
 };

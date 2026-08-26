@@ -52,7 +52,7 @@ export const SubmitConfirmModal: React.FC<SubmitConfirmModalProps> = ({
       isOpen={isOpen}
       onClose={onClose}
       size="lg"
-      title="Konfirmasi Pengiriman Tiket Part NG"
+      title="Konfirmasi Pengiriman Part NG"
       footer={
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.75rem', width: '100%' }}>
           <Button variant="outline" onClick={onClose} disabled={isLoading}>
@@ -65,7 +65,7 @@ export const SubmitConfirmModal: React.FC<SubmitConfirmModalProps> = ({
             leftIcon={<Send size={16} />}
             style={{ fontWeight: 800 }}
           >
-            Ya, Kirim Tiket Sekarang
+            Ya, Kirim Pengajuan Sekarang
           </Button>
         </div>
       }
@@ -87,7 +87,7 @@ export const SubmitConfirmModal: React.FC<SubmitConfirmModalProps> = ({
           <AlertTriangle size={22} style={{ flexShrink: 0, marginTop: '2px' }} />
           <div style={{ fontSize: '0.85rem' }}>
             <strong style={{ display: 'block', marginBottom: '0.15rem' }}>Verifikasi Fisik Sebelum Pengiriman</strong>
-            <span>Pastikan seluruh fisik part NG yang diserahkan ke operator crushing sesuai dengan rincian tiket di bawah ini.</span>
+            <span>Pastikan seluruh fisik part NG yang diserahkan ke operator crushing sesuai dengan rincian pengiriman di bawah ini.</span>
           </div>
         </div>
 
@@ -241,7 +241,7 @@ export const SubmitConfirmModal: React.FC<SubmitConfirmModalProps> = ({
               color: '#92400e',
             }}
           >
-            <strong>Catatan Umum Tiket: </strong> {notes}
+            <strong>Catatan Pengiriman: </strong> {notes}
           </div>
         )}
       </div>

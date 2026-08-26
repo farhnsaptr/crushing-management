@@ -19,9 +19,15 @@ export interface DailyRecycleChartItem {
   malam_runner_kg?: number;
   pagi_kg: number;
   malam_kg: number;
+  pagi_output_kg?: number;
+  pagi_waste_kg?: number;
+  malam_output_kg?: number;
+  malam_waste_kg?: number;
   pagi_pcs?: number;
   malam_pcs?: number;
   total_kg: number;
+  total_output_kg?: number;
+  total_waste_kg?: number;
 }
 
 export interface DailyRecycleChartResponse {

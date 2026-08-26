@@ -99,32 +99,55 @@ export class DashboardService {
 
     const totalAllowanceKg = Number(Number(allowanceRows[0]?.total_allowance_kg || 0).toFixed(2));
 
-    // 1. Fetch Part NG transactions per day & shift
+    // 1. Fetch Part NG transactions per day & shift (with reuse vs no-reuse breakdown)
     const [ngRows] = await pool.query<RowDataPacket[]>(
       `SELECT 
         DAY(t.transaction_date) AS day_num,
         t.shift,
         SUM(t.weight_kg) AS total_kg,
-        SUM(t.quantity_pcs) AS total_pcs
+        SUM(t.quantity_pcs) AS total_pcs,
+        SUM(CASE WHEN mm.recycle_type = 'reuse' OR (mm.recycle_type IS NULL AND LOWER(mp.material) NOT LIKE '%no reuse%') THEN t.weight_kg ELSE 0 END) AS reuse_kg,
+        SUM(CASE WHEN mm.recycle_type = 'no_reuse' OR LOWER(mp.material) LIKE '%no reuse%' THEN t.weight_kg ELSE 0 END) AS no_reuse_waste_kg
        FROM ng_transactions t
        JOIN master_parts mp ON t.master_part_id = mp.id
        JOIN machines mc ON mp.machine_id = mc.id
        JOIN factories fc ON mc.factory_id = fc.id
+       LEFT JOIN master_materials mm ON mp.material_id = mm.id
        WHERE YEAR(t.transaction_date) = ? AND MONTH(t.transaction_date) = ? AND fc.location = ?
        GROUP BY DAY(t.transaction_date), t.shift
        ORDER BY day_num ASC`,
       [qYear, qMonth, location]
     );
 
-    // 2. Fetch Runner Material transactions per day & shift
+    // 2. Fetch Runner Material transactions per day & shift (with reuse vs no-reuse breakdown)
     const [runnerRows] = await pool.query<RowDataPacket[]>(
       `SELECT 
         DAY(rmt.transaction_date) AS day_num,
         rmt.shift,
-        SUM(rmt.total_runner_weight_kg) AS total_kg
+        SUM(rmt.total_runner_weight_kg) AS total_kg,
+        SUM(CASE WHEN mm.recycle_type = 'reuse' OR (mm.recycle_type IS NULL AND LOWER(rmt.material_name_snapshot) NOT LIKE '%no reuse%') THEN rmt.total_runner_weight_kg ELSE 0 END) AS reuse_kg,
+        SUM(CASE WHEN mm.recycle_type = 'no_reuse' OR LOWER(rmt.material_name_snapshot) LIKE '%no reuse%' THEN rmt.total_runner_weight_kg ELSE 0 END) AS no_reuse_waste_kg
        FROM runner_material_transactions rmt
+       LEFT JOIN master_materials mm ON (rmt.material_id = mm.id OR rmt.material_name_snapshot = mm.material_name)
+       LEFT JOIN factories fc ON rmt.factory_id = fc.id
        WHERE YEAR(rmt.transaction_date) = ? AND MONTH(rmt.transaction_date) = ?
+         AND (rmt.factory_id IS NULL OR fc.location = ?)
        GROUP BY DAY(rmt.transaction_date), rmt.shift
+       ORDER BY day_num ASC`,
+      [qYear, qMonth, location]
+    );
+
+    // 3. Fetch Validated Verifications per day & shift
+    const [verRows] = await pool.query<RowDataPacket[]>(
+      `SELECT 
+        DAY(verification_date) AS day_num,
+        shift,
+        SUM(total_system_weight_kg) AS verified_system_kg,
+        SUM(total_actual_output_kg) AS verified_output_kg,
+        SUM(total_crushing_waste_kg) AS verified_waste_kg
+       FROM input_verifications
+       WHERE YEAR(verification_date) = ? AND MONTH(verification_date) = ? AND status = 'validated'
+       GROUP BY DAY(verification_date), shift
        ORDER BY day_num ASC`,
       [qYear, qMonth]
     );
@@ -138,6 +161,16 @@ export class DashboardService {
       malam_runner_kg: number;
       pagi_pcs: number;
       malam_pcs: number;
+      pagi_reuse_kg: number;
+      pagi_no_reuse_kg: number;
+      malam_reuse_kg: number;
+      malam_no_reuse_kg: number;
+      pagi_ver_sys: number;
+      pagi_ver_out: number;
+      pagi_ver_waste: number;
+      malam_ver_sys: number;
+      malam_ver_out: number;
+      malam_ver_waste: number;
     }>();
 
     for (let d = 1; d <= daysInMonth; d++) {
@@ -148,42 +181,80 @@ export class DashboardService {
         malam_runner_kg: 0,
         pagi_pcs: 0,
         malam_pcs: 0,
+        pagi_reuse_kg: 0,
+        pagi_no_reuse_kg: 0,
+        malam_reuse_kg: 0,
+        malam_no_reuse_kg: 0,
+        pagi_ver_sys: 0,
+        pagi_ver_out: 0,
+        pagi_ver_waste: 0,
+        malam_ver_sys: 0,
+        malam_ver_out: 0,
+        malam_ver_waste: 0,
       });
     }
 
     // Process Part NG data
     for (const r of ngRows) {
       const dayNum = Number(r.day_num);
-      const entry = dayMap.get(dayNum) || {
-        pagi_ng_kg: 0, pagi_runner_kg: 0, malam_ng_kg: 0, malam_runner_kg: 0, pagi_pcs: 0, malam_pcs: 0,
-      };
+      const entry = dayMap.get(dayNum);
+      if (!entry) continue;
       const weight = Number(r.total_kg) || 0;
       const pcs = Number(r.total_pcs) || 0;
+      const reuse = Number(r.reuse_kg) || 0;
+      const noReuse = Number(r.no_reuse_waste_kg) || 0;
 
       if (r.shift === 'Pagi') {
         entry.pagi_ng_kg += weight;
         entry.pagi_pcs += pcs;
+        entry.pagi_reuse_kg += reuse;
+        entry.pagi_no_reuse_kg += noReuse;
       } else if (r.shift === 'Malam') {
         entry.malam_ng_kg += weight;
         entry.malam_pcs += pcs;
+        entry.malam_reuse_kg += reuse;
+        entry.malam_no_reuse_kg += noReuse;
       }
-      dayMap.set(dayNum, entry);
     }
 
     // Process Part Runner data
     for (const r of runnerRows) {
       const dayNum = Number(r.day_num);
-      const entry = dayMap.get(dayNum) || {
-        pagi_ng_kg: 0, pagi_runner_kg: 0, malam_ng_kg: 0, malam_runner_kg: 0, pagi_pcs: 0, malam_pcs: 0,
-      };
+      const entry = dayMap.get(dayNum);
+      if (!entry) continue;
       const weight = Number(r.total_kg) || 0;
+      const reuse = Number(r.reuse_kg) || 0;
+      const noReuse = Number(r.no_reuse_waste_kg) || 0;
 
       if (r.shift === 'Pagi') {
         entry.pagi_runner_kg += weight;
+        entry.pagi_reuse_kg += reuse;
+        entry.pagi_no_reuse_kg += noReuse;
       } else if (r.shift === 'Malam') {
         entry.malam_runner_kg += weight;
+        entry.malam_reuse_kg += reuse;
+        entry.malam_no_reuse_kg += noReuse;
       }
-      dayMap.set(dayNum, entry);
+    }
+
+    // Process Validated Verifications
+    for (const r of verRows) {
+      const dayNum = Number(r.day_num);
+      const entry = dayMap.get(dayNum);
+      if (!entry) continue;
+      const verSys = Number(r.verified_system_kg) || 0;
+      const verOut = Number(r.verified_output_kg) || 0;
+      const verWaste = Number(r.verified_waste_kg) || 0;
+
+      if (r.shift === 'Pagi') {
+        entry.pagi_ver_sys += verSys;
+        entry.pagi_ver_out += verOut;
+        entry.pagi_ver_waste += verWaste;
+      } else if (r.shift === 'Malam') {
+        entry.malam_ver_sys += verSys;
+        entry.malam_ver_out += verOut;
+        entry.malam_ver_waste += verWaste;
+      }
     }
 
     const chartItems = Array.from(dayMap.entries()).map(([dayNum, data]) => {
@@ -198,6 +269,18 @@ export class DashboardService {
       const malamKg = Number((malamNg + malamRunner).toFixed(2));
       const totalKg = Number((pagiKg + malamKg).toFixed(2));
 
+      // Output & Waste per shift & total
+      const pagiUnverReuse = Math.max(0, data.pagi_reuse_kg - data.pagi_ver_sys);
+      const pagiOutput = Number((pagiUnverReuse + data.pagi_ver_out).toFixed(2));
+      const pagiWaste = Number((data.pagi_no_reuse_kg + data.pagi_ver_waste).toFixed(2));
+
+      const malamUnverReuse = Math.max(0, data.malam_reuse_kg - data.malam_ver_sys);
+      const malamOutput = Number((malamUnverReuse + data.malam_ver_out).toFixed(2));
+      const malamWaste = Number((data.malam_no_reuse_kg + data.malam_ver_waste).toFixed(2));
+
+      const totalOutputKg = Number((pagiOutput + malamOutput).toFixed(2));
+      const totalWasteKg = Number((pagiWaste + malamWaste).toFixed(2));
+
       return {
         day: dayStr,
         day_num: dayNum,
@@ -207,9 +290,15 @@ export class DashboardService {
         malam_runner_kg: malamRunner,
         pagi_kg: pagiKg,
         malam_kg: malamKg,
+        pagi_output_kg: pagiOutput,
+        pagi_waste_kg: pagiWaste,
+        malam_output_kg: malamOutput,
+        malam_waste_kg: malamWaste,
         pagi_pcs: data.pagi_pcs,
         malam_pcs: data.malam_pcs,
         total_kg: totalKg,
+        total_output_kg: totalOutputKg,
+        total_waste_kg: totalWasteKg,
         total_pcs: data.pagi_pcs + data.malam_pcs,
       };
     });
@@ -576,11 +665,11 @@ export class DashboardService {
         COUNT(*) AS total_requests,
         COALESCE(SUM(CASE WHEN r.status = 'pending' THEN 1 ELSE 0 END), 0) AS pending_count,
         COALESCE(SUM(CASE WHEN r.status = 'approved' THEN 1 ELSE 0 END), 0) AS approved_count,
-        COALESCE(SUM(CASE WHEN r.status = 'rejected' THEN 1 ELSE 0 END), 0) AS rejected_count,
+        0 AS rejected_count,
         COALESCE(SUM(CASE WHEN r.status = 'approved' THEN r.total_weight_kg ELSE 0 END), 0) AS approved_weight_kg,
         COALESCE(SUM(CASE WHEN r.status = 'approved' THEN r.total_pcs ELSE 0 END), 0) AS approved_pcs,
-        COALESCE(SUM(CASE WHEN r.status != 'rejected' THEN r.total_weight_kg ELSE 0 END), 0) AS total_submitted_weight_kg,
-        COALESCE(SUM(CASE WHEN r.status != 'rejected' THEN r.total_pcs ELSE 0 END), 0) AS total_pcs
+        COALESCE(SUM(r.submitted_total_weight_kg), 0) AS total_submitted_weight_kg,
+        COALESCE(SUM(r.submitted_total_pcs), 0) AS total_pcs
        FROM crushing_requests r
        WHERE ${filterClause} AND YEAR(r.request_date) = ? AND MONTH(r.request_date) = ?`,
       queryParams

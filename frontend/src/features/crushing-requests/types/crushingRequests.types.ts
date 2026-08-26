@@ -11,6 +11,9 @@ export interface CrushingRequestItem {
   berat_part_gr_snapshot?: number | null;
   quantity_pcs: number;
   weight_kg: number;
+  verified_quantity_pcs?: number | null;
+  verified_weight_kg?: number | null;
+  adjustment_notes?: string | null;
   notes?: string | null;
   image_url?: string | null;
   created_at: string;
@@ -31,11 +34,13 @@ export interface CrushingRequest {
   request_type: 'part_ng' | 'runner_ng' | 'mixed';
   shift: 'Pagi' | 'Malam';
   request_date: string;
-  status: 'pending' | 'approved' | 'rejected';
+  status: 'pending' | 'approved';
   rejection_reason?: string | null;
   validated_by?: string | null;
   validator_name?: string | null;
   validated_at?: string | null;
+  submitted_total_weight_kg?: number;
+  submitted_total_pcs?: number;
   total_weight_kg: number;
   total_pcs: number;
   notes?: string | null;
@@ -45,12 +50,28 @@ export interface CrushingRequest {
   items?: CrushingRequestItem[];
 }
 
+export interface ApproveItemAdjustmentPayload {
+  id: string;
+  verified_quantity_pcs?: number;
+  verified_weight_kg?: number;
+  adjustment_notes?: string;
+}
+
+export interface ApproveCrushingRequestPayload {
+  notes?: string;
+  items?: ApproveItemAdjustmentPayload[];
+}
+
 export interface CreateRequestItemPayload {
   item_type: 'part_ng' | 'runner_ng';
   master_part_id?: string;
   material_id?: string;
   material_name?: string;
-  quantity_pcs?: number;
+  part_number?: string;
+  model_code?: string;
+  image_url?: string | null;
+  berat_part_gr?: number;
+  quantity_pcs: number;
   runner_weight_kg?: number;
   notes?: string;
 }

@@ -261,7 +261,7 @@ export const DashboardPage: React.FC = () => {
 
         {/* Action Buttons: Verifikasi Tiket, + Add Data & Export */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', flexWrap: 'wrap' }}>
-          {/* Verifikasi Tiket Masuk Button */}
+          {/* Verifikasi Pengiriman Button */}
           <button
             onClick={() => navigate('/approval-requests')}
             style={{
@@ -281,7 +281,7 @@ export const DashboardPage: React.FC = () => {
             }}
           >
             <ClipboardCheck size={16} />
-            <span>Verifikasi Tiket</span>
+            <span>Verifikasi Pengiriman</span>
           </button>
 
           {/* + Add Runner Data Button */}
