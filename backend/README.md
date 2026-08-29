@@ -6,19 +6,21 @@ RESTful API service untuk sistem pencatatan dan pemantauan daur ulang material p
 ```
 backend/
 ├── src/
-│   ├── config/             # Database (MySQL), Redis, Swagger, dan Environment variables
-│   ├── middlewares/        # Auth JWT, Rate Limiting, Request Logger (Redis Stream), Error Handler
+│   ├── config/             # Database (MySQL), Swagger, dan Environment variables
+│   ├── middlewares/        # Auth JWT, Rate Limiting, Request Logger (MySQL Audit), Error Handler
 │   ├── modules/
 │   │   ├── auth/           # Login & Token Verification
 │   │   ├── users/          # User Management (Admin)
 │   │   ├── factories/      # Master Data Pabrik/Lokasi Operasional
 │   │   ├── machines/       # Master Data Mesin Inject Mold & Tonnage
 │   │   ├── master-parts/   # Master Part catalog, QR lookup, & autocomplete
+│   │   ├── crushing-requests/ # Pengajuan kirim part NG, draft SQL & verifikasi operator
 │   │   ├── ng-transactions/# Input Transaksi Part NG (Ketik & Scan)
 │   │   ├── production-actual/# Import data aktual produksi dari CSV shopfloor
 │   │   ├── dashboard/      # Stat Summary, Pareto, Charts, SSE stream, & Export
+│   │   ├── analytics/      # Data analitik produksi, 3-bar chart, gap matriks, pareto & rollback
 │   │   ├── site-config/    # Application theme configuration (Admin)
-│   │   └── global-logs/    # Global API audit trail logs (Admin)
+│   │   └── global-logs/    # Global API audit trail logs (MySQL)
 │   ├── utils/              # Response helper & SSE Event Emitter
 │   ├── app.ts              # Express application config & routing
 │   └── server.ts           # HTTP Server Entry point
@@ -29,25 +31,23 @@ backend/
 - Pemisahan data master `factories` dan `machines` secara fleksibel.
 - Interactive API Documentation via Swagger UI (`http://localhost:4000/api-docs`).
 - Rate limiting via `express-rate-limit`.
-- Audit log otomatis ke Redis Streams (`logs:api-requests`).
+- Audit log otomatis ke tabel MySQL `api_audit_logs`.
+- Pengajuan dan penyimpanan draft pengiriman part NG langsung ke database MySQL (`is_submitted = FALSE/TRUE`).
 - Real-time updates via Server-Sent Events (SSE).
-- Role-based authorization (`admin` vs `operator`).
+- Role-based authorization (`super-admin`, `admin`, `operator`, `pengirim`).
 
 ## Environment Setup
 Pastikan file `.env` di folder `backend/` memiliki konfigurasi berikut:
 ```env
-PORT=
-DB_HOST=
-DB_PORT=
-DB_USER=
+PORT=4000
+DB_HOST=localhost
+DB_PORT=3306
+DB_USER=root
 DB_PASSWORD=
-DB_NAME=
-REDIS_HOST=
-REDIS_PORT=
-REDIS_PASSWORD=
-JWT_SECRET=
-JWT_EXPIRES_IN=
-CORS_ORIGIN=
+DB_NAME=crushing_management
+JWT_SECRET=your_jwt_secret
+JWT_EXPIRES_IN=24h
+CORS_ORIGIN=http://localhost:5173
 ```
 
 ## Run Locally

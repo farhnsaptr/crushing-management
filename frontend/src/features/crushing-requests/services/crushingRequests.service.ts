@@ -2,6 +2,7 @@ import { apiClient } from '../../../services/api.client';
 import type {
   CrushingRequest,
   CreateCrushingRequestPayload,
+  ApproveCrushingRequestPayload,
   CrushingRequestListResponse,
   CreateRequestItemPayload,
 } from '../types/crushingRequests.types';
@@ -62,7 +63,7 @@ export class CrushingRequestsService {
     return response.data.data;
   }
 
-  // Redis-backed Cross-Device Draft APIs
+  // Database (MySQL) Cross-Device Draft APIs
   static async getDraft(): Promise<RequestDraftData | null> {
     const response = await apiClient.get<{ success: boolean; data: RequestDraftData | null }>(
       '/api/crushing-requests/draft'

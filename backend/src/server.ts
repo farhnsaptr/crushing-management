@@ -1,7 +1,6 @@
 import app from './app';
 import { env } from './config/env.config';
 import { testDbConnection } from './config/database';
-import { initRedis } from './config/redis';
 
 async function startServer() {
   console.log('[Server] Starting Material Management API Server...');
@@ -11,9 +10,6 @@ async function startServer() {
   if (!dbConnected) {
     console.warn('[Database] DB connection failed during startup. Server will start, but endpoints relying on DB will fail.');
   }
-
-  // Initialize Redis Connection
-  await initRedis();
 
   const PORT = parseInt(env.PORT, 10);
   app.listen(PORT, () => {

@@ -129,7 +129,7 @@ export class CrushingRequestsController {
         return;
       }
 
-      const saved = await CrushingRequestsService.saveDraft(req.user.id, req.body);
+      const saved = await CrushingRequestsService.saveDraft(req.user, req.body);
       sendSuccess(res, saved, 'Draf tiket berhasil disimpan ke server');
     } catch (error: any) {
       sendError(res, error.message || 'Gagal menyimpan draf tiket', 500);

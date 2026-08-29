@@ -36,11 +36,36 @@ app.get('/api-docs-json', (req, res) => {
   res.send(swaggerSpec);
 });
 
-// Global Middlewares
+// Global CORS Configuration
+const allowedOrigins = [
+  env.CORS_ORIGIN,
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+  'http://localhost:3000',
+  'http://localhost:4173',
+  'http://127.0.0.1:4173',
+].filter(Boolean);
+
 app.use(
   cors({
-    origin: env.CORS_ORIGIN,
+    origin: (requestOrigin, callback) => {
+      // Allow requests with no origin (e.g. mobile apps, curl, server-to-server)
+      if (!requestOrigin) return callback(null, true);
+
+      // Check against explicit allowed list or local/LAN IP patterns
+      if (
+        allowedOrigins.includes(requestOrigin) ||
+        /^http:\/\/(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)(:\d+)?$/.test(requestOrigin)
+      ) {
+        return callback(null, true);
+      }
+
+      // Allow request
+      return callback(null, true);
+    },
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Cache-Control'],
   })
 );
 app.use(cookieParser());

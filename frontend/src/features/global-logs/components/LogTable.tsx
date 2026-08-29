@@ -117,7 +117,7 @@ export const LogTable: React.FC<LogTableProps> = ({ logs, isLoading, newlyAddedI
       columns={columns}
       data={logs}
       isLoading={isLoading}
-      emptyMessage="Belum ada audit log tercatat di Redis Streams."
+      emptyMessage="Belum ada audit log aktivitas yang tercatat di database."
       keyExtractor={(row) => row.id || Math.random().toString()}
       rowClassName={(row) => (newlyAddedIds.has(row.id) ? 'new-log-highlight' : '')}
     />
