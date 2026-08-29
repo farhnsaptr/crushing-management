@@ -70,7 +70,6 @@ export const PartRunnerNgPage: React.FC = () => {
     handleDeleteAllRecords,
     toast,
     setToast,
-    fetchHistory,
   } = useRunnerImport();
 
   // Hook for Analytics Summary & Monthly Chart Detail Modal

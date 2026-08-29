@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Card } from '../../../components/common/Card';
 import { Badge } from '../../../components/common/Badge';
-import { AlertCircle, Tag, TrendingUp } from 'lucide-react';
+import { AlertCircle, TrendingUp } from 'lucide-react';
 import type { ParetoPartsNgResponse } from '../types/analytics.types';
 
 interface AnalyticsParetoPartNgProps {

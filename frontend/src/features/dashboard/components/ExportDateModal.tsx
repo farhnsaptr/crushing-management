@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, FileSpreadsheet, Calendar, MapPin, CheckCircle2 } from 'lucide-react';
+import { X, FileSpreadsheet, MapPin, CheckCircle2 } from 'lucide-react';
 import type { PlantLocation } from '../types/dashboard.types';
 
 interface ExportDateModalProps {

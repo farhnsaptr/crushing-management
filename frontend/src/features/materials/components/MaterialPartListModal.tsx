@@ -71,10 +71,10 @@ export const MaterialPartListModal: React.FC<MaterialPartListModalProps> = ({
               </div>
               <div>
                 <h4 style={{ fontSize: '1.05rem', fontWeight: 800, margin: 0, color: 'var(--text-main, #0f172a)' }}>
-                  {material.material_name}
+                  {material?.material_name}
                 </h4>
                 <p style={{ fontSize: '0.8rem', color: 'var(--text-muted, #64748b)', margin: 0 }}>
-                  {material.description || 'Tanpa Deskripsi'}
+                  {material?.description || 'Tanpa Deskripsi'}
                 </p>
               </div>
             </div>

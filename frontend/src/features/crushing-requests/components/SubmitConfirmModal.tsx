@@ -6,17 +6,10 @@ import type { CreateRequestItemPayload } from '../types/crushingRequests.types';
 import type { UserProfile } from '../../../context/AuthContext';
 import {
   Send,
-  Scale,
-  Package,
   Calendar,
-  Layers,
   AlertTriangle,
-  CheckCircle2,
-  Building2,
   Network,
   User,
-  Sun,
-  Moon,
 } from 'lucide-react';
 import { formatIndonesianDate } from '../../../config/shift.config';
 

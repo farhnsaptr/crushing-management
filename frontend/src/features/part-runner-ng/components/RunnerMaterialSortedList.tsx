@@ -4,7 +4,7 @@ import { Input } from '../../../components/common/Input';
 import { Button } from '../../../components/common/Button';
 import { Badge } from '../../../components/common/Badge';
 import type { RunnerMaterialSummaryItem, RunnerMaterialAnalyticsSummaryResponse } from '../types/runnerMaterial.types';
-import { Search, Layers, Scale, Calendar, BarChart3, ChevronRight, Award, Trophy } from 'lucide-react';
+import { Search, Layers, ChevronRight } from 'lucide-react';
 
 interface RunnerMaterialSortedListProps {
   selectedYear: number;

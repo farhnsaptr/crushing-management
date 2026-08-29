@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from 'react';
 import { NgInputService } from '../services/ngInput.service';
 import type {
   MaterialSummaryResponse,
-  MaterialSummaryItem,
   PartMonthlyDetailResponse,
   PartSummaryItem,
   PlantLocation,
@@ -37,7 +36,6 @@ export function useNgDetail() {
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
-  const [selectedPartId, setSelectedPartId] = useState<string | null>(null);
   const [selectedPartSummary, setSelectedPartSummary] = useState<PartSummaryItem | null>(null);
   const [partDetail, setPartDetail] = useState<PartMonthlyDetailResponse | null>(null);
   const [isLoadingDetail, setIsLoadingDetail] = useState<boolean>(false);
@@ -72,7 +70,6 @@ export function useNgDetail() {
   };
 
   const openPartModal = async (part: PartSummaryItem) => {
-    setSelectedPartId(part.master_part_id);
     setSelectedPartSummary(part);
     setIsModalOpen(true);
     setIsLoadingDetail(true);
@@ -94,7 +91,6 @@ export function useNgDetail() {
 
   const closeModal = () => {
     setIsModalOpen(false);
-    setSelectedPartId(null);
     setSelectedPartSummary(null);
     setPartDetail(null);
   };

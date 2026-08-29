@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Card } from '../../../components/common/Card';
 import { Badge } from '../../../components/common/Badge';
-import { Layers, Box, TrendingUp, Info } from 'lucide-react';
+import { Layers, Box, TrendingUp } from 'lucide-react';
 import type { ParetoMaterialsResponse } from '../types/analytics.types';
 
 interface AnalyticsParetoMaterialProps {

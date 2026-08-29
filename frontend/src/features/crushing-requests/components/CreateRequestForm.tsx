@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Input } from '../../../components/common/Input';
 import { Button } from '../../../components/common/Button';
-import { Badge } from '../../../components/common/Badge';
 import { Spinner } from '../../../components/common/Spinner';
 import type { CreateRequestItemPayload } from '../types/crushingRequests.types';
 import type { MasterPart } from '../../master-parts/types/masterParts.types';
@@ -19,51 +18,49 @@ import {
   Package,
   Sun,
   Moon,
-  AlertCircle,
   X,
   RotateCcw,
   Check,
   LayoutGrid,
   List,
-  FileText,
 } from 'lucide-react';
 import { formatIndonesianDate } from '../../../config/shift.config';
 
 interface CreateRequestFormProps {
   user: UserProfile | null;
   shift: 'Pagi' | 'Malam';
-  onShiftChange: (shift: 'Pagi' | 'Malam') => void;
+  onShiftChange?: (shift: 'Pagi' | 'Malam') => void;
   requestDate: string;
-  onRequestDateChange: (date: string) => void;
+  onRequestDateChange?: (date: string) => void;
   notes: string;
   onNotesChange: (notes: string) => void;
   items: CreateRequestItemPayload[];
-  itemType: 'part_ng' | 'runner_ng';
-  onItemTypeChange: (type: 'part_ng' | 'runner_ng') => void;
-  selectedPart: MasterPart | null;
-  onSelectPart: (part: MasterPart) => void;
+  itemType?: 'part_ng' | 'runner_ng';
+  onItemTypeChange?: (type: 'part_ng' | 'runner_ng') => void;
+  selectedPart?: MasterPart | null;
+  onSelectPart?: (part: MasterPart) => void;
   onQuickAddPart?: (part: MasterPart, delta?: number) => void;
   onStepItemQty?: (index: number, delta: number) => void;
   onUpdateItemQty?: (index: number, qty: number) => void;
   onUpdateItemNotes?: (index: number, notes: string) => void;
   getItemQuantityForPart?: (partId: string) => number;
-  partQuantityPcs: number | '';
-  onPartQuantityChange: (qty: number | '') => void;
-  selectedMaterial: Material | null;
-  onSelectMaterial: (mat: Material | null) => void;
-  runnerWeightKg: number | '';
-  onRunnerWeightChange: (weight: number | '') => void;
-  itemNotes: string;
-  onItemNotesChange: (notes: string) => void;
+  partQuantityPcs?: number | '';
+  onPartQuantityChange?: (qty: number | '') => void;
+  selectedMaterial?: Material | null;
+  onSelectMaterial?: (mat: Material | null) => void;
+  runnerWeightKg?: number | '';
+  onRunnerWeightChange?: (weight: number | '') => void;
+  itemNotes?: string;
+  onItemNotesChange?: (notes: string) => void;
   filteredParts: MasterPart[];
   jenisOptions: string[];
   selectedJenis: string;
   onSelectJenis: (jenis: string) => void;
-  availableMaterials: Material[];
+  availableMaterials?: Material[];
   isLoadingParts: boolean;
   partSearchQuery: string;
   onPartSearchQueryChange: (query: string) => void;
-  onAddItem: () => void;
+  onAddItem?: () => void;
   onAddRunnerBatch?: (items: Array<{ material_id?: string; material_name: string; runner_weight_kg: number; notes?: string }>) => void;
   onRemoveItem: (index: number) => void;
   onClearDraft?: () => void;
@@ -76,16 +73,13 @@ interface CreateRequestFormProps {
 export const CreateRequestForm: React.FC<CreateRequestFormProps> = ({
   user,
   shift,
-  onShiftChange,
   requestDate,
-  onRequestDateChange,
   notes,
   onNotesChange,
   items,
   onQuickAddPart,
   onStepItemQty,
   onUpdateItemQty,
-  onUpdateItemNotes,
   getItemQuantityForPart,
   filteredParts,
   jenisOptions,

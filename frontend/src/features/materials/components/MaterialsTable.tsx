@@ -3,7 +3,7 @@ import type { Material } from '../types/materials.types';
 import { Table, type Column } from '../../../components/common/Table';
 import { Button } from '../../../components/common/Button';
 import { Badge } from '../../../components/common/Badge';
-import { Pencil, Trash2, Package, Eye } from 'lucide-react';
+import { Pencil, Trash2, Eye } from 'lucide-react';
 
 interface MaterialsTableProps {
   materials: Material[];

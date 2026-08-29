@@ -13,7 +13,6 @@ import {
   Scale,
   Package,
   PlusCircle,
-  FileSpreadsheet,
   Layers,
 } from 'lucide-react';
 

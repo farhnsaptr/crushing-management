@@ -7,7 +7,6 @@ import {
   FileText,
   Trash2,
   Calendar,
-  Layers,
   X,
   History,
   RefreshCw,

@@ -3,7 +3,7 @@ import { Card } from '../../../components/common/Card';
 import { Input } from '../../../components/common/Input';
 import { Button } from '../../../components/common/Button';
 import type { MasterPart } from '../types/ngInput.types';
-import { Save, Sun, Moon, Scale, Package, Calendar, AlertCircle, Lock } from 'lucide-react';
+import { Save, Sun, Moon, Scale, Package, Calendar, AlertCircle } from 'lucide-react';
 import { formatIndonesianDate } from '../../../config/shift.config';
 
 interface NgInputFormCardProps {

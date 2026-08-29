@@ -2,7 +2,7 @@ import React from 'react';
 import type { DepartmentParetoItem } from '../types/dashboard.types';
 import { Card } from '../../../components/common/Card';
 import { Badge } from '../../../components/common/Badge';
-import { Network, Scale, Flame, ArrowUpRight } from 'lucide-react';
+import { Network } from 'lucide-react';
 
 interface DepartmentParetoTableProps {
   data: DepartmentParetoItem[];

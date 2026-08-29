@@ -105,6 +105,7 @@ export interface SenderDashboardStats {
   approved_weight_kg: number;
   approved_pcs: number;
   total_submitted_weight_kg: number;
+  total_pcs?: number;
   daily_chart: SenderDailyChartItem[];
   top_parts: SenderTopPartItem[];
   top_materials: SenderMaterialItem[];
