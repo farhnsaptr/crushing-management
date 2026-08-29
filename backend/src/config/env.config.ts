@@ -21,6 +21,8 @@ export const env = {
   JWT_SECRET: requireEnv('JWT_SECRET'),
   JWT_EXPIRES_IN: requireEnv('JWT_EXPIRES_IN'),
   CORS_ORIGIN: requireEnv('CORS_ORIGIN'),
+  // true hanya untuk HTTPS production. false untuk HTTP / akses via IP LAN.
+  COOKIE_SECURE: process.env.COOKIE_SECURE === 'true',
   MINIO_ENDPOINT: process.env.MINIO_ENDPOINT || 'http://127.0.0.1:9000',
   MINIO_ACCESS_KEY: process.env.MINIO_ACCESS_KEY || 'minioadmin',
   MINIO_SECRET_KEY: process.env.MINIO_SECRET_KEY || 'minioadmin',
