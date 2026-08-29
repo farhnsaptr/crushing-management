@@ -25,7 +25,7 @@ router.get('/stream', GlobalLogsController.streamLogs);
  * @openapi
  * /api/admin/logs:
  *   get:
- *     summary: Read API request audit logs from Redis Stream (Super-Admin only)
+ *     summary: Read API request audit logs from MySQL Database (Super-Admin only)
  *     tags: [Global Audit Logs]
  *     security:
  *       - bearerAuth: []
@@ -35,9 +35,9 @@ router.get('/stream', GlobalLogsController.streamLogs);
  *         schema: { type: integer, default: 50 }
  *     responses:
  *       200:
- *         description: Audit logs list from Redis Stream
+ *         description: Audit logs list from MySQL Database
  *   delete:
- *     summary: Purge/clear all audit logs in Redis Stream (Super-Admin only)
+ *     summary: Purge/clear all audit logs in MySQL Database (Super-Admin only)
  *     tags: [Global Audit Logs]
  *     security:
  *       - bearerAuth: []
