@@ -1,6 +1,6 @@
 import React from 'react';
 import { Card } from '../../../components/common/Card';
-import { Table, TableProperties } from 'lucide-react';
+import { Table } from 'lucide-react';
 import type { MonthlyComparisonItem } from '../types/analytics.types';
 
 interface AnalyticsMonthlyGapTableProps {
@@ -18,7 +18,7 @@ export const AnalyticsMonthlyGapTable: React.FC<AnalyticsMonthlyGapTableProps> =
 
   // Calculate annual totals
   const totalAllowance = monthlyData.reduce((acc, m) => acc + (m.allowance_kg || 0), 0);
-  const totalInput = monthlyData.reduce((acc, m) => acc + (m.input_kg ?? (m.system_ng_kg + m.system_runner_kg) ?? 0), 0);
+  const totalInput = monthlyData.reduce((acc, m) => acc + (m.input_kg ?? (m.system_ng_kg + m.system_runner_kg)), 0);
   const totalOutput = monthlyData.reduce((acc, m) => acc + (m.actual_output_kg || 0), 0);
 
   const totalGapNg = Number((totalAllowance - totalInput).toFixed(2));
@@ -117,7 +117,7 @@ export const AnalyticsMonthlyGapTable: React.FC<AnalyticsMonthlyGapTableProps> =
                   </div>
                 </td>
                 {monthlyData.map((item, idx) => {
-                  const inputVal = item.input_kg ?? (item.system_ng_kg + item.system_runner_kg) ?? 0;
+                  const inputVal = item.input_kg ?? (item.system_ng_kg + item.system_runner_kg);
                   const gapNg = item.gap_ng_kg ?? Number((item.allowance_kg - inputVal).toFixed(2));
                   const isPlus = gapNg >= 0;
                   const isEmpty = item.allowance_kg === 0 && inputVal === 0;
@@ -175,7 +175,7 @@ export const AnalyticsMonthlyGapTable: React.FC<AnalyticsMonthlyGapTableProps> =
                   </div>
                 </td>
                 {monthlyData.map((item, idx) => {
-                  const inputVal = item.input_kg ?? (item.system_ng_kg + item.system_runner_kg) ?? 0;
+                  const inputVal = item.input_kg ?? (item.system_ng_kg + item.system_runner_kg);
                   const gapCrushing = item.gap_crushing_kg ?? Number((inputVal - item.actual_output_kg).toFixed(2));
                   const isEmpty = inputVal === 0 && item.actual_output_kg === 0;
 
