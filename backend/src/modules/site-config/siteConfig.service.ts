@@ -47,8 +47,8 @@ export class SiteConfigService {
   static getStorageConfigSync(): StorageSiteConfig {
     const cfg = this.cachedConfig || {};
     return {
-      minio_base_url: cfg['minio_base_url'] || env.MINIO_BASE_URL || 'http://127.0.0.1:9000',
-      minio_bucket_name: cfg['minio_bucket_name'] || env.MINIO_BUCKET_NAME || 'crushing-management-parts',
+      minio_base_url: cfg['minio_base_url'] || env.MINIO_BASE_URL,
+      minio_bucket_name: cfg['minio_bucket_name'] || env.MINIO_BUCKET_NAME,
       minio_folder_master_parts: cfg['minio_folder_master_parts'] || 'master-parts',
     };
   }
@@ -59,8 +59,8 @@ export class SiteConfigService {
   static async getStorageConfig(): Promise<StorageSiteConfig> {
     const cfg = await this.getConfig();
     return {
-      minio_base_url: cfg['minio_base_url'] || env.MINIO_BASE_URL || 'http://127.0.0.1:9000',
-      minio_bucket_name: cfg['minio_bucket_name'] || env.MINIO_BUCKET_NAME || 'crushing-management-parts',
+      minio_base_url: cfg['minio_base_url'] || env.MINIO_BASE_URL,
+      minio_bucket_name: cfg['minio_bucket_name'] || env.MINIO_BUCKET_NAME,
       minio_folder_master_parts: cfg['minio_folder_master_parts'] || 'master-parts',
     };
   }

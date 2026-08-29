@@ -21,14 +21,11 @@ export const env = {
   JWT_SECRET: requireEnv('JWT_SECRET'),
   JWT_EXPIRES_IN: requireEnv('JWT_EXPIRES_IN'),
   CORS_ORIGIN: requireEnv('CORS_ORIGIN'),
-  // true hanya untuk HTTPS production. false untuk HTTP / akses via IP LAN.
-  COOKIE_SECURE: process.env.COOKIE_SECURE === 'true',
-  MINIO_ENDPOINT: process.env.MINIO_ENDPOINT || 'http://127.0.0.1:9000',
-  MINIO_ACCESS_KEY: process.env.MINIO_ACCESS_KEY || 'minioadmin',
-  MINIO_SECRET_KEY: process.env.MINIO_SECRET_KEY || 'minioadmin',
-  MINIO_BUCKET_NAME: process.env.MINIO_BUCKET_NAME || 'crushing-management-parts',
-  MINIO_REGION: process.env.MINIO_REGION || 'us-east-1',
-  // Domain MinIO yang bisa diakses browser (tanpa bucket name & tanpa trailing slash)
-  // Ganti ini jika domain/IP berubah — data di DB tidak terpengaruh karena hanya simpan key
-  MINIO_BASE_URL: process.env.MINIO_BASE_URL || 'http://127.0.0.1:9000',
+  COOKIE_SECURE: requireEnv('COOKIE_SECURE') === 'true',
+  MINIO_ENDPOINT: requireEnv('MINIO_ENDPOINT'),
+  MINIO_ACCESS_KEY: requireEnv('MINIO_ACCESS_KEY'),
+  MINIO_SECRET_KEY: requireEnv('MINIO_SECRET_KEY'),
+  MINIO_BUCKET_NAME: requireEnv('MINIO_BUCKET_NAME'),
+  MINIO_REGION: requireEnv('MINIO_REGION'),
+  MINIO_BASE_URL: requireEnv('MINIO_BASE_URL'),
 };
