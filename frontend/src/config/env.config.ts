@@ -6,7 +6,7 @@
 export const getApiBaseUrl = (): string => {
   const envBaseUrl = import.meta.env.VITE_API_BASE_URL;
   if (envBaseUrl && typeof envBaseUrl === 'string' && envBaseUrl.trim() !== '') {
-    return envBaseUrl.trim();
+    return envBaseUrl.trim().replace(/\/+$/, '');
   }
 
   // When served via proxy (Vite dev/preview, Nginx, Caddy), relative path is same-origin

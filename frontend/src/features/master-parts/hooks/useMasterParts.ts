@@ -136,7 +136,7 @@ export const useMasterParts = () => {
       setToast({
         id: Date.now().toString(),
         type: 'success',
-        message: 'Foto berhasil dikompresi & disimpan secara permanen di MinIO S3 Bucket!',
+        message: 'Foto berhasil dikompresi & disimpan',
       });
       fetchParts();
     } catch (err: any) {
@@ -158,6 +158,37 @@ export const useMasterParts = () => {
       type: 'info',
       message: 'Pratinjau foto draft dibatalkan.',
     });
+  };
+
+  const [isDeletingImage, setIsDeletingImage] = useState<boolean>(false);
+
+  const handleDeleteImage = async () => {
+    if (!selectedPart || !selectedPart.image_url) return;
+
+    const confirmed = window.confirm(
+      `Apakah Anda yakin ingin menghapus foto untuk part "${selectedPart.part_name}" (${selectedPart.part_number}) dari MinIO S3?`
+    );
+    if (!confirmed) return;
+
+    setIsDeletingImage(true);
+    try {
+      const updatedPart = await MasterPartsService.deletePartImage(selectedPart.id);
+      setSelectedPart(updatedPart);
+      setToast({
+        id: Date.now().toString(),
+        type: 'success',
+        message: 'Foto master part berhasil dihapus',
+      });
+      fetchParts();
+    } catch (err: any) {
+      setToast({
+        id: Date.now().toString(),
+        type: 'error',
+        message: err.response?.data?.message || 'Gagal menghapus foto master part.',
+      });
+    } finally {
+      setIsDeletingImage(false);
+    }
   };
 
   const fetchMachines = async () => {
@@ -394,6 +425,7 @@ export const useMasterParts = () => {
     selectedPart,
     draftImagePreview,
     isSubmittingImage,
+    isDeletingImage,
     isUploadModalOpen,
     setIsUploadModalOpen,
     isPreviewModalOpen,
@@ -413,6 +445,7 @@ export const useMasterParts = () => {
     handleSelectImageFile,
     handleSubmitDraftImage,
     handleCancelDraftImage,
+    handleDeleteImage,
     handleOpenCreateModal,
     handleOpenEditModal,
     handleCreatePart,

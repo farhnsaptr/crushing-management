@@ -3,14 +3,16 @@ import { Card } from '../../../components/common/Card';
 import { Button } from '../../../components/common/Button';
 import { Badge } from '../../../components/common/Badge';
 import type { MasterPart } from '../types/masterParts.types';
-import { Camera, Upload, Eye, Check, RotateCcw } from 'lucide-react';
+import { Camera, Upload, Eye, Check, RotateCcw, Trash2 } from 'lucide-react';
 
 interface MasterPartImageViewerCardProps {
   selectedPart: MasterPart | null;
   draftImagePreview: string | null;
   isSubmittingImage: boolean;
+  isDeletingImage?: boolean;
   onSubmitDraftPhoto: () => void;
   onCancelDraftPhoto: () => void;
+  onDeleteImage?: () => void;
   onLaunchDesktopCamera: () => void;
   onCaptureImage: (dataUrl: string) => void;
   onSelectImageFile: (file: File) => void;
@@ -21,8 +23,10 @@ export const MasterPartImageViewerCard: React.FC<MasterPartImageViewerCardProps>
   selectedPart,
   draftImagePreview,
   isSubmittingImage,
+  isDeletingImage = false,
   onSubmitDraftPhoto,
   onCancelDraftPhoto,
+  onDeleteImage,
   onLaunchDesktopCamera,
   onCaptureImage,
   onSelectImageFile,
@@ -218,7 +222,7 @@ export const MasterPartImageViewerCard: React.FC<MasterPartImageViewerCardProps>
                 fontSize: '0.95rem',
               }}
             >
-              Submit Foto (Kompres & Simpan S3)
+              Simpan Foto
             </Button>
 
             <Button
@@ -228,30 +232,53 @@ export const MasterPartImageViewerCard: React.FC<MasterPartImageViewerCardProps>
               leftIcon={<RotateCcw size={16} />}
               style={{ width: '100%' }}
             >
-              Batal / Foto Ulang
+              Batal
             </Button>
           </div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-            <Button
-              variant="outline"
-              onClick={handleCameraClick}
-              disabled={!selectedPart}
-              leftIcon={<Camera size={16} />}
-              title="Ambil foto langsung menggunakan kamera HP / Webcam Desktop"
-            >
-              Ambil Gambar
-            </Button>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+              <Button
+                variant="outline"
+                onClick={handleCameraClick}
+                disabled={!selectedPart}
+                leftIcon={<Camera size={16} />}
+                title="Ambil foto langsung menggunakan kamera HP / Webcam Desktop"
+              >
+                Ambil Gambar
+              </Button>
 
-            <Button
-              variant="outline"
-              onClick={() => uploadFileInputRef.current?.click()}
-              disabled={!selectedPart}
-              leftIcon={<Upload size={16} />}
-              title="Pilih file gambar dari galeri / komputer Anda"
-            >
-              Upload Gambar
-            </Button>
+              <Button
+                variant="outline"
+                onClick={() => uploadFileInputRef.current?.click()}
+                disabled={!selectedPart}
+                leftIcon={<Upload size={16} />}
+                title="Pilih file gambar dari galeri / komputer Anda"
+              >
+                Upload Gambar
+              </Button>
+            </div>
+
+            {/* Tombol Hapus Foto jika Part Memiliki Gambar */}
+            {selectedPart && selectedPart.image_url && onDeleteImage && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onDeleteImage}
+                isLoading={isDeletingImage}
+                disabled={isDeletingImage}
+                leftIcon={<Trash2 size={16} />}
+                style={{
+                  color: '#ef4444',
+                  backgroundColor: 'rgba(239, 68, 68, 0.08)',
+                  borderColor: 'rgba(239, 68, 68, 0.2)',
+                  width: '100%',
+                }}
+                title="Hapus foto part ini dari MinIO S3 & database"
+              >
+                Hapus Foto Ini
+              </Button>
+            )}
           </div>
         )}
       </div>

@@ -13,9 +13,19 @@ export class SiteConfigController {
     }
   }
 
+  static async checkStorageImpact(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      const { new_bucket_name, new_folder_master_parts } = req.body || {};
+      const impact = await SiteConfigService.checkStorageImpact(new_bucket_name, new_folder_master_parts);
+      sendSuccess(res, impact, 'Storage impact check completed');
+    } catch (error: any) {
+      sendError(res, error.message || 'Failed to check storage impact', 500);
+    }
+  }
+
   static async updateConfig(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
-      const { items } = req.body;
+      const { items, migrationAction } = req.body;
       const userId = req.user ? req.user.id : 'system';
 
       if (!Array.isArray(items) || items.length === 0) {
@@ -23,7 +33,7 @@ export class SiteConfigController {
         return;
       }
 
-      const updatedConfig = await SiteConfigService.updateConfig(items, userId);
+      const updatedConfig = await SiteConfigService.updateConfig(items, userId, migrationAction);
       sendSuccess(res, updatedConfig, 'Site config updated successfully');
     } catch (error: any) {
       sendError(res, error.message || 'Failed to update site config', 400);

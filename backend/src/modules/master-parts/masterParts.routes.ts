@@ -56,4 +56,11 @@ router.post(
   MasterPartsController.uploadPartImage
 );
 
+// Delete Part Image from MinIO S3 & Database
+router.delete(
+  '/:id/image',
+  requireRole(['super-admin', 'admin']),
+  MasterPartsController.deletePartImage
+);
+
 export default router;
