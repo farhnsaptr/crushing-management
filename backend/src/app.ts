@@ -29,6 +29,9 @@ import analyticsRoutes from './modules/analytics/analytics.routes';
 
 const app: Application = express();
 
+// Trust proxy for proper IP and protocol forwarding
+app.set('trust proxy', 1);
+
 // Swagger API Documentation
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.get('/api-docs-json', (req, res) => {
@@ -36,32 +39,12 @@ app.get('/api-docs-json', (req, res) => {
   res.send(swaggerSpec);
 });
 
-// Global CORS Configuration
-const allowedOrigins = [
-  env.CORS_ORIGIN,
-  'http://localhost:5173',
-  'http://127.0.0.1:5173',
-  'http://localhost:3000',
-  'http://localhost:4173',
-  'http://127.0.0.1:4173',
-].filter(Boolean);
-
+// Global CORS Configuration (Dynamic for any LAN IP / Domain / Port)
 app.use(
   cors({
     origin: (requestOrigin, callback) => {
-      // Allow requests with no origin (e.g. mobile apps, curl, server-to-server)
-      if (!requestOrigin) return callback(null, true);
-
-      // Check against explicit allowed list or local/LAN IP patterns
-      if (
-        allowedOrigins.includes(requestOrigin) ||
-        /^http:\/\/(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)(:\d+)?$/.test(requestOrigin)
-      ) {
-        return callback(null, true);
-      }
-
-      // Allow request
-      return callback(null, true);
+      // Allow all origins dynamically (echoes back the incoming origin header for credentials support)
+      callback(null, requestOrigin || true);
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],

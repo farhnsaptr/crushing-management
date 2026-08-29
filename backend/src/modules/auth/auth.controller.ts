@@ -2,6 +2,8 @@ import { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { sendSuccess, sendError } from '../../utils/response.util';
 import { AuthenticatedRequest } from '../../middlewares/auth.middleware';
+import { env } from '../../config/env.config';
+
 
 export class AuthController {
   static async login(req: Request, res: Response): Promise<void> {
@@ -17,7 +19,7 @@ export class AuthController {
 
       res.cookie('token', result.token, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
+        secure: env.COOKIE_SECURE,
         sameSite: 'lax',
         maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
         path: '/',
@@ -65,7 +67,7 @@ export class AuthController {
   static async logout(req: Request, res: Response): Promise<void> {
     res.clearCookie('token', {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: env.COOKIE_SECURE,
       sameSite: 'lax',
       path: '/',
     });

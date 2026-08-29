@@ -31,10 +31,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   const verifySession = async () => {
-    // Clear legacy storage tokens if present
-    localStorage.removeItem('user');
-    localStorage.removeItem('token');
-
     try {
       const response = await apiClient.get('/api/auth/me');
       if (response.data && response.data.data) {
@@ -62,8 +58,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.warn('Logout API request error', err);
     } finally {
       setUser(null);
-      localStorage.removeItem('user');
-      localStorage.removeItem('token');
     }
   };
 

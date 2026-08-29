@@ -5,48 +5,29 @@ const options: swaggerJsdoc.Options = {
   definition: {
     openapi: '3.0.0',
     info: {
-      title: 'Material Management API',
+      title: 'Crushing Management API',
       version: '1.0.0',
-      description:
-        'RESTful API Documentation untuk Sistem Daur Ulang Material Plastik PT Sugity Creatives',
-      contact: {
-        name: 'IT / Engineering Team',
-      },
+      description: 'REST API documentation for the Crushing Management system',
     },
     servers: [
       {
         url: `http://localhost:${env.PORT}`,
-        description: 'Local Development Server',
+        description: 'Local server',
       },
     ],
     components: {
       securitySchemes: {
-        bearerAuth: {
-          type: 'http',
-          scheme: 'bearer',
-          bearerFormat: 'JWT',
-          description: 'Masukkan JWT Token dengan format: Bearer <token>',
-        },
-      },
-      schemas: {
-        ApiResponse: {
-          type: 'object',
-          properties: {
-            success: { type: 'boolean', example: true },
-            message: { type: 'string', example: 'Success message' },
-            data: { type: 'object' },
-            error: { type: 'string', example: 'Error message if any' },
-          },
+        cookieAuth: {
+          type: 'apiKey',
+          in: 'cookie',
+          name: 'token',
         },
       },
     },
-    security: [
-      {
-        bearerAuth: [],
-      },
-    ],
+    security: [{ cookieAuth: [] }],
   },
-  apis: ['./src/modules/**/*.routes.ts', './src/modules/**/*.ts'],
+  // Scan all route files for @swagger JSDoc annotations
+  apis: ['./src/modules/**/*.routes.ts', './src/modules/**/*.controller.ts'],
 };
 
 export const swaggerSpec = swaggerJsdoc(options);
