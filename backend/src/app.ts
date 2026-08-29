@@ -75,7 +75,7 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // Static uploads directory
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
-// Audit Logger (Redis Stream)
+// Audit Logger (MySQL Database)
 app.use(requestLogger);
 
 // General Rate Limiter for all /api endpoints
