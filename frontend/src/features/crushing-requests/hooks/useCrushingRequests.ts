@@ -73,7 +73,7 @@ export function useCrushingRequests() {
     return () => clearInterval(interval);
   }, []);
 
-  // 2. Fetch Draft from Server (Redis) on mount / user load (restores items & notes)
+  // 2. Fetch Draft from Server (Database) on mount / user load (restores items & notes)
   const fetchServerDraft = useCallback(async () => {
     if (!user?.id) return;
     try {
@@ -87,7 +87,7 @@ export function useCrushingRequests() {
         }
       }
     } catch (err) {
-      console.warn('Failed to load draft from Redis:', err);
+      console.warn('Failed to load draft from server database:', err);
     } finally {
       setIsDraftLoaded(true);
     }
@@ -97,7 +97,7 @@ export function useCrushingRequests() {
     fetchServerDraft();
   }, [fetchServerDraft]);
 
-  // 2. Automatically sync draft state to Server (Redis) with debounce
+  // 2. Automatically sync draft state to Server (Database) with debounce
   useEffect(() => {
     if (!user?.id || !isDraftLoaded) return;
 
@@ -120,7 +120,7 @@ export function useCrushingRequests() {
           await CrushingRequestsService.deleteDraft();
         }
       } catch (err) {
-        console.warn('Failed to sync draft to Redis server:', err);
+        console.warn('Failed to sync draft to server database:', err);
       } finally {
         setIsSavingDraft(false);
       }

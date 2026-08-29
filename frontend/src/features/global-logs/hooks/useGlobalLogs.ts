@@ -125,7 +125,7 @@ export const useGlobalLogs = () => {
   };
 
   const handleClearAllLogs = async () => {
-    if (!window.confirm('Apakah Anda yakin ingin menghapus seluruh audit log di Redis Stream? Data yang dihapus tidak dapat dikembalikan.')) {
+    if (!window.confirm('Apakah Anda yakin ingin menghapus seluruh audit log aktivitas di database? Data yang dihapus tidak dapat dikembalikan.')) {
       return;
     }
 

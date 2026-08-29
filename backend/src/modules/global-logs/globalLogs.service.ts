@@ -1,43 +1,39 @@
-import { redisClient, getIsRedisConnected } from '../../config/redis';
+import { pool } from '../../config/database';
+import { RowDataPacket } from 'mysql2';
 
 export class GlobalLogsService {
-  static async getLogs(count: number = 100, startId: string = '+', endId: string = '-') {
-    if (!getIsRedisConnected()) {
-      return {
-        logs: [],
-        total: 0,
-        notice: 'Redis server is not currently connected. Logs are paused.',
-      };
-    }
-
+  static async getLogs(count: number = 100) {
     try {
-      // Use XREVRANGE to fetch logs in reverse chronological order
-      const rawEntries = await redisClient.xRevRange('logs:api-requests', startId, endId, {
-        COUNT: count,
-      });
+      const limit = Math.max(1, Math.min(1000, Number(count) || 100));
 
-      const logs = rawEntries
-        .filter((entry) => !entry.message.endpoint || !entry.message.endpoint.includes('/auth/me'))
-        .map((entry) => ({
-          id: entry.id,
-          waktu: entry.message.waktu,
-          user: entry.message.user,
-          role: entry.message.role,
-          metode: entry.message.metode,
-          endpoint: entry.message.endpoint,
-          ip_address: entry.message.ip_address,
-          status: parseInt(entry.message.status || '200', 10),
-          durasi_ms: parseInt(entry.message.durasi || '0', 10),
-        }));
+      const [rows] = await pool.query<RowDataPacket[]>(
+        `SELECT 
+          id,
+          DATE_FORMAT(timestamp, '%Y-%m-%dT%H:%i:%s.000Z') AS waktu,
+          username AS user,
+          role,
+          method AS metode,
+          endpoint,
+          ip_address,
+          status_code AS status,
+          response_time_ms AS durasi_ms
+         FROM api_audit_logs
+         ORDER BY timestamp DESC
+         LIMIT ?`,
+        [limit]
+      );
 
-      const streamLength = await redisClient.xLen('logs:api-requests');
+      const [countResult] = await pool.query<RowDataPacket[]>(
+        `SELECT COUNT(*) AS total FROM api_audit_logs`
+      );
+      const total = countResult[0]?.total || 0;
 
       return {
-        logs,
-        total: streamLength,
+        logs: rows,
+        total,
       };
     } catch (err: any) {
-      console.error('[GlobalLogsService] Error fetching logs from Redis stream:', err);
+      console.error('[GlobalLogsService] Error fetching logs from MySQL database:', err);
       return {
         logs: [],
         total: 0,
@@ -47,8 +43,6 @@ export class GlobalLogsService {
   }
 
   static async clearAllLogs(): Promise<void> {
-    if (getIsRedisConnected()) {
-      await redisClient.del('logs:api-requests');
-    }
+    await pool.query('DELETE FROM api_audit_logs');
   }
 }

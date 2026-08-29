@@ -1,6 +1,7 @@
 import { Response, NextFunction } from 'express';
+import { randomUUID } from 'crypto';
 import { AuthenticatedRequest } from './auth.middleware';
-import { redisClient, getIsRedisConnected } from '../config/redis';
+import { pool } from '../config/database';
 import { broadcastSseEvent } from '../utils/sse.util';
 
 export function requestLogger(
@@ -25,52 +26,20 @@ export function requestLogger(
     const method = req.method;
     const status = res.statusCode;
     const timestamp = new Date().toISOString();
+    const logId = randomUUID();
 
-    const logItemData = {
-      waktu: timestamp,
-      user,
-      role,
-      metode: method,
-      endpoint,
-      ip_address: String(ip),
-      status: status.toString(),
-      durasi: String(duration),
-    };
+    try {
+      // 1. Persist audit log to MySQL api_audit_logs table
+      await pool.query(
+        `INSERT INTO api_audit_logs 
+         (id, timestamp, method, endpoint, status_code, response_time_ms, username, role, ip_address)
+         VALUES (?, NOW(), ?, ?, ?, ?, ?, ?, ?)`,
+        [logId, method, endpoint, status, duration, user, role, String(ip)]
+      );
 
-    if (getIsRedisConnected()) {
-      try {
-        const entryId = await redisClient.xAdd(
-          'logs:api-requests',
-          '*',
-          logItemData,
-          {
-            TRIM: {
-              strategy: 'MAXLEN',
-              strategyModifier: '~',
-              threshold: 50000,
-            },
-          }
-        );
-
-        // Broadcast real-time SSE event to all connected clients
-        broadcastSseEvent('new_log', {
-          id: entryId,
-          waktu: timestamp,
-          user,
-          role,
-          metode: method,
-          endpoint,
-          ip_address: String(ip),
-          status,
-          durasi_ms: duration,
-        });
-      } catch (err) {
-        console.warn('[Logger] Failed to write log entry to Redis Stream:', err);
-      }
-    } else {
-      // Fallback SSE broadcast even if Redis is temporarily offline
+      // 2. Broadcast real-time SSE event to all connected admin clients
       broadcastSseEvent('new_log', {
-        id: Date.now().toString(),
+        id: logId,
         waktu: timestamp,
         user,
         role,
@@ -80,6 +49,8 @@ export function requestLogger(
         status,
         durasi_ms: duration,
       });
+    } catch (err) {
+      console.warn('[Logger] Failed to write audit log to MySQL database:', err);
     }
   });
 

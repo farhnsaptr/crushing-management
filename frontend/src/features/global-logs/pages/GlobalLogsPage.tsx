@@ -149,7 +149,7 @@ export const GlobalLogsPage: React.FC = () => {
 
       {/* Audit Logs Table Card with Numeric Pagination */}
       <Card
-        title="Audit Trail Redis Streams — Real-Time Log Viewer"
+        title="Audit Trail API Database — Real-Time Log Viewer"
         subtitle={`Menampilkan ${logs.length} baris di halaman ini (Total ${totalFilteredItems} terfilter dari ${totalRawItems} log)`}
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>

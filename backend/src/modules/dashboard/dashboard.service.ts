@@ -405,7 +405,7 @@ export class DashboardService {
     const qStart = startDate || defaultStart;
     const qEnd = endDate || defaultEnd;
 
-    // 1. Fetch NG Transactions with verified Operator Output
+    // 1. Fetch NG Transactions with verified Operator Output and Sender Input
     const [ngRows] = await pool.query<RowDataPacket[]>(
       `SELECT 
         DATE_FORMAT(t.transaction_date, '%Y-%m-%d') AS tanggal,
@@ -417,6 +417,8 @@ export class DashboardService {
         t.model_snapshot AS model,
         t.berat_part_gr_snapshot AS berat_part,
         t.quantity_pcs AS qty_per_pcs,
+        COALESCE(cri.quantity_pcs, t.quantity_pcs) AS input_pengirim,
+        COALESCE(cri.verified_quantity_pcs, t.quantity_pcs) AS actual_pengirim,
         COALESCE(mp.allowance_kg, ROUND((COALESCE(mp.std_qty_ng, (mp.shikake * 2), 0) * t.berat_part_gr_snapshot) / 1000, 2), 0) AS allowance,
         t.weight_kg AS input_kg,
         CASE
@@ -426,12 +428,21 @@ export class DashboardService {
           WHEN iv.status = 'validated' AND ivi.id IS NOT NULL AND ivi.system_total_weight_kg = 0 
             THEN 0.000
           ELSE t.weight_kg
-        END AS output_kg
+        END AS output_kg,
+        CASE
+          WHEN mm.recycle_type = 'no_reuse' OR LOWER(mp.material) LIKE '%no reuse%' THEN t.weight_kg
+          WHEN iv.status = 'validated' AND ivi.id IS NOT NULL AND ivi.system_total_weight_kg > 0 
+            THEN ROUND(t.weight_kg * (ivi.crushing_waste_kg / ivi.system_total_weight_kg), 2)
+          WHEN iv.status = 'validated' AND ivi.id IS NOT NULL AND ivi.system_total_weight_kg = 0 
+            THEN 0.000
+          ELSE 0.000
+        END AS waste_kg
        FROM ng_transactions t
        JOIN master_parts mp ON t.master_part_id = mp.id
        JOIN machines mc ON mp.machine_id = mc.id
        JOIN factories fc ON mc.factory_id = fc.id
        LEFT JOIN master_materials mm ON mp.material_id = mm.id
+       LEFT JOIN crushing_request_items cri ON (t.request_id IS NOT NULL AND cri.request_id = t.request_id AND cri.master_part_id = t.master_part_id)
        LEFT JOIN input_verifications iv ON (iv.verification_date = t.transaction_date AND iv.shift = t.shift)
        LEFT JOIN input_verification_items ivi ON (
          ivi.verification_id = iv.id AND (
@@ -445,13 +456,15 @@ export class DashboardService {
       [qStart, qEnd, location]
     );
 
-    // 2. Fetch Runner Material Transactions with verified Operator Output
+    // 2. Fetch Runner Material Transactions with verified Operator Output and Sender Input
     const [runnerRows] = await pool.query<RowDataPacket[]>(
       `SELECT 
         DATE_FORMAT(rmt.transaction_date, '%Y-%m-%d') AS tanggal,
         rmt.shift AS shift,
         COALESCE(mm.material_name, rmt.material_name_snapshot) AS material_name,
         rmt.total_pcs AS qty_per_pcs,
+        COALESCE(cri.weight_kg, rmt.total_runner_weight_kg) AS input_pengirim,
+        COALESCE(cri.verified_weight_kg, rmt.total_runner_weight_kg) AS actual_pengirim,
         rmt.total_runner_weight_kg AS input_kg,
         CASE
           WHEN mm.recycle_type = 'no_reuse' OR LOWER(rmt.material_name_snapshot) LIKE '%no reuse%' THEN 0.000
@@ -461,10 +474,19 @@ export class DashboardService {
             THEN 0.000
           ELSE rmt.total_runner_weight_kg
         END AS output_kg,
+        CASE
+          WHEN mm.recycle_type = 'no_reuse' OR LOWER(rmt.material_name_snapshot) LIKE '%no reuse%' THEN rmt.total_runner_weight_kg
+          WHEN iv.status = 'validated' AND ivi.id IS NOT NULL AND ivi.system_total_weight_kg > 0 
+            THEN ROUND(rmt.total_runner_weight_kg * (ivi.crushing_waste_kg / ivi.system_total_weight_kg), 2)
+          WHEN iv.status = 'validated' AND ivi.id IS NOT NULL AND ivi.system_total_weight_kg = 0 
+            THEN 0.000
+          ELSE 0.000
+        END AS waste_kg,
         COALESCE(rmt.import_batch_ref, '-') AS batch_ref
        FROM runner_material_transactions rmt
        LEFT JOIN master_materials mm ON (rmt.material_id = mm.id OR rmt.material_name_snapshot = mm.material_name)
        LEFT JOIN factories fc ON rmt.factory_id = fc.id
+       LEFT JOIN crushing_request_items cri ON (rmt.request_id IS NOT NULL AND cri.request_id = rmt.request_id AND cri.item_type = 'runner_ng' AND (cri.material_id = rmt.material_id OR cri.material_name_snapshot = rmt.material_name_snapshot))
        LEFT JOIN input_verifications iv ON (iv.verification_date = rmt.transaction_date AND iv.shift = rmt.shift)
        LEFT JOIN input_verification_items ivi ON (
          ivi.verification_id = iv.id AND (
@@ -491,9 +513,12 @@ export class DashboardService {
       'MODEL',
       'BERAT PART (GR)',
       'QTY PER PCS',
+      'INPUT PENGIRIM',
+      'ACTUAL PENGIRIM',
       'ALLOWANCE (KG)',
       'INPUT (KG)',
       'OUTPUT (KG)',
+      'WASTE (KG)',
     ];
 
     const ngExcelRows = ngRows.map((r) => [
@@ -506,9 +531,12 @@ export class DashboardService {
       r.model,
       Number(r.berat_part),
       Number(r.qty_per_pcs),
+      Number(r.input_pengirim),
+      Number(r.actual_pengirim),
       Number(Number(r.allowance || 0).toFixed(2)),
       Number(Number(r.input_kg || 0).toFixed(2)),
       Number(Number(r.output_kg || 0).toFixed(2)),
+      Number(Number(r.waste_kg || 0).toFixed(2)),
     ]);
 
     const wsNg = XLSX.utils.aoa_to_sheet([ngHeaders, ...ngExcelRows]);
@@ -520,11 +548,14 @@ export class DashboardService {
       { wch: 22 }, // PART NUMBER
       { wch: 24 }, // MATERIAL
       { wch: 12 }, // MODEL
-      { wch: 14 }, // BERAT PART
+      { wch: 16 }, // BERAT PART (GR)
       { wch: 14 }, // QTY PER PCS
-      { wch: 16 }, // ALLOWANCE
-      { wch: 14 }, // INPUT
-      { wch: 14 }, // OUTPUT
+      { wch: 18 }, // INPUT PENGIRIM
+      { wch: 18 }, // ACTUAL PENGIRIM
+      { wch: 16 }, // ALLOWANCE (KG)
+      { wch: 14 }, // INPUT (KG)
+      { wch: 14 }, // OUTPUT (KG)
+      { wch: 14 }, // WASTE (KG)
     ];
     XLSX.utils.book_append_sheet(wb, wsNg, 'Transaksi NG');
 
@@ -534,8 +565,11 @@ export class DashboardService {
       'SHIFT',
       'NAMA MATERIAL',
       'QTY PER PCS',
+      'INPUT PENGIRIM',
+      'ACTUAL PENGIRIM',
       'INPUT (KG)',
       'OUTPUT (KG)',
+      'WASTE (KG)',
       'BATCH / SUMBER',
     ];
 
@@ -544,8 +578,11 @@ export class DashboardService {
       r.shift,
       r.material_name || '-',
       Number(r.qty_per_pcs || 0),
+      Number(Number(r.input_pengirim || 0).toFixed(2)),
+      Number(Number(r.actual_pengirim || 0).toFixed(2)),
       Number(Number(r.input_kg || 0).toFixed(2)),
       Number(Number(r.output_kg || 0).toFixed(2)),
+      Number(Number(r.waste_kg || 0).toFixed(2)),
       r.batch_ref || '-',
     ]);
 
@@ -555,8 +592,11 @@ export class DashboardService {
       { wch: 10 }, // SHIFT
       { wch: 24 }, // NAMA MATERIAL
       { wch: 14 }, // QTY PER PCS
-      { wch: 14 }, // INPUT
-      { wch: 14 }, // OUTPUT
+      { wch: 18 }, // INPUT PENGIRIM
+      { wch: 18 }, // ACTUAL PENGIRIM
+      { wch: 14 }, // INPUT (KG)
+      { wch: 14 }, // OUTPUT (KG)
+      { wch: 14 }, // WASTE (KG)
       { wch: 28 }, // BATCH / SUMBER
     ];
     XLSX.utils.book_append_sheet(wb, wsRunner, 'Transaksi Runner');

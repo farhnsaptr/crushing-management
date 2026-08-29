@@ -17,7 +17,11 @@ frontend/
 │   ├── features/
 │   │   ├── auth/              # Halaman & Form Login
 │   │   ├── users/             # Admin User Management
-│   │   ├── global-logs/       # Admin Redis Streams Audit Log Viewer
+│   │   ├── master-parts/      # Master Part Catalog, Mesin & Model
+│   │   ├── crushing-requests/ # Kirim Part NG (Pengirim) & Draf Database
+│   │   ├── verification/      # Verifikasi & Approval Permintaan (Operator)
+│   │   ├── analytics/         # Data Analitik, Komparasi 3 Batang, Gap Matriks & Pareto
+│   │   ├── global-logs/       # Admin Database Audit Log Viewer (MySQL)
 │   │   └── site-config/       # Admin Theme Color Customizer
 │   ├── services/              # Axios API Client dengan JWT Interceptor
 │   ├── index.css              # Font Outfit, CSS Reset & Color Variables

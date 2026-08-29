@@ -3,7 +3,6 @@ import { pool } from '../../config/database';
 import { RowDataPacket } from 'mysql2';
 import { broadcastSseEvent } from '../../utils/sse.util';
 import { JwtPayloadUser } from '../../middlewares/auth.middleware';
-import { redisClient, getIsRedisConnected } from '../../config/redis';
 
 export interface CreateRequestItemDto {
   item_type: 'part_ng' | 'runner_ng';
@@ -53,6 +52,8 @@ export interface CrushingRequestRow extends RowDataPacket {
   shift: 'Pagi' | 'Malam';
   request_date: string;
   status: 'pending' | 'approved';
+  is_submitted: boolean;
+  submitted_at?: string | null;
   rejection_reason?: string | null;
   validated_by?: string | null;
   validator_name?: string | null;
@@ -119,32 +120,14 @@ export class CrushingRequestsService {
     return `REQ-${cleanDate}-${rand}`;
   }
 
-  static async createRequest(user: JwtPayloadUser, dto: CreateCrushingRequestDto) {
-    if (!dto.items || dto.items.length === 0) {
-      throw new Error('Permintaan wajib memiliki minimal 1 item part atau runner');
-    }
-
-    const factoryId = user.factory_id || dto.factory_id;
-    const departmentId = user.department_id || dto.department_id;
-
-    if (!factoryId) {
-      throw new Error('Factory penugasan tidak ditemukan pada akun Anda');
-    }
-    if (!departmentId) {
-      throw new Error('Departemen pengirim tidak ditemukan pada akun Anda');
-    }
-
-    // Auto-calculate shift and date based on current operational server time
-    const autoShiftDate = getBackendAutoShiftAndDate();
-    const finalShift: 'Pagi' | 'Malam' =
-      user.role === 'pengirim' ? autoShiftDate.shift : dto.shift === 'Malam' ? 'Malam' : 'Pagi';
-    const finalRequestDate: string =
-      user.role === 'pengirim' ? autoShiftDate.date : dto.request_date || autoShiftDate.date;
-
-    const requestId = randomUUID();
-    const requestNumber = this.generateRequestNumber(finalRequestDate);
-
-    // Process & calculate items in backend (AGENTS.md rule 4)
+  /**
+   * Process items, calculate weights and snapshots.
+   */
+  private static async processItemsPayload(
+    items: CreateRequestItemDto[],
+    factoryId: string,
+    userRole?: string
+  ) {
     let totalWeightKg = 0;
     let totalPcs = 0;
     const processedItems: Array<{
@@ -162,7 +145,7 @@ export class CrushingRequestsService {
       notes: string | null;
     }> = [];
 
-    for (const item of dto.items) {
+    for (const item of items) {
       if (item.item_type === 'part_ng') {
         if (!item.master_part_id) {
           throw new Error('Part NG wajib memilih Master Part');
@@ -184,7 +167,7 @@ export class CrushingRequestsService {
         const part = partRows[0];
 
         // Security validation: verify part belongs to user's assigned factory
-        if (user.role === 'pengirim' && part.factory_id !== factoryId) {
+        if (userRole === 'pengirim' && part.factory_id !== factoryId) {
           throw new Error(`Part '${part.part_name}' bukan berasal dari pabrik yang ditugaskan ke Anda`);
         }
 
@@ -243,6 +226,40 @@ export class CrushingRequestsService {
       }
     }
 
+    return { processedItems, totalWeightKg, totalPcs };
+  }
+
+  /**
+   * Submit new crushing request or promote existing draft to is_submitted = TRUE.
+   */
+  static async createRequest(user: JwtPayloadUser, dto: CreateCrushingRequestDto) {
+    if (!dto.items || dto.items.length === 0) {
+      throw new Error('Permintaan wajib memiliki minimal 1 item part atau runner');
+    }
+
+    const factoryId = user.factory_id || dto.factory_id;
+    const departmentId = user.department_id || dto.department_id;
+
+    if (!factoryId) {
+      throw new Error('Factory penugasan tidak ditemukan pada akun Anda');
+    }
+    if (!departmentId) {
+      throw new Error('Departemen pengirim tidak ditemukan pada akun Anda');
+    }
+
+    // Auto-calculate shift and date based on current operational server time
+    const autoShiftDate = getBackendAutoShiftAndDate();
+    const finalShift: 'Pagi' | 'Malam' =
+      user.role === 'pengirim' ? autoShiftDate.shift : dto.shift === 'Malam' ? 'Malam' : 'Pagi';
+    const finalRequestDate: string =
+      user.role === 'pengirim' ? autoShiftDate.date : dto.request_date || autoShiftDate.date;
+
+    const { processedItems, totalWeightKg, totalPcs } = await this.processItemsPayload(
+      dto.items,
+      factoryId,
+      user.role
+    );
+
     const inferredType: 'part_ng' | 'runner_ng' | 'mixed' =
       dto.request_type ||
       (processedItems.every((i) => i.item_type === 'part_ng')
@@ -251,27 +268,68 @@ export class CrushingRequestsService {
         ? 'runner_ng'
         : 'mixed');
 
-    // Insert Header with submitted totals preserved
-    await pool.query(
-      `INSERT INTO crushing_requests
-       (id, request_number, sender_id, factory_id, department_id, request_type, shift, request_date, status, submitted_total_weight_kg, submitted_total_pcs, total_weight_kg, total_pcs, notes)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?)`,
-      [
-        requestId,
-        requestNumber,
-        user.id,
-        factoryId,
-        departmentId,
-        inferredType,
-        finalShift,
-        finalRequestDate,
-        Number(totalWeightKg.toFixed(2)),
-        totalPcs,
-        Number(totalWeightKg.toFixed(2)),
-        totalPcs,
-        dto.notes || null,
-      ]
+    // Check if an existing unsubmitted draft exists for this sender
+    const [existingDrafts] = await pool.query<RowDataPacket[]>(
+      `SELECT id FROM crushing_requests WHERE sender_id = ? AND is_submitted = FALSE LIMIT 1`,
+      [user.id]
     );
+
+    let requestId: string;
+    const finalRequestNumber = this.generateRequestNumber(finalRequestDate);
+
+    if (existingDrafts.length > 0) {
+      requestId = existingDrafts[0].id;
+
+      // Update existing draft to submitted
+      await pool.query(
+        `UPDATE crushing_requests
+         SET request_number = ?, factory_id = ?, department_id = ?, request_type = ?, shift = ?, request_date = ?,
+             status = 'pending', is_submitted = TRUE, submitted_at = NOW(),
+             submitted_total_weight_kg = ?, submitted_total_pcs = ?, total_weight_kg = ?, total_pcs = ?,
+             notes = ?, updated_at = NOW()
+         WHERE id = ?`,
+        [
+          finalRequestNumber,
+          factoryId,
+          departmentId,
+          inferredType,
+          finalShift,
+          finalRequestDate,
+          Number(totalWeightKg.toFixed(2)),
+          totalPcs,
+          Number(totalWeightKg.toFixed(2)),
+          totalPcs,
+          dto.notes || null,
+          requestId,
+        ]
+      );
+
+      // Clean old draft items
+      await pool.query(`DELETE FROM crushing_request_items WHERE request_id = ?`, [requestId]);
+    } else {
+      requestId = randomUUID();
+
+      await pool.query(
+        `INSERT INTO crushing_requests
+         (id, request_number, sender_id, factory_id, department_id, request_type, shift, request_date, status, is_submitted, submitted_at, submitted_total_weight_kg, submitted_total_pcs, total_weight_kg, total_pcs, notes)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', TRUE, NOW(), ?, ?, ?, ?, ?)`,
+        [
+          requestId,
+          finalRequestNumber,
+          user.id,
+          factoryId,
+          departmentId,
+          inferredType,
+          finalShift,
+          finalRequestDate,
+          Number(totalWeightKg.toFixed(2)),
+          totalPcs,
+          Number(totalWeightKg.toFixed(2)),
+          totalPcs,
+          dto.notes || null,
+        ]
+      );
+    }
 
     // Insert Items
     for (const item of processedItems) {
@@ -299,13 +357,10 @@ export class CrushingRequestsService {
 
     const created = await this.getRequestById(requestId, user);
 
-    // Clear Redis temporary draft
-    await this.deleteDraft(user.id);
-
     // Broadcast SSE Event
     broadcastSseEvent('crushing_request_created', {
       requestId,
-      requestNumber,
+      requestNumber: finalRequestNumber,
       senderName: user.full_name,
       totalWeightKg,
       totalPcs,
@@ -316,6 +371,10 @@ export class CrushingRequestsService {
     return created;
   }
 
+  /**
+   * List submitted requests with pagination & role filtering.
+   * Operators and Admins only see rows where is_submitted = TRUE.
+   */
   static async listRequests(
     user: JwtPayloadUser,
     params: {
@@ -333,7 +392,8 @@ export class CrushingRequestsService {
     const limit = Math.max(1, Math.min(100, params.limit || 20));
     const offset = (page - 1) * limit;
 
-    let whereClause = 'WHERE 1=1';
+    // Operator and history only sees officially submitted requests
+    let whereClause = 'WHERE r.is_submitted = TRUE';
     const queryParams: any[] = [];
 
     // Role-based filtering
@@ -384,7 +444,7 @@ export class CrushingRequestsService {
         r.id, r.request_number, r.sender_id, u.full_name AS sender_name, u.username AS sender_username,
         r.factory_id, f.name AS factory_name, f.code AS factory_code,
         r.department_id, d.name AS department_name, d.code AS department_code,
-        r.request_type, r.shift, r.request_date, r.status,
+        r.request_type, r.shift, r.request_date, r.status, r.is_submitted, r.submitted_at,
         r.validated_by, v.full_name AS validator_name, r.validated_at,
         r.submitted_total_weight_kg, r.submitted_total_pcs,
         r.total_weight_kg, r.total_pcs, r.notes, r.created_at, r.updated_at,
@@ -417,7 +477,7 @@ export class CrushingRequestsService {
         r.id, r.request_number, r.sender_id, u.full_name AS sender_name, u.username AS sender_username,
         r.factory_id, f.name AS factory_name, f.code AS factory_code,
         r.department_id, d.name AS department_name, d.code AS department_code,
-        r.request_type, r.shift, r.request_date, r.status,
+        r.request_type, r.shift, r.request_date, r.status, r.is_submitted, r.submitted_at,
         r.validated_by, v.full_name AS validator_name, r.validated_at,
         r.submitted_total_weight_kg, r.submitted_total_pcs,
         r.total_weight_kg, r.total_pcs, r.notes, r.created_at, r.updated_at
@@ -451,7 +511,7 @@ export class CrushingRequestsService {
         i.notes, i.created_at,
         mp.image_url
        FROM crushing_request_items i
-       LEFT JOIN master_parts mp ON (i.master_part_id = mp.id OR (i.master_part_id IS NULL AND i.part_number_snapshot = mp.part_number))
+       LEFT JOIN master_parts mp ON i.master_part_id = mp.id
        WHERE i.request_id = ?
        ORDER BY i.created_at ASC`,
       [id]
@@ -464,29 +524,25 @@ export class CrushingRequestsService {
   }
 
   /**
-   * Operator verification & approval with physical discrepancy adjustments
+   * Operator verifies & approves a crushing request.
    */
-  static async approveRequest(
-    requestId: string,
-    validatorUser: JwtPayloadUser,
-    payload?: ApproveCrushingRequestDto
-  ) {
+  static async approveRequest(requestId: string, validatorUser: JwtPayloadUser, payload?: ApproveCrushingRequestDto) {
     const request = await this.getRequestById(requestId, validatorUser);
 
-    if (request.status !== 'pending') {
-      throw new Error(`Pengiriman tidak dapat disetujui karena statusnya sudah '${request.status}'`);
+    if (request.status === 'approved') {
+      throw new Error('Pengiriman ini sudah disetujui sebelumnya');
     }
 
-    const itemAdjustments = payload?.items || [];
-    const adjMap = new Map<string, ApproveItemAdjustmentDto>();
-    for (const adj of itemAdjustments) {
-      adjMap.set(adj.id, adj);
+    // 1. Process Adjustments
+    const adjustmentsMap = new Map<string, ApproveItemAdjustmentDto>();
+    if (payload?.items) {
+      for (const it of payload.items) {
+        adjustmentsMap.set(it.id, it);
+      }
     }
 
     let finalVerifiedTotalWeight = 0;
     let finalVerifiedTotalPcs = 0;
-
-    // 1. Process and update each item's verified values
     const verifiedItemsForTransaction: Array<{
       item: CrushingRequestItemRow;
       verifiedQty: number;
@@ -495,8 +551,7 @@ export class CrushingRequestsService {
     }> = [];
 
     for (const item of request.items) {
-      const adj = adjMap.get(item.id);
-
+      const adj = adjustmentsMap.get(item.id);
       let verifiedQty: number;
       let verifiedWeight: number;
       let adjNotes: string | null = null;
@@ -662,44 +717,250 @@ export class CrushingRequestsService {
   }
 
   /**
-   * Save temporary ticket draft to Redis with 7 days TTL (cross-device/browser persistence)
+   * Save temporary ticket draft to MySQL crushing_requests & crushing_request_items (is_submitted = FALSE)
    */
-  static async saveDraft(userId: string, draftData: any) {
-    if (!getIsRedisConnected()) {
+  static async saveDraft(user: JwtPayloadUser, draftData: any) {
+    const factoryId = user.factory_id || draftData.factory_id;
+    const departmentId = user.department_id || draftData.department_id;
+
+    if (!factoryId || !departmentId) {
       return null;
     }
-    const key = `draft:crushing_request:${userId}`;
-    await redisClient.set(key, JSON.stringify(draftData), {
-      EX: 7 * 24 * 60 * 60, // 7 days TTL
-    });
-    return draftData;
+
+    const autoShiftDate = getBackendAutoShiftAndDate();
+    const finalShift: 'Pagi' | 'Malam' =
+      draftData.shift === 'Malam' ? 'Malam' : 'Pagi';
+    const finalRequestDate: string = draftData.requestDate || autoShiftDate.date;
+
+    const items: CreateRequestItemDto[] = Array.isArray(draftData.items) ? draftData.items : [];
+
+    // Calculate item weights and totals
+    let totalWeightKg = 0;
+    let totalPcs = 0;
+    const processedItems: any[] = [];
+
+    for (const item of items) {
+      if (item.item_type === 'part_ng' && item.master_part_id) {
+        const [partRows] = await pool.query<RowDataPacket[]>(
+          `SELECT mp.id, mp.part_number, mp.part_name, mp.berat_part_gr, mp.material, m.model_code, mc.factory_id
+           FROM master_parts mp
+           JOIN machines mc ON mp.machine_id = mc.id
+           JOIN master_models m ON mp.model_id = m.id
+           WHERE mp.id = ? AND mp.is_active = TRUE`,
+          [item.master_part_id]
+        );
+
+        if (partRows.length > 0) {
+          const part = partRows[0];
+          const qtyPcs = Math.max(1, Number(item.quantity_pcs) || 1);
+          const beratGr = Number(part.berat_part_gr) || 0;
+          const itemWeightKg = Number(((qtyPcs * beratGr) / 1000).toFixed(2));
+
+          totalWeightKg += itemWeightKg;
+          totalPcs += qtyPcs;
+
+          processedItems.push({
+            id: randomUUID(),
+            item_type: 'part_ng',
+            master_part_id: part.id,
+            material_id: null,
+            part_number_snapshot: part.part_number,
+            part_name_snapshot: part.part_name,
+            model_snapshot: part.model_code,
+            material_name_snapshot: part.material,
+            berat_part_gr_snapshot: beratGr,
+            quantity_pcs: qtyPcs,
+            weight_kg: itemWeightKg,
+            notes: item.notes || null,
+          });
+        }
+      } else if (item.item_type === 'runner_ng') {
+        const runnerWeight = Math.max(0.01, Number(item.runner_weight_kg) || 0);
+        totalWeightKg += runnerWeight;
+
+        processedItems.push({
+          id: randomUUID(),
+          item_type: 'runner_ng',
+          master_part_id: null,
+          material_id: item.material_id || null,
+          part_number_snapshot: null,
+          part_name_snapshot: null,
+          model_snapshot: null,
+          material_name_snapshot: item.material_name || 'Material Runner',
+          berat_part_gr_snapshot: null,
+          quantity_pcs: item.quantity_pcs || 0,
+          weight_kg: Number(runnerWeight.toFixed(2)),
+          notes: item.notes || null,
+        });
+      }
+    }
+
+    const inferredType: 'part_ng' | 'runner_ng' | 'mixed' =
+      processedItems.every((i) => i.item_type === 'part_ng')
+        ? 'part_ng'
+        : processedItems.every((i) => i.item_type === 'runner_ng')
+        ? 'runner_ng'
+        : 'mixed';
+
+    // Check if an unsubmitted draft already exists in MySQL
+    const [existingDraftRows] = await pool.query<RowDataPacket[]>(
+      `SELECT id FROM crushing_requests WHERE sender_id = ? AND is_submitted = FALSE LIMIT 1`,
+      [user.id]
+    );
+
+    let draftRequestId: string;
+
+    if (existingDraftRows.length > 0) {
+      draftRequestId = existingDraftRows[0].id;
+      // Update existing draft header
+      await pool.query(
+        `UPDATE crushing_requests
+         SET factory_id = ?, department_id = ?, request_type = ?, shift = ?, request_date = ?,
+             submitted_total_weight_kg = ?, submitted_total_pcs = ?, total_weight_kg = ?, total_pcs = ?,
+             notes = ?, updated_at = NOW()
+         WHERE id = ?`,
+        [
+          factoryId,
+          departmentId,
+          inferredType,
+          finalShift,
+          finalRequestDate,
+          Number(totalWeightKg.toFixed(2)),
+          totalPcs,
+          Number(totalWeightKg.toFixed(2)),
+          totalPcs,
+          draftData.notes || null,
+          draftRequestId,
+        ]
+      );
+
+      // Clean existing draft items
+      await pool.query(`DELETE FROM crushing_request_items WHERE request_id = ?`, [draftRequestId]);
+    } else {
+      draftRequestId = randomUUID();
+      const draftNumber = `DRAFT-${finalRequestDate.replace(/-/g, '')}-${Math.floor(1000 + Math.random() * 9000)}`;
+
+      await pool.query(
+        `INSERT INTO crushing_requests
+         (id, request_number, sender_id, factory_id, department_id, request_type, shift, request_date, status, is_submitted, submitted_total_weight_kg, submitted_total_pcs, total_weight_kg, total_pcs, notes)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', FALSE, ?, ?, ?, ?, ?)`,
+        [
+          draftRequestId,
+          draftNumber,
+          user.id,
+          factoryId,
+          departmentId,
+          inferredType,
+          finalShift,
+          finalRequestDate,
+          Number(totalWeightKg.toFixed(2)),
+          totalPcs,
+          Number(totalWeightKg.toFixed(2)),
+          totalPcs,
+          draftData.notes || null,
+        ]
+      );
+    }
+
+    // Insert draft items
+    for (const item of processedItems) {
+      await pool.query(
+        `INSERT INTO crushing_request_items
+         (id, request_id, item_type, master_part_id, material_id, part_number_snapshot, part_name_snapshot, model_snapshot, material_name_snapshot, berat_part_gr_snapshot, quantity_pcs, weight_kg, notes)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          item.id,
+          draftRequestId,
+          item.item_type,
+          item.master_part_id,
+          item.material_id,
+          item.part_number_snapshot,
+          item.part_name_snapshot,
+          item.model_snapshot,
+          item.material_name_snapshot,
+          item.berat_part_gr_snapshot,
+          item.quantity_pcs,
+          item.weight_kg,
+          item.notes,
+        ]
+      );
+    }
+
+    return {
+      id: draftRequestId,
+      shift: finalShift,
+      requestDate: finalRequestDate,
+      notes: draftData.notes || '',
+      items: processedItems,
+    };
   }
 
   /**
-   * Retrieve temporary ticket draft from Redis
+   * Retrieve temporary ticket draft from MySQL
    */
   static async getDraft(userId: string) {
-    if (!getIsRedisConnected()) {
+    const [rows] = await pool.query<RowDataPacket[]>(
+      `SELECT id, request_number, shift, request_date, notes
+       FROM crushing_requests
+       WHERE sender_id = ? AND is_submitted = FALSE
+       ORDER BY updated_at DESC
+       LIMIT 1`,
+      [userId]
+    );
+
+    if (rows.length === 0) {
       return null;
     }
-    const key = `draft:crushing_request:${userId}`;
-    const raw = await redisClient.get(key);
-    if (!raw) return null;
-    try {
-      return JSON.parse(raw);
-    } catch {
-      return null;
-    }
+
+    const draft = rows[0];
+
+    const [items] = await pool.query<RowDataPacket[]>(
+      `SELECT 
+        cri.id, cri.item_type, cri.master_part_id, cri.material_id,
+        cri.part_number_snapshot AS part_number,
+        cri.part_name_snapshot AS material_name,
+        cri.model_snapshot AS model_code,
+        cri.berat_part_gr_snapshot AS berat_part_gr,
+        cri.quantity_pcs,
+        cri.weight_kg AS runner_weight_kg,
+        cri.notes,
+        mp.image_url
+       FROM crushing_request_items cri
+       LEFT JOIN master_parts mp ON cri.master_part_id = mp.id
+       WHERE cri.request_id = ?
+       ORDER BY cri.created_at ASC`,
+      [draft.id]
+    );
+
+    return {
+      id: draft.id,
+      shift: draft.shift,
+      requestDate: draft.request_date,
+      notes: draft.notes || '',
+      items: items.map((it) => ({
+        id: it.id,
+        item_type: it.item_type,
+        master_part_id: it.master_part_id,
+        material_id: it.material_id,
+        material_name: it.material_name || it.part_number,
+        part_number: it.part_number,
+        model_code: it.model_code,
+        image_url: it.image_url,
+        berat_part_gr: Number(it.berat_part_gr) || 0,
+        quantity_pcs: it.quantity_pcs,
+        runner_weight_kg: Number(it.runner_weight_kg) || 0,
+        notes: it.notes,
+      })),
+    };
   }
 
   /**
-   * Delete temporary ticket draft from Redis
+   * Delete temporary ticket draft from MySQL
    */
   static async deleteDraft(userId: string) {
-    if (!getIsRedisConnected()) {
-      return;
-    }
-    const key = `draft:crushing_request:${userId}`;
-    await redisClient.del(key);
+    await pool.query(
+      `DELETE FROM crushing_requests WHERE sender_id = ? AND is_submitted = FALSE`,
+      [userId]
+    );
   }
 }
