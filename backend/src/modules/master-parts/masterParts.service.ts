@@ -83,7 +83,10 @@ export class MasterPartsService {
     }
 
     const [rows] = await pool.query<RowDataPacket[]>(sql, params);
-    return rows;
+    return rows.map((r) => ({
+      ...r,
+      image_url: StorageService.formatImageUrl(r.image_url),
+    }));
   }
 
   static async getByQrCode(qrCodeValue: string, factoryId?: string) {
@@ -105,7 +108,11 @@ export class MasterPartsService {
     sql += ' LIMIT 1';
 
     const [rows] = await pool.query<RowDataPacket[]>(sql, params);
-    return rows[0] || null;
+    if (!rows[0]) return null;
+    return {
+      ...rows[0],
+      image_url: StorageService.formatImageUrl(rows[0].image_url),
+    };
   }
 
   static async getPartsByJenis(jenisPart: string, factoryId?: string) {
@@ -126,7 +133,10 @@ export class MasterPartsService {
     }
 
     const [rows] = await pool.query<RowDataPacket[]>(sql, params);
-    return rows;
+    return rows.map((r) => ({
+      ...r,
+      image_url: StorageService.formatImageUrl(r.image_url),
+    }));
   }
 
   static async listAllParts(
@@ -196,6 +206,7 @@ export class MasterPartsService {
 
     const formattedRows = rows.map((r) => ({
       ...r,
+      image_url: StorageService.formatImageUrl(r.image_url),
       shikake: Number(r.shikake),
       qty_day: Number(r.qty_day),
       prod_lot: Number(r.prod_lot),
@@ -325,11 +336,11 @@ export class MasterPartsService {
         Number(data.berat_runner_gr) || 0,
         stdQtyNg,
         allowanceKg,
-        data.image_url ?? null,
+        StorageService.extractKey(data.image_url),
       ]
     );
 
-    return { id, ...data, model_id: finalModelId, material_id: finalMaterialId, std_qty_ng: stdQtyNg, allowance_kg: allowanceKg };
+    return this.getPartById(id);
   }
 
   static async updatePart(
@@ -429,12 +440,12 @@ export class MasterPartsService {
         data.berat_runner_gr !== undefined ? Number(data.berat_runner_gr) : current.berat_runner_gr,
         stdQtyNg,
         allowanceKg,
-        data.image_url !== undefined ? data.image_url : current.image_url,
+        data.image_url !== undefined ? StorageService.extractKey(data.image_url) : current.image_url,
         id,
       ]
     );
 
-    return { id, ...data, model_id: finalModelId, material_id: finalMaterialId, std_qty_ng: stdQtyNg, allowance_kg: allowanceKg };
+    return this.getPartById(id);
   }
 
   static async getPartById(id: string) {
@@ -448,17 +459,40 @@ export class MasterPartsService {
        WHERE mp.id = ?`,
       [id]
     );
-    return rows[0] || null;
+    if (!rows[0]) return null;
+    return {
+      ...rows[0],
+      image_url: StorageService.formatImageUrl(rows[0].image_url),
+    };
   }
 
   static async updatePartImageUrl(id: string, imageUrl: string) {
+    const key = StorageService.extractKey(imageUrl);
     const [result] = await pool.query<ResultSetHeader>(
       'UPDATE master_parts SET image_url = ? WHERE id = ?',
-      [imageUrl, id]
+      [key, id]
     );
     if (result.affectedRows === 0) {
       throw new Error('Master Part not found');
     }
+    return this.getPartById(id);
+  }
+
+  static async deletePartImage(id: string) {
+    const existing = await this.getPartById(id);
+    if (!existing) {
+      throw new Error('Master Part not found');
+    }
+
+    if (existing.image_url) {
+      await StorageService.deleteImageFromUrl(existing.image_url);
+    }
+
+    await pool.query<ResultSetHeader>(
+      'UPDATE master_parts SET image_url = NULL WHERE id = ?',
+      [id]
+    );
+
     return this.getPartById(id);
   }
 

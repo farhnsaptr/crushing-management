@@ -1,21 +1,68 @@
 import { pool } from '../../config/database';
 import { RowDataPacket } from 'mysql2';
+import { env } from '../../config/env.config';
 
 export interface SiteConfigItem {
   key: string;
   value: string;
 }
 
+export interface StorageSiteConfig {
+  minio_base_url: string;
+  minio_bucket_name: string;
+  minio_folder_master_parts: string;
+}
+
 export class SiteConfigService {
-  static async getConfig() {
-    const [rows] = await pool.query<RowDataPacket[]>(
-      'SELECT `key`, value, updated_at FROM site_config'
-    );
-    const configMap: Record<string, string> = {};
-    for (const row of rows) {
-      configMap[row.key] = row.value;
+  private static cachedConfig: Record<string, string> | null = null;
+  private static cacheExpiresAt: number = 0;
+  private static readonly CACHE_TTL_MS = 60 * 1000; // Cache 1 menit untuk performa
+
+  static async getConfig(forceRefresh: boolean = false): Promise<Record<string, string>> {
+    const now = Date.now();
+    if (!forceRefresh && this.cachedConfig && now < this.cacheExpiresAt) {
+      return this.cachedConfig;
     }
-    return configMap;
+
+    try {
+      const [rows] = await pool.query<RowDataPacket[]>(
+        'SELECT `key`, value, updated_at FROM site_config'
+      );
+      const configMap: Record<string, string> = {};
+      for (const row of rows) {
+        configMap[row.key] = row.value;
+      }
+      this.cachedConfig = configMap;
+      this.cacheExpiresAt = now + this.CACHE_TTL_MS;
+      return configMap;
+    } catch (err) {
+      // Jika tabel belum di-migrate atau koneksi gagal, gunakan cache terakhir atau object kosong
+      return this.cachedConfig || {};
+    }
+  }
+
+  /**
+   * Helper sinkron untuk StorageService agar performa query/format URL tetap instan (O(1))
+   */
+  static getStorageConfigSync(): StorageSiteConfig {
+    const cfg = this.cachedConfig || {};
+    return {
+      minio_base_url: cfg['minio_base_url'] || env.MINIO_BASE_URL || 'http://127.0.0.1:9000',
+      minio_bucket_name: cfg['minio_bucket_name'] || env.MINIO_BUCKET_NAME || 'crushing-management-parts',
+      minio_folder_master_parts: cfg['minio_folder_master_parts'] || 'master-parts',
+    };
+  }
+
+  /**
+   * Helper async untuk memastikan nilai terbaru dari database
+   */
+  static async getStorageConfig(): Promise<StorageSiteConfig> {
+    const cfg = await this.getConfig();
+    return {
+      minio_base_url: cfg['minio_base_url'] || env.MINIO_BASE_URL || 'http://127.0.0.1:9000',
+      minio_bucket_name: cfg['minio_bucket_name'] || env.MINIO_BUCKET_NAME || 'crushing-management-parts',
+      minio_folder_master_parts: cfg['minio_folder_master_parts'] || 'master-parts',
+    };
   }
 
   static async updateConfig(items: { key: string; value: string }[], updatedByUserId: string) {
@@ -32,6 +79,10 @@ export class SiteConfigService {
       'site_title',
       'site_logo',
       'site_background',
+      // MinIO Storage Dynamic Settings:
+      'minio_base_url',
+      'minio_bucket_name',
+      'minio_folder_master_parts',
     ]);
 
     const hexColorRegex = /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/;
@@ -56,6 +107,8 @@ export class SiteConfigService {
       );
     }
 
-    return await this.getConfig();
+    // Invalidate cache setelah update
+    return await this.getConfig(true);
   }
 }
+

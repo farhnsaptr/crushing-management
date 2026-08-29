@@ -246,9 +246,8 @@ export class MasterPartsController {
 
       const imageUrl = await StorageService.uploadImageBuffer(
         req.file.buffer,
-        req.file.originalname || 'camera.jpg',
-        req.file.mimetype || 'image/jpeg',
-        'master-parts'
+        req.file.originalname,
+        req.file.mimetype || 'image/jpeg'
       );
 
       const updatedPart = await MasterPartsService.updatePartImageUrl(id, imageUrl);
@@ -256,6 +255,22 @@ export class MasterPartsController {
     } catch (error: any) {
       console.error('[Upload Part Image Error]', error);
       sendError(res, error.message || 'Gagal mengunggah foto ke MinIO S3', 500);
+    }
+  }
+
+  static async deletePartImage(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      const id = String(req.params.id);
+      if (!id) {
+        sendError(res, 'ID master part tidak valid', 400);
+        return;
+      }
+
+      const updatedPart = await MasterPartsService.deletePartImage(id);
+      sendSuccess(res, updatedPart, 'Foto master part berhasil dihapus dari sistem & MinIO S3');
+    } catch (error: any) {
+      console.error('[Delete Part Image Error]', error);
+      sendError(res, error.message || 'Gagal menghapus foto master part', 500);
     }
   }
 

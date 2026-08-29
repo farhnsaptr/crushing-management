@@ -39,6 +39,7 @@ export const MasterPartsPage: React.FC = () => {
     selectedPart,
     draftImagePreview,
     isSubmittingImage,
+    isDeletingImage,
     isUploadModalOpen,
     setIsUploadModalOpen,
     isPreviewModalOpen,
@@ -58,6 +59,7 @@ export const MasterPartsPage: React.FC = () => {
     handleSelectImageFile,
     handleSubmitDraftImage,
     handleCancelDraftImage,
+    handleDeleteImage,
     handleOpenCreateModal,
     handleOpenEditModal,
     handleCreatePart,
@@ -313,8 +315,10 @@ export const MasterPartsPage: React.FC = () => {
             selectedPart={selectedPart}
             draftImagePreview={draftImagePreview}
             isSubmittingImage={isSubmittingImage}
+            isDeletingImage={isDeletingImage}
             onSubmitDraftPhoto={handleSubmitDraftImage}
             onCancelDraftPhoto={handleCancelDraftImage}
+            onDeleteImage={handleDeleteImage}
             onLaunchDesktopCamera={() => setIsCameraModalOpen(true)}
             onCaptureImage={handleCaptureImage}
             onSelectImageFile={handleSelectImageFile}

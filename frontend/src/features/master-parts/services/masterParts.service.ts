@@ -119,4 +119,9 @@ export class MasterPartsService {
 
     return response.data.data;
   }
+
+  static async deletePartImage(partId: string): Promise<MasterPart> {
+    const response = await apiClient.delete(`/api/master-parts/${partId}/image`);
+    return response.data.data;
+  }
 }

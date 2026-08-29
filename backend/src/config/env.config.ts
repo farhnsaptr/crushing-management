@@ -28,5 +28,7 @@ export const env = {
   MINIO_SECRET_KEY: process.env.MINIO_SECRET_KEY || 'minioadmin',
   MINIO_BUCKET_NAME: process.env.MINIO_BUCKET_NAME || 'crushing-management-parts',
   MINIO_REGION: process.env.MINIO_REGION || 'us-east-1',
-  MINIO_PUBLIC_URL: process.env.MINIO_PUBLIC_URL || 'http://127.0.0.1:9000/crushing-management-parts',
+  // Domain MinIO yang bisa diakses browser (tanpa bucket name & tanpa trailing slash)
+  // Ganti ini jika domain/IP berubah — data di DB tidak terpengaruh karena hanya simpan key
+  MINIO_BASE_URL: process.env.MINIO_BASE_URL || 'http://127.0.0.1:9000',
 };

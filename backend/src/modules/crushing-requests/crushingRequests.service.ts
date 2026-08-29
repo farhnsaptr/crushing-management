@@ -3,6 +3,7 @@ import { pool } from '../../config/database';
 import { RowDataPacket } from 'mysql2';
 import { broadcastSseEvent } from '../../utils/sse.util';
 import { JwtPayloadUser } from '../../middlewares/auth.middleware';
+import { StorageService } from '../../services/storage.service';
 
 export interface CreateRequestItemDto {
   item_type: 'part_ng' | 'runner_ng';
@@ -519,7 +520,10 @@ export class CrushingRequestsService {
 
     return {
       ...request,
-      items,
+      items: items.map((it) => ({
+        ...it,
+        image_url: StorageService.formatImageUrl(it.image_url),
+      })),
     };
   }
 
@@ -945,7 +949,7 @@ export class CrushingRequestsService {
         material_name: it.material_name || it.part_number,
         part_number: it.part_number,
         model_code: it.model_code,
-        image_url: it.image_url,
+        image_url: StorageService.formatImageUrl(it.image_url),
         berat_part_gr: Number(it.berat_part_gr) || 0,
         quantity_pcs: it.quantity_pcs,
         runner_weight_kg: Number(it.runner_weight_kg) || 0,
