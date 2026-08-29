@@ -113,7 +113,7 @@ export const MasterPartsPage: React.FC = () => {
             <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.75rem', flex: 1 }}>
               <div style={{ minWidth: '220px', flex: 1, maxWidth: '320px' }}>
                 <Input
-                  placeholder="Cari part number, name, sebango..."
+                  placeholder="Cari model, part number, nama, sebango..."
                   value={searchQuery}
                   onChange={(e) => {
                     setSearchQuery(e.target.value);

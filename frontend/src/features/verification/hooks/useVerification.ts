@@ -26,8 +26,7 @@ export const useVerification = (initialDate?: string, initialShift?: 'Pagi' | 'M
       setData(res);
       const mappedItems = (res.items || []).map((it) => ({
         ...it,
-        box_count: res.is_validated ? it.box_count : (it.box_count === 0 ? '' : it.box_count),
-        kg_per_box: it.kg_per_box ?? 5.0,
+        actual_output_kg: res.is_validated ? it.actual_output_kg : (it.actual_output_kg === 0 ? '' : it.actual_output_kg),
       }));
       setItems(mappedItems);
       setNotes(res.header?.notes || '');
@@ -48,26 +47,18 @@ export const useVerification = (initialDate?: string, initialShift?: 'Pagi' | 'M
     fetchDetails();
   }, [fetchDetails]);
 
-  // Update box count or kg_per_box for a specific material item in state
-  const handleUpdateItem = (index: number, field: 'box_count' | 'kg_per_box', value: number | '') => {
+  // Update actual output kg directly for a specific material item
+  const handleUpdateItem = (index: number, value: number | '') => {
     setItems((prevItems) =>
       prevItems.map((item, idx) => {
         if (idx !== index) return item;
 
-        const newBoxCount = field === 'box_count' ? value : item.box_count;
-        const newKgPerBox = field === 'kg_per_box' ? value : item.kg_per_box;
-
-        const numBoxes = typeof newBoxCount === 'number' ? Math.max(0, newBoxCount) : (parseInt(String(newBoxCount), 10) || 0);
-        const numKg = typeof newKgPerBox === 'number' ? Math.max(0, newKgPerBox) : (parseFloat(String(newKgPerBox)) || 0);
-
-        const actualOut = Number((numBoxes * numKg).toFixed(2));
-        const wasteLoss = Number(Math.max(0, item.system_total_weight_kg - actualOut).toFixed(2));
+        const numKg = typeof value === 'number' ? Math.max(0, value) : (parseFloat(String(value)) || 0);
+        const wasteLoss = Number(Math.max(0, item.system_total_weight_kg - numKg).toFixed(2));
 
         return {
           ...item,
-          box_count: newBoxCount,
-          kg_per_box: newKgPerBox,
-          actual_output_kg: actualOut,
+          actual_output_kg: value,
           crushing_waste_kg: wasteLoss,
         };
       })
@@ -83,8 +74,9 @@ export const useVerification = (initialDate?: string, initialShift?: 'Pagi' | 'M
         shift,
         notes,
         items: items.map((item) => {
-          const numBoxes = typeof item.box_count === 'number' ? item.box_count : (parseInt(String(item.box_count), 10) || 0);
-          const numKg = typeof item.kg_per_box === 'number' ? item.kg_per_box : (parseFloat(String(item.kg_per_box)) || 5.0);
+          const numKg = typeof item.actual_output_kg === 'number'
+            ? item.actual_output_kg
+            : (parseFloat(String(item.actual_output_kg)) || 0);
 
           return {
             material_id: item.material_id,
@@ -92,8 +84,7 @@ export const useVerification = (initialDate?: string, initialShift?: 'Pagi' | 'M
             system_ng_weight_kg: Number(item.system_ng_weight_kg.toFixed(2)),
             system_runner_weight_kg: Number(item.system_runner_weight_kg.toFixed(2)),
             system_total_weight_kg: Number(item.system_total_weight_kg.toFixed(2)),
-            box_count: numBoxes,
-            kg_per_box: numKg,
+            actual_output_kg: Number(numKg.toFixed(2)),
           };
         }),
       };
@@ -117,7 +108,12 @@ export const useVerification = (initialDate?: string, initialShift?: 'Pagi' | 'M
 
   // Calculated Totals from current items state
   const totalSystemKg = Number(items.reduce((sum, item) => sum + item.system_total_weight_kg, 0).toFixed(2));
-  const totalActualOutputKg = Number(items.reduce((sum, item) => sum + item.actual_output_kg, 0).toFixed(2));
+  const totalActualOutputKg = Number(
+    items.reduce((sum, item) => {
+      const val = typeof item.actual_output_kg === 'number' ? item.actual_output_kg : (parseFloat(String(item.actual_output_kg)) || 0);
+      return sum + val;
+    }, 0).toFixed(2)
+  );
   const totalCrushingWasteKg = Number(items.reduce((sum, item) => sum + item.crushing_waste_kg, 0).toFixed(2));
 
   return {

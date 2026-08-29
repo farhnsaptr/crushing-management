@@ -84,6 +84,15 @@ export class MasterPartsController {
     }
   }
 
+  static async getAllModels(_req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      const models = await MasterPartsService.getAllModels();
+      sendSuccess(res, models, 'Master models list retrieved successfully');
+    } catch (error: any) {
+      sendError(res, error.message || 'Failed to get master models list', 500);
+    }
+  }
+
   static async listAll(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
       const page = parseInt(req.query.page as string, 10) || 1;
@@ -108,6 +117,7 @@ export class MasterPartsController {
         machine_id,
         customer,
         model_id,
+        model_code,
         part_number,
         part_name,
         jenis_part,
@@ -119,11 +129,10 @@ export class MasterPartsController {
         berat_part_gr,
         berat_runner_gr,
         image_url,
-        qr_code_value,
       } = req.body;
 
-      if (!sebango_code || !machine_id || !model_id || !part_number || !part_name || !berat_part_gr) {
-        sendError(res, 'sebango_code, machine_id, model_id, part_number, part_name, and berat_part_gr are required', 400);
+      if (!sebango_code || !machine_id || !part_number || !part_name || !berat_part_gr) {
+        sendError(res, 'sebango_code, machine_id, part_number, part_name, and berat_part_gr are required', 400);
         return;
       }
 
@@ -132,6 +141,7 @@ export class MasterPartsController {
         machine_id,
         customer: customer || '-',
         model_id,
+        model_code,
         part_number,
         part_name,
         jenis_part: jenis_part || '-',
@@ -143,7 +153,6 @@ export class MasterPartsController {
         berat_part_gr,
         berat_runner_gr,
         image_url,
-        qr_code_value,
       });
 
       sendSuccess(res, part, 'Master part created successfully', 201);

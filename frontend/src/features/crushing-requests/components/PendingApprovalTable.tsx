@@ -226,8 +226,8 @@ export const PendingApprovalTable: React.FC<PendingApprovalTableProps> = ({
                     <th style={{ padding: '0.75rem 0.85rem' }}>Pengirim / Asal</th>
                     <th style={{ padding: '0.75rem 0.85rem', textAlign: 'center' }}>Item Part</th>
                     <th style={{ padding: '0.75rem 0.85rem', textAlign: 'right' }}>Total Berat</th>
-                    <th style={{ padding: '0.75rem 0.85rem', textAlign: 'center' }}>Status</th>
                     <th style={{ padding: '0.75rem 0.85rem', textAlign: 'center', width: '160px' }}>Aksi</th>
+                    <th style={{ padding: '0.75rem 0.85rem', textAlign: 'center' }}>Status</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -285,9 +285,6 @@ export const PendingApprovalTable: React.FC<PendingApprovalTableProps> = ({
                         </div>
                       </td>
                       <td style={{ padding: '0.75rem 0.85rem', textAlign: 'center' }}>
-                        {getStatusBadge(r.status)}
-                      </td>
-                      <td style={{ padding: '0.75rem 0.85rem', textAlign: 'center' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}>
                           {r.status === 'pending' ? (
                             <Button
@@ -317,6 +314,9 @@ export const PendingApprovalTable: React.FC<PendingApprovalTableProps> = ({
                             </Button>
                           )}
                         </div>
+                      </td>
+                      <td style={{ padding: '0.75rem 0.85rem', textAlign: 'center' }}>
+                        {getStatusBadge(r.status)}
                       </td>
                     </tr>
                   ))}

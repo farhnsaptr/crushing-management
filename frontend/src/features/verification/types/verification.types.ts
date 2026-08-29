@@ -4,9 +4,9 @@ export interface VerificationItem {
   system_ng_weight_kg: number;
   system_runner_weight_kg: number;
   system_total_weight_kg: number;
-  box_count: number | '';
-  kg_per_box: number | '';
-  actual_output_kg: number;
+  box_count?: number | '';
+  kg_per_box?: number | '';
+  actual_output_kg: number | '';
   crushing_waste_kg: number;
 }
 
@@ -46,11 +46,10 @@ export interface SaveVerificationPayload {
   items: Array<{
     material_id?: string | null;
     material_name: string;
-    system_ng_weight_kg: number;
-    system_runner_weight_kg: number;
-    system_total_weight_kg: number;
-    box_count: number;
-    kg_per_box: number;
+    system_ng_weight_kg?: number;
+    system_runner_weight_kg?: number;
+    system_total_weight_kg?: number;
+    actual_output_kg: number;
   }>;
 }
 

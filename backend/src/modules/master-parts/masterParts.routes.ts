@@ -15,6 +15,7 @@ router.use(verifyToken);
 // Public/Read-only query routes
 router.get('/search', MasterPartsController.search);
 router.get('/models', MasterPartsController.getModelsForPart);
+router.get('/all-models', MasterPartsController.getAllModels);
 router.get('/by-qr', MasterPartsController.getByQr);
 router.get('/by-jenis', MasterPartsController.getByJenis);
 router.get('/jenis-list', MasterPartsController.getJenisPartList);

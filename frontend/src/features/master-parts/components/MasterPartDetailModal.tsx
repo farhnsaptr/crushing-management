@@ -150,10 +150,10 @@ export const MasterPartDetailModal: React.FC<MasterPartDetailModalProps> = ({
           <div style={{ padding: '0.75rem', backgroundColor: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 700 }}>
               <Scale size={15} />
-              <span>SHIKAKE (CAVITY)</span>
+              <span>SHIKAKE</span>
             </div>
             <p style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--text-main)', marginTop: '0.25rem' }}>
-              {Number(part.shikake || 1)} Cavity
+              {Number(part.shikake || 1)} Run
             </p>
           </div>
         </div>

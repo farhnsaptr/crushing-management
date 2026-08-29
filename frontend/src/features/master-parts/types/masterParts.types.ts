@@ -25,11 +25,19 @@ export interface MasterPart {
   created_at?: string;
 }
 
+export interface MasterModel {
+  id: string;
+  model_code: string;
+  description?: string;
+}
+
 export interface CreateMasterPartPayload {
   sebango_code: string;
   machine_id: string;
   customer: string;
-  model_id: string;
+  model_id?: string;
+  model_code?: string;
+  material_id?: string;
   part_number: string;
   part_name: string;
   jenis_part: string;

@@ -31,12 +31,13 @@ export class MasterPartsService {
   static async searchParts(query: string, factoryId?: string) {
     const searchTerm = `%${query}%`;
     let sql = `
-      SELECT DISTINCT mp.part_number, mp.part_name, mp.jenis_part, mp.material
+      SELECT DISTINCT mp.part_number, mp.part_name, mp.jenis_part, mp.material, m.model_code
       FROM master_parts mp
       JOIN machines mc ON mp.machine_id = mc.id
-      WHERE (mp.part_number LIKE ? OR mp.part_name LIKE ?) AND mp.is_active = TRUE
+      JOIN master_models m ON mp.model_id = m.id
+      WHERE (mp.part_number LIKE ? OR mp.part_name LIKE ? OR mp.sebango_code LIKE ? OR m.model_code LIKE ? OR m.description LIKE ? OR mp.customer LIKE ?) AND mp.is_active = TRUE
     `;
-    const params: any[] = [searchTerm, searchTerm];
+    const params: any[] = [searchTerm, searchTerm, searchTerm, searchTerm, searchTerm, searchTerm];
     if (factoryId) {
       sql += ' AND mc.factory_id = ?';
       params.push(factoryId);
@@ -88,15 +89,15 @@ export class MasterPartsService {
   static async getByQrCode(qrCodeValue: string, factoryId?: string) {
     let sql = `
       SELECT mp.id AS master_part_id, mp.part_number, mp.part_name, mp.jenis_part, mp.material,
-              mp.berat_part_gr, mp.image_url, mp.qr_code_value,
+              mp.berat_part_gr, mp.image_url,
               m.id AS model_id, m.model_code, mc.name AS machine_name, f.name AS factory_name
        FROM master_parts mp
        JOIN master_models m ON mp.model_id = m.id
        JOIN machines mc ON mp.machine_id = mc.id
        JOIN factories f ON mc.factory_id = f.id
-       WHERE mp.qr_code_value = ? AND mp.is_active = TRUE
+       WHERE (mp.part_number = ? OR mp.sebango_code = ?) AND mp.is_active = TRUE
     `;
-    const params: any[] = [qrCodeValue];
+    const params: any[] = [qrCodeValue, qrCodeValue];
     if (factoryId) {
       sql += ' AND mc.factory_id = ?';
       params.push(factoryId);
@@ -143,9 +144,9 @@ export class MasterPartsService {
     const params: any[] = [];
 
     if (search && search.trim() !== '') {
-      whereClause += ' AND (mp.part_number LIKE ? OR mp.part_name LIKE ? OR mp.sebango_code LIKE ? OR mp.customer LIKE ?)';
+      whereClause += ' AND (mp.part_number LIKE ? OR mp.part_name LIKE ? OR mp.sebango_code LIKE ? OR mp.customer LIKE ? OR m.model_code LIKE ? OR m.description LIKE ? OR mp.material LIKE ? OR mc.name LIKE ? OR mc.code LIKE ?)';
       const s = `%${search.trim()}%`;
-      params.push(s, s, s, s);
+      params.push(s, s, s, s, s, s, s, s, s);
     }
 
     if (jenis && jenis.trim() !== '' && jenis !== 'all') {
@@ -162,6 +163,7 @@ export class MasterPartsService {
       SELECT COUNT(*) AS total
       FROM master_parts mp
       JOIN machines mc ON mp.machine_id = mc.id
+      JOIN master_models m ON mp.model_id = m.id
       ${whereClause}
     `;
     const [countRows] = await pool.query<RowDataPacket[]>(countQuery, params);
@@ -215,11 +217,23 @@ export class MasterPartsService {
     };
   }
 
+  static async getAllModels(): Promise<Array<{ id: string; model_code: string; description?: string }>> {
+    const [rows] = await pool.query<RowDataPacket[]>(
+      `SELECT id, model_code, description FROM master_models ORDER BY model_code ASC`
+    );
+    return rows.map((r) => ({
+      id: r.id,
+      model_code: r.model_code,
+      description: r.description || undefined,
+    }));
+  }
+
   static async createPart(data: {
     sebango_code: string;
     machine_id: string;
     customer: string;
-    model_id: string;
+    model_id?: string;
+    model_code?: string;
     material_id?: string;
     part_number: string;
     part_name: string;
@@ -232,7 +246,6 @@ export class MasterPartsService {
     berat_part_gr: number;
     berat_runner_gr?: number;
     image_url?: string;
-    qr_code_value?: string;
   }) {
     const id = randomUUID();
 
@@ -240,6 +253,35 @@ export class MasterPartsService {
     const beratPartVal = Number(data.berat_part_gr) || 0;
     const stdQtyNg = shikakeVal * 2;
     const allowanceKg = Number(((stdQtyNg * beratPartVal) / 1000).toFixed(2));
+
+    // Auto-resolve or create Model in master_models
+    let finalModelId: string | null = null;
+    const cleanModelCode = (data.model_code || '').trim().toUpperCase();
+
+    if (data.model_id && data.model_id !== 'default') {
+      const [mRows] = await pool.query<RowDataPacket[]>('SELECT id FROM master_models WHERE id = ?', [data.model_id]);
+      if (mRows.length > 0) finalModelId = mRows[0].id;
+    }
+
+    if (!finalModelId && cleanModelCode && cleanModelCode !== '-') {
+      const [mRows] = await pool.query<RowDataPacket[]>('SELECT id FROM master_models WHERE UPPER(model_code) = ?', [cleanModelCode]);
+      if (mRows.length > 0) {
+        finalModelId = mRows[0].id;
+      } else {
+        finalModelId = randomUUID();
+        await pool.query('INSERT INTO master_models (id, model_code) VALUES (?, ?)', [finalModelId, cleanModelCode]);
+      }
+    }
+
+    if (!finalModelId) {
+      const [mRows] = await pool.query<RowDataPacket[]>('SELECT id FROM master_models LIMIT 1');
+      if (mRows.length > 0) {
+        finalModelId = mRows[0].id;
+      } else {
+        finalModelId = randomUUID();
+        await pool.query('INSERT INTO master_models (id, model_code) VALUES (?, ?)', [finalModelId, 'COMMON']);
+      }
+    }
 
     // Auto-resolve or create Material in master_materials if material_id not provided
     let finalMaterialId: string | null = data.material_id || null;
@@ -262,14 +304,14 @@ export class MasterPartsService {
 
     await pool.query(
       `INSERT INTO master_parts
-       (id, sebango_code, machine_id, customer, model_id, material_id, part_number, part_name, jenis_part, material, shikake, qty_day, prod_lot, qty_kbn, berat_part_gr, berat_runner_gr, std_qty_ng, allowance_kg, image_url, qr_code_value)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       (id, sebango_code, machine_id, customer, model_id, material_id, part_number, part_name, jenis_part, material, shikake, qty_day, prod_lot, qty_kbn, berat_part_gr, berat_runner_gr, std_qty_ng, allowance_kg, image_url)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
         data.sebango_code,
         data.machine_id,
         data.customer || '-',
-        data.model_id,
+        finalModelId,
         finalMaterialId,
         data.part_number || '-',
         data.part_name || '-',
@@ -284,11 +326,10 @@ export class MasterPartsService {
         stdQtyNg,
         allowanceKg,
         data.image_url ?? null,
-        data.qr_code_value ?? null,
       ]
     );
 
-    return { id, ...data, material_id: finalMaterialId, std_qty_ng: stdQtyNg, allowance_kg: allowanceKg };
+    return { id, ...data, model_id: finalModelId, material_id: finalMaterialId, std_qty_ng: stdQtyNg, allowance_kg: allowanceKg };
   }
 
   static async updatePart(
@@ -298,6 +339,7 @@ export class MasterPartsService {
       machine_id?: string;
       customer?: string;
       model_id?: string;
+      model_code?: string;
       material_id?: string;
       part_number?: string;
       part_name?: string;
@@ -310,7 +352,6 @@ export class MasterPartsService {
       berat_part_gr?: number;
       berat_runner_gr?: number;
       image_url?: string;
-      qr_code_value?: string;
     }
   ) {
     const [existing] = await pool.query<RowDataPacket[]>(
@@ -328,6 +369,21 @@ export class MasterPartsService {
 
     const stdQtyNg = shikakeVal * 2;
     const allowanceKg = Number(((stdQtyNg * beratPartVal) / 1000).toFixed(2));
+
+    // Resolve Model if updated
+    let finalModelId: string = current.model_id;
+    if (data.model_id && data.model_id !== 'default') {
+      finalModelId = data.model_id;
+    } else if (data.model_code && data.model_code.trim()) {
+      const cleanModelCode = data.model_code.trim().toUpperCase();
+      const [mRows] = await pool.query<RowDataPacket[]>('SELECT id FROM master_models WHERE UPPER(model_code) = ?', [cleanModelCode]);
+      if (mRows.length > 0) {
+        finalModelId = mRows[0].id;
+      } else {
+        finalModelId = randomUUID();
+        await pool.query('INSERT INTO master_models (id, model_code) VALUES (?, ?)', [finalModelId, cleanModelCode]);
+      }
+    }
 
     let finalMaterialId: string | null = data.material_id !== undefined ? data.material_id : current.material_id;
     const cleanMatName = data.material !== undefined ? data.material.trim() : current.material;
@@ -353,13 +409,13 @@ export class MasterPartsService {
         sebango_code = ?, machine_id = ?, customer = ?, model_id = ?, material_id = ?, part_number = ?,
         part_name = ?, jenis_part = ?, material = ?, shikake = ?, qty_day = ?,
         prod_lot = ?, qty_kbn = ?, berat_part_gr = ?, berat_runner_gr = ?,
-        std_qty_ng = ?, allowance_kg = ?, image_url = ?, qr_code_value = ?
+        std_qty_ng = ?, allowance_kg = ?, image_url = ?
        WHERE id = ?`,
       [
         data.sebango_code ?? current.sebango_code,
         data.machine_id ?? current.machine_id,
         data.customer ?? current.customer,
-        data.model_id ?? current.model_id,
+        finalModelId,
         finalMaterialId,
         data.part_number ?? current.part_number,
         data.part_name ?? current.part_name,
@@ -374,12 +430,11 @@ export class MasterPartsService {
         stdQtyNg,
         allowanceKg,
         data.image_url !== undefined ? data.image_url : current.image_url,
-        data.qr_code_value !== undefined ? data.qr_code_value : current.qr_code_value,
         id,
       ]
     );
 
-    return { id, ...data, material_id: finalMaterialId, std_qty_ng: stdQtyNg, allowance_kg: allowanceKg };
+    return { id, ...data, model_id: finalModelId, material_id: finalMaterialId, std_qty_ng: stdQtyNg, allowance_kg: allowanceKg };
   }
 
   static async getPartById(id: string) {

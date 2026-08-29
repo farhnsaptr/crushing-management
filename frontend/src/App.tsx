@@ -26,6 +26,7 @@ import { GlobalLogsPage } from './features/global-logs/pages/GlobalLogsPage';
 import { SiteConfigPage } from './features/site-config/pages/SiteConfigPage';
 import { SystemSignatureView } from './features/system/pages/SystemSignatureView';
 import { VerificationPage } from './features/verification/pages/VerificationPage';
+import { AnalyticsPage } from './features/analytics/pages/AnalyticsPage';
 
 export const App: React.FC = () => {
   return (
@@ -40,10 +41,11 @@ export const App: React.FC = () => {
             {/* Error Pages */}
             <Route path="/forbidden" element={<ForbiddenPage />} />
 
-            {/* Protected Route for Dashboard (Accessible by All Roles including Pengirim) */}
+            {/* Protected Route for Dashboard & Analytics (Accessible by All Roles including Pengirim) */}
             <Route element={<ProtectedRoute allowedRoles={['super-admin', 'admin', 'operator', 'pengirim']} />}>
               <Route element={<MainLayout />}>
                 <Route path="/dashboard" element={<DashboardPage />} />
+                <Route path="/analytics" element={<AnalyticsPage />} />
               </Route>
             </Route>
 

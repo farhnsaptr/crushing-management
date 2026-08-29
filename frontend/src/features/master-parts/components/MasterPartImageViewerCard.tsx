@@ -254,35 +254,6 @@ export const MasterPartImageViewerCard: React.FC<MasterPartImageViewerCardProps>
             </Button>
           </div>
         )}
-
-        {/* Storage Info Disclaimer Box */}
-        <div
-          style={{
-            padding: '0.65rem 0.85rem',
-            backgroundColor: isDraftMode ? 'rgba(245, 158, 11, 0.08)' : 'rgba(16, 185, 129, 0.08)',
-            border: isDraftMode ? '1px solid rgba(245, 158, 11, 0.25)' : '1px solid rgba(16, 185, 129, 0.25)',
-            borderRadius: 'var(--radius-md)',
-            fontSize: '0.75rem',
-            color: 'var(--text-main)',
-            display: 'flex',
-            alignItems: 'flex-start',
-            gap: '0.5rem',
-            lineHeight: 1.4,
-          }}
-        >
-          <Info size={16} style={{ color: isDraftMode ? '#f59e0b' : '#10b981', flexShrink: 0, marginTop: '0.1rem' }} />
-          <span>
-            {isDraftMode ? (
-              <>
-                Foto dalam mode pratinjau draft. Klik <strong>"Submit Foto"</strong> untuk mengompresi gambar dan menyimpannya secara permanen di MinIO S3.
-              </>
-            ) : (
-              <>
-                Penyimpanan foto terhubung aktif ke <strong>MinIO S3 Bucket (AWS Compatible)</strong>. Gambar baru akan dikompresi otomatis (max 1280px Web-JPEG).
-              </>
-            )}
-          </span>
-        </div>
       </div>
     </Card>
   );

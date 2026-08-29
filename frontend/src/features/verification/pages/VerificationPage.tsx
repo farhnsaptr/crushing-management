@@ -57,7 +57,7 @@ export const VerificationPage: React.FC = () => {
               Verifikasi Input & Output Crushing
             </h1>
             <p style={{ fontSize: '0.85rem', color: '#64748b', margin: '0.2rem 0 0 0' }}>
-              Validasi hasil akhir shift pekerjaan crushing material reuse dengan pencocokan box di dunia nyata.
+              Validasi hasil akhir shift pekerjaan crushing material reuse dengan pencocokan berat.
             </p>
           </div>
         </div>

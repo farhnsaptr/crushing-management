@@ -13,6 +13,7 @@ import {
   Network,
   Send,
   ClipboardCheck,
+  BarChart3,
 } from 'lucide-react';
 import React from 'react';
 import type { UserRole } from '../context/AuthContext';
@@ -73,6 +74,14 @@ export const NAVIGATION_ITEMS: NavigationItem[] = [
     path: '/verification',
     icon: CheckSquare,
     roles: ['super-admin', 'admin', 'operator'],
+    section: 'main',
+  },
+  {
+    id: 'analytics',
+    title: 'Data Analitik',
+    path: '/analytics',
+    icon: BarChart3,
+    roles: ['super-admin', 'admin', 'operator', 'pengirim'],
     section: 'main',
   },
   {

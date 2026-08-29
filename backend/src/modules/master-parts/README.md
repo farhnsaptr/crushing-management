@@ -7,8 +7,8 @@ Modul ini mengelola katalog data master part resin, model kendaraan, berat part/
    - Mendukung pencarian part instan berdasarkan part number atau part name untuk halaman input ketik.
 2. **Model Dynamic Lookup (`MasterPartsService.getModelsForPartNumber`)**:
    - Karena 1 part number dapat dipakai di lebih dari 1 model kendaraan (contoh: 55552-KK020-C0 pada model 640A & 660A), query ini mengembalikan daftar distinct model kendaraan untuk mengisi dropdown Model secara otomatis setelah part number dipilih.
-3. **Instan Lookup QR Code (`MasterPartsService.getByQrCode`)**:
-   - Pencarian berakurasi tinggi via `qr_code_value` (menggunakan index MySQL `idx_qr_code`) untuk mendukung alur input scan QR.
+3. **Instan Lookup Part / QR (`MasterPartsService.getByQrCode`)**:
+   - Pencarian part berdasarkan part number atau kode sebango.
 4. **Filter Berdasarkan Jenis Part (`MasterPartsService.getPartsByJenis`)**:
    - Menampilkan daftar part sesuai `jenis_part` (misal: BUMPER, GRILLE, DOOR TRIM) untuk halaman input scan.
 

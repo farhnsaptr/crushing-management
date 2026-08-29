@@ -4,7 +4,6 @@ import { Button } from '../../../components/common/Button';
 import { Badge } from '../../../components/common/Badge';
 import {
   CheckCircle2,
-  AlertTriangle,
   Calendar,
   Sun,
   Moon,
@@ -13,6 +12,7 @@ import {
   FileCheck,
   Info,
   Layers,
+  Check,
 } from 'lucide-react';
 import type { VerificationDetailResponse, VerificationItem } from '../types/verification.types';
 
@@ -27,7 +27,7 @@ interface VerificationFormCardProps {
   items: VerificationItem[];
   isLoading: boolean;
   isSaving: boolean;
-  onUpdateItem: (index: number, field: 'box_count' | 'kg_per_box', value: number | '') => void;
+  onUpdateItem: (index: number, value: number | '') => void;
   onSave: () => Promise<void>;
   totals: {
     totalSystemKg: number;
@@ -49,18 +49,14 @@ export const VerificationFormCard: React.FC<VerificationFormCardProps> = ({
   isSaving,
   onUpdateItem,
   onSave,
-  totals,
 }) => {
   const isValidated = data?.is_validated || false;
   const hasInput = items.length > 0;
   const headerInfo = data?.header;
 
-  // Check if any material item has actual output exceeding system weight
-  const hasExceedingOutput = items.some((item) => item.actual_output_kg > item.system_total_weight_kg);
-
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-      {/* Top Validation Status Indicator Banner */}
+      {/* Top Status & Filter Controls Banner */}
       <div
         style={{
           padding: '1.15rem 1.35rem',
@@ -98,13 +94,13 @@ export const VerificationFormCard: React.FC<VerificationFormCardProps> = ({
             ) : isValidated ? (
               <CheckCircle2 size={24} />
             ) : (
-              <AlertTriangle size={24} />
+              <Scale size={24} />
             )}
           </div>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <h3 style={{ fontSize: '1.05rem', fontWeight: 900, color: 'var(--text-main, #0f172a)', margin: 0 }}>
-                Status Pekerjaan: {!hasInput ? 'BELUM ADA INPUT TRANSAKSI' : isValidated ? 'SUDAH DIVALIDASI' : 'BELUM DIVALIDASI'}
+                Status Verifikasi: {!hasInput ? 'BELUM ADA INPUT MATERIAL' : isValidated ? 'SUDAH DIVALIDASI' : 'MENUNGGU INPUT HASIL TIMBANGAN'}
               </h3>
               <Badge variant={!hasInput ? 'neutral' : isValidated ? 'success' : 'warning'}>
                 Tanggal {date} — Shift {shift}
@@ -112,10 +108,10 @@ export const VerificationFormCard: React.FC<VerificationFormCardProps> = ({
             </div>
             <p style={{ fontSize: '0.825rem', color: 'var(--text-muted, #64748b)', margin: '0.25rem 0 0 0' }}>
               {!hasInput
-                ? `Belum ada input transaksi Part NG atau Part Runner pada Tanggal ${date} (Shift ${shift}). Lakukan input terlebih dahulu.`
+                ? `Belum ada data transaksi material reuse pada Tanggal ${date} (Shift ${shift}).`
                 : isValidated
-                  ? `Validasi diselesaikan oleh ${headerInfo?.validated_by_name || 'Operator'} pada ${headerInfo?.validated_at || '-'}`
-                  : 'Silahkan periksa hasil crushing di dunia nyata dan masukkan jumlah box yang dihasilkan per material.'}
+                  ? `Validasi telah diselesaikan oleh ${headerInfo?.validated_by_name || 'Operator'} pada ${headerInfo?.validated_at ? new Date(headerInfo.validated_at).toLocaleString('id-ID') : '-'}`
+                  : 'Timbang hasil akhir crushing di lapangan per jenis material, lalu inputkan berat riil dalam Kilogram (kg).'}
             </p>
           </div>
         </div>
@@ -190,168 +186,114 @@ export const VerificationFormCard: React.FC<VerificationFormCardProps> = ({
 
       {/* Main Validation Card */}
       <Card style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', backgroundColor: '#ffffff', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
-        {/* Card Header & Summary KPI Widgets */}
+        {/* Card Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
           <div>
             <h2 style={{ fontSize: '1.15rem', fontWeight: 900, color: '#0f172a', margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <FileCheck size={20} color="#008d51" /> Form Validasi Crushing Output (Material Reuse)
+              <FileCheck size={20} color="#008d51" /> Form Input Hasil Crushing Aktual (Material Reuse)
             </h2>
             <p style={{ fontSize: '0.825rem', color: '#64748b', margin: '0.2rem 0 0 0' }}>
-              Sistem mencocokkan total berat (Part NG + Part Runner) dengan jumlah box fisik yang dihasilkan di dunia nyata.
+              Masukkan total berat fisik (kg) yang diperoleh dari proses penggilingan pada shift ini.
             </p>
           </div>
 
-          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-            {/* Total System Input */}
-            <div style={{ padding: '0.65rem 1rem', borderRadius: '10px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
-              <span style={{ fontSize: '0.725rem', fontWeight: 700, color: '#64748b', display: 'block' }}>Total Berat Sistem</span>
-              <span style={{ fontSize: '1.05rem', fontWeight: 900, color: '#0f172a' }}>{totals.totalSystemKg.toFixed(2)} kg</span>
-            </div>
-
-            {/* Total Actual Output */}
-            <div style={{ padding: '0.65rem 1rem', borderRadius: '10px', backgroundColor: 'rgba(0, 141, 81, 0.08)', border: '1px solid rgba(0, 141, 81, 0.25)' }}>
-              <span style={{ fontSize: '0.725rem', fontWeight: 700, color: '#008d51', display: 'block' }}>Total Actual Output</span>
-              <span style={{ fontSize: '1.05rem', fontWeight: 900, color: '#008d51' }}>{totals.totalActualOutputKg.toFixed(2)} kg</span>
-            </div>
-
-            {/* Total Crushing Waste / Loss */}
-            <div style={{ padding: '0.65rem 1rem', borderRadius: '10px', backgroundColor: totals.totalCrushingWasteKg > 0 ? 'rgba(239, 68, 68, 0.08)' : '#f8fafc', border: `1px solid ${totals.totalCrushingWasteKg > 0 ? 'rgba(239, 68, 68, 0.3)' : '#e2e8f0'}` }}>
-              <span style={{ fontSize: '0.725rem', fontWeight: 700, color: totals.totalCrushingWasteKg > 0 ? '#ef4444' : '#64748b', display: 'block' }}>Crushing Waste / Loss</span>
-              <span style={{ fontSize: '1.05rem', fontWeight: 900, color: totals.totalCrushingWasteKg > 0 ? '#ef4444' : '#0f172a' }}>{totals.totalCrushingWasteKg.toFixed(2)} kg</span>
-            </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <Badge variant="secondary" size="md">
+              {items.length} Jenis Material Terdaftar
+            </Badge>
           </div>
         </div>
 
-        {/* Informational Guidance Alert */}
-        <div style={{ padding: '0.75rem 1rem', borderRadius: '10px', backgroundColor: 'rgba(59, 130, 246, 0.06)', borderLeft: '4px solid #2563eb', fontSize: '0.8rem', color: '#334155', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <Info size={16} color="#2563eb" style={{ flexShrink: 0 }} />
-          <span>
-            <strong>Aturan Validasi:</strong> Standar berat box adalah <strong>5.00 kg/box</strong>. Output box riil <strong>tidak boleh melebihi berat akumulasi sistem</strong>. Jika jumlah box x berat box lebih kecil dari berat sistem, selisihnya menjadi <strong>Waste Crushing Loss</strong>.
-          </span>
-        </div>
-
-        {/* Verification Items Table */}
+        {/* Verification Items Table (Blind Mode - Direct Kg Only) */}
         {isLoading ? (
           <div style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>
-            Memuat akumulasi data Part NG & Part Runner untuk tanggal & shift terpilih...
+            Memuat daftar material yang diproses pada tanggal & shift terpilih...
           </div>
         ) : items.length === 0 ? (
           <div style={{ padding: '2.5rem', textAlign: 'center', color: '#64748b', backgroundColor: '#f8fafc', borderRadius: '12px', border: '1px dashed #cbd5e1' }}>
             <Layers size={32} color="#94a3b8" style={{ marginBottom: '0.5rem' }} />
             <p style={{ fontSize: '0.9rem', fontWeight: 700, margin: 0, color: '#475569' }}>
-              Tidak ada data input material <strong>Reuse</strong> pada Tanggal {date} (Shift {shift}).
+              Tidak ada material <strong>Reuse</strong> yang digiling pada Tanggal {date} (Shift {shift}).
             </p>
             <p style={{ fontSize: '0.8rem', margin: '0.25rem 0 0 0' }}>
-              Silahkan lakukan input Part NG atau Part Runner terlebih dahulu.
+              Silahkan lakukan input Part NG atau Part Runner terlebih dahulu jika terdapat proses crushing.
             </p>
           </div>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+          <div style={{ overflowX: 'auto', border: '1px solid #e2e8f0', borderRadius: '12px' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
               <thead>
-                <tr style={{ backgroundColor: '#f1f5f9', textAlign: 'left', color: '#475569' }}>
-                  <th style={{ padding: '0.65rem 0.85rem', width: '50px' }}>No</th>
-                  <th style={{ padding: '0.65rem 0.85rem' }}>Material (Reuse)</th>
-                  <th style={{ padding: '0.65rem 0.85rem', textAlign: 'right' }}>Part NG (kg)</th>
-                  <th style={{ padding: '0.65rem 0.85rem', textAlign: 'right' }}>Runner (kg)</th>
-                  <th style={{ padding: '0.65rem 0.85rem', textAlign: 'right', backgroundColor: '#e2e8f0' }}>Total Sistem (kg)</th>
-                  <th style={{ padding: '0.65rem 0.85rem', textAlign: 'center', width: '130px' }}>Jumlah Box</th>
-                  <th style={{ padding: '0.65rem 0.85rem', textAlign: 'center', width: '130px' }}>Kg per Box</th>
-                  <th style={{ padding: '0.65rem 0.85rem', textAlign: 'right', color: '#008d51' }}>Actual Output (kg)</th>
-                  <th style={{ padding: '0.65rem 0.85rem', textAlign: 'right', color: '#ef4444' }}>Waste Loss (kg)</th>
+                <tr style={{ backgroundColor: '#f1f5f9', textAlign: 'left', color: '#475569', borderBottom: '2px solid #e2e8f0' }}>
+                  <th style={{ padding: '0.85rem 1rem', width: '60px' }}>No</th>
+                  <th style={{ padding: '0.85rem 1rem' }}>Jenis Material (Reuse)</th>
+                  <th style={{ padding: '0.85rem 1rem', textAlign: 'center', width: '260px' }}>
+                    Berat Hasil Timbangan Aktual (kg)
+                  </th>
+                  <th style={{ padding: '0.85rem 1rem', textAlign: 'center', width: '150px' }}>Status Input</th>
                 </tr>
               </thead>
               <tbody>
                 {items.map((item, idx) => {
-                  const isExceeding = item.actual_output_kg > item.system_total_weight_kg;
+                  const hasValue = item.actual_output_kg !== '' && typeof item.actual_output_kg === 'number' && item.actual_output_kg > 0;
 
                   return (
                     <tr
                       key={idx}
                       style={{
                         borderBottom: '1px solid #e2e8f0',
-                        backgroundColor: isExceeding ? 'rgba(239, 68, 68, 0.04)' : 'transparent',
+                        backgroundColor: hasValue ? 'rgba(0, 141, 81, 0.02)' : 'transparent',
                         transition: 'all 0.15s ease',
                       }}
                     >
-                      <td style={{ padding: '0.65rem 0.85rem', color: '#64748b' }}>{idx + 1}</td>
-                      <td style={{ padding: '0.65rem 0.85rem', fontWeight: 800, color: '#0f172a' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                          <Box size={16} color={isExceeding ? '#ef4444' : '#008d51'} />
-                          <span>{item.material_name}</span>
+                      <td style={{ padding: '0.85rem 1rem', color: '#64748b' }}>{idx + 1}</td>
+                      <td style={{ padding: '0.85rem 1rem', fontWeight: 800, color: '#0f172a' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <Box size={18} color="#008d51" />
+                          <span style={{ fontSize: '0.95rem' }}>{item.material_name}</span>
                         </div>
                       </td>
-                      <td style={{ padding: '0.65rem 0.85rem', textAlign: 'right', fontWeight: 700 }}>
-                        {item.system_ng_weight_kg.toFixed(2)} kg
+                      <td style={{ padding: '0.65rem 1rem', textAlign: 'center' }}>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            placeholder="0.00"
+                            value={item.actual_output_kg}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              onUpdateItem(idx, val === '' ? '' : parseFloat(val));
+                            }}
+                            style={{
+                              width: '140px',
+                              padding: '0.5rem 0.75rem',
+                              borderRadius: '8px',
+                              border: '2px solid var(--primary-color, #008d51)',
+                              textAlign: 'center',
+                              fontWeight: 900,
+                              fontSize: '1rem',
+                              color: '#0f172a',
+                              backgroundColor: '#ffffff',
+                              outline: 'none',
+                              boxShadow: '0 2px 4px rgba(0,0,0,0.04)',
+                            }}
+                          />
+                          <span style={{ fontWeight: 800, color: 'var(--text-muted, #64748b)' }}>kg</span>
+                        </div>
                       </td>
-                      <td style={{ padding: '0.65rem 0.85rem', textAlign: 'right', fontWeight: 700, color: '#e76114' }}>
-                        {item.system_runner_weight_kg.toFixed(2)} kg
-                      </td>
-                      <td style={{ padding: '0.65rem 0.85rem', textAlign: 'right', fontWeight: 900, backgroundColor: '#f8fafc', color: '#0f172a' }}>
-                        {item.system_total_weight_kg.toFixed(2)} kg
-                      </td>
-                      <td style={{ padding: '0.45rem 0.5rem', textAlign: 'center' }}>
-                        <input
-                          type="number"
-                          min="0"
-                          step="1"
-                          placeholder="0"
-                          value={item.box_count}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            onUpdateItem(idx, 'box_count', val === '' ? '' : Math.max(0, parseInt(val, 10)));
-                          }}
-                          style={{
-                            width: '90px',
-                            padding: '0.35rem 0.5rem',
-                            borderRadius: '6px',
-                            border: `2px solid ${isExceeding ? '#ef4444' : '#cbd5e1'}`,
-                            textAlign: 'center',
-                            fontWeight: 800,
-                            fontSize: '0.85rem',
-                            color: isExceeding ? '#ef4444' : '#0f172a',
-                            backgroundColor: isExceeding ? '#fff5f5' : '#ffffff',
-                            outline: 'none',
-                            boxShadow: isExceeding ? '0 0 0 3px rgba(239, 68, 68, 0.15)' : 'none',
-                          }}
-                        />
-                      </td>
-                      <td style={{ padding: '0.45rem 0.5rem', textAlign: 'center' }}>
-                        <input
-                          type="number"
-                          min="0.01"
-                          step="0.01"
-                          placeholder="5.00"
-                          value={item.kg_per_box}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            onUpdateItem(idx, 'kg_per_box', val === '' ? '' : parseFloat(val));
-                          }}
-                          style={{
-                            width: '90px',
-                            padding: '0.35rem 0.5rem',
-                            borderRadius: '6px',
-                            border: `2px solid ${isExceeding ? '#ef4444' : '#cbd5e1'}`,
-                            textAlign: 'center',
-                            fontWeight: 800,
-                            fontSize: '0.85rem',
-                            color: isExceeding ? '#ef4444' : '#0f172a',
-                            backgroundColor: isExceeding ? '#fff5f5' : '#ffffff',
-                            outline: 'none',
-                            boxShadow: isExceeding ? '0 0 0 3px rgba(239, 68, 68, 0.15)' : 'none',
-                          }}
-                        />
-                      </td>
-                      <td style={{ padding: '0.65rem 0.85rem', textAlign: 'right', fontWeight: 900, color: isExceeding ? '#ef4444' : '#008d51' }}>
-                        {item.actual_output_kg.toFixed(2)} kg
-                        {isExceeding && (
-                          <div style={{ fontSize: '0.725rem', fontWeight: 700, color: '#ef4444', marginTop: '0.15rem' }}>
-                            *Melebihi berat sistem ({item.system_total_weight_kg.toFixed(2)} kg)
-                          </div>
+                      <td style={{ padding: '0.85rem 1rem', textAlign: 'center' }}>
+                        {hasValue ? (
+                          <Badge variant="success" size="sm">
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                              <Check size={12} />
+                              <span>Terisi ({Number(item.actual_output_kg).toFixed(2)} kg)</span>
+                            </div>
+                          </Badge>
+                        ) : (
+                          <Badge variant="neutral" size="sm">
+                            Belum Diisi
+                          </Badge>
                         )}
-                      </td>
-                      <td style={{ padding: '0.65rem 0.85rem', textAlign: 'right', fontWeight: 900, color: item.crushing_waste_kg > 0 ? '#ef4444' : '#64748b' }}>
-                        {item.crushing_waste_kg.toFixed(2)} kg
                       </td>
                     </tr>
                   );
@@ -365,16 +307,16 @@ export const VerificationFormCard: React.FC<VerificationFormCardProps> = ({
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', borderTop: '1px solid #e2e8f0', paddingTop: '1.25rem' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
             <label style={{ fontSize: '0.8rem', fontWeight: 700, color: '#0f172a' }}>
-              Catatan Opsional
+              Catatan Validasi Opsional
             </label>
             <input
               type="text"
-              placeholder="Contoh: Kondisi fisik material A dalam 5 box bersih, terdapat 5kg sisa limbah crushing..."
+              placeholder="Contoh: Kondisi gilingan bersih, output siap dipindahkan ke karung/silo..."
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              disabled={items.length === 0 || hasExceedingOutput}
+              disabled={items.length === 0}
               style={{
-                padding: '0.55rem 0.75rem',
+                padding: '0.6rem 0.85rem',
                 borderRadius: '8px',
                 border: '1.5px solid #cbd5e1',
                 fontSize: '0.85rem',
@@ -384,22 +326,20 @@ export const VerificationFormCard: React.FC<VerificationFormCardProps> = ({
             />
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
-            <div style={{ fontSize: '0.85rem', color: hasExceedingOutput ? '#ef4444' : '#64748b', fontWeight: hasExceedingOutput ? 800 : 400 }}>
-            </div>
-
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'wrap', gap: '1rem' }}>
             <Button
               type="button"
               variant="primary"
               onClick={onSave}
               isLoading={isSaving}
-              disabled={isLoading || items.length === 0 || hasExceedingOutput}
+              disabled={isLoading || items.length === 0}
               leftIcon={<CheckCircle2 size={18} />}
               style={{
                 fontWeight: 900,
-                padding: '0.65rem 1.75rem',
-                backgroundColor: items.length === 0 || hasExceedingOutput ? '#cbd5e1' : '#008d51',
-                cursor: items.length === 0 || hasExceedingOutput ? 'not-allowed' : 'pointer',
+                padding: '0.75rem 2rem',
+                backgroundColor: items.length === 0 ? '#cbd5e1' : 'var(--primary-color, #008d51)',
+                cursor: items.length === 0 ? 'not-allowed' : 'pointer',
+                fontSize: '0.925rem',
               }}
             >
               Validasi Pekerjaan Shift Ini
