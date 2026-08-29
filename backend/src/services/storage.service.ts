@@ -1,4 +1,4 @@
-import { PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import { PutObjectCommand, DeleteObjectCommand, CopyObjectCommand } from '@aws-sdk/client-s3';
 import { s3Client } from '../config/s3.config';
 import { env } from '../config/env.config';
 import { SiteConfigService } from '../modules/site-config/siteConfig.service';
@@ -106,6 +106,52 @@ export class StorageService {
 
     // Kembalikan key saja untuk disimpan di database
     return key;
+  }
+
+  /**
+   * Pindahkan / Salin objek S3 dari bucket/key lama ke bucket/key baru
+   */
+  static async moveObject(
+    sourceBucket: string,
+    sourceKey: string,
+    targetBucket: string,
+    targetKey: string
+  ): Promise<boolean> {
+    const cleanSourceKey = this.extractKey(sourceKey);
+    const cleanTargetKey = this.extractKey(targetKey);
+    if (!cleanSourceKey || !cleanTargetKey) return false;
+
+    try {
+      // 1. Copy object di S3
+      await s3Client.send(
+        new CopyObjectCommand({
+          Bucket: targetBucket,
+          CopySource: encodeURI(`${sourceBucket}/${cleanSourceKey}`),
+          Key: cleanTargetKey,
+        })
+      );
+
+      // 2. Delete source object jika lokasi berbeda
+      if (sourceBucket !== targetBucket || cleanSourceKey !== cleanTargetKey) {
+        await s3Client.send(
+          new DeleteObjectCommand({
+            Bucket: sourceBucket,
+            Key: cleanSourceKey,
+          })
+        );
+      }
+
+      console.log(
+        `[StorageService] Moved S3 object: ${sourceBucket}/${cleanSourceKey} -> ${targetBucket}/${cleanTargetKey}`
+      );
+      return true;
+    } catch (err) {
+      console.warn(
+        `[StorageService] Failed to move S3 object ${sourceBucket}/${cleanSourceKey} to ${targetBucket}/${cleanTargetKey}:`,
+        err
+      );
+      return false;
+    }
   }
 
   /**

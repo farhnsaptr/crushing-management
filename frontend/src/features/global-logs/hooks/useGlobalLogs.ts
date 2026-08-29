@@ -23,7 +23,8 @@ export const useGlobalLogs = () => {
   useEffect(() => {
     setIsLoading(true);
 
-    const streamUrl = `${env.API_BASE_URL}/api/admin/logs/stream`;
+    const base = env.API_BASE_URL ? env.API_BASE_URL.replace(/\/+$/, '') : '';
+    const streamUrl = `${base}/api/admin/logs/stream`;
     const eventSource = new EventSource(streamUrl, {
       withCredentials: true,
     });

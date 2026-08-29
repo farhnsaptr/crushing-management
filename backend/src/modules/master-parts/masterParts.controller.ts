@@ -251,10 +251,10 @@ export class MasterPartsController {
       );
 
       const updatedPart = await MasterPartsService.updatePartImageUrl(id, imageUrl);
-      sendSuccess(res, updatedPart, 'Foto master part berhasil diperbarui & menimpa foto lama di MinIO S3');
+      sendSuccess(res, updatedPart, 'Foto master part berhasil diperbarui');
     } catch (error: any) {
       console.error('[Upload Part Image Error]', error);
-      sendError(res, error.message || 'Gagal mengunggah foto ke MinIO S3', 500);
+      sendError(res, error.message || 'Gagal mengunggah foto', 500);
     }
   }
 
@@ -267,7 +267,7 @@ export class MasterPartsController {
       }
 
       const updatedPart = await MasterPartsService.deletePartImage(id);
-      sendSuccess(res, updatedPart, 'Foto master part berhasil dihapus dari sistem & MinIO S3');
+      sendSuccess(res, updatedPart, 'Foto master part berhasil dihapus');
     } catch (error: any) {
       console.error('[Delete Part Image Error]', error);
       sendError(res, error.message || 'Gagal menghapus foto master part', 500);

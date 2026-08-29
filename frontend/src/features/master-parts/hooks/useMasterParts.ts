@@ -136,7 +136,7 @@ export const useMasterParts = () => {
       setToast({
         id: Date.now().toString(),
         type: 'success',
-        message: 'Foto berhasil dikompresi & disimpan secara permanen di MinIO S3 Bucket!',
+        message: 'Foto berhasil dikompresi & disimpan',
       });
       fetchParts();
     } catch (err: any) {
@@ -177,7 +177,7 @@ export const useMasterParts = () => {
       setToast({
         id: Date.now().toString(),
         type: 'success',
-        message: 'Foto master part berhasil dihapus dari MinIO S3 & database!',
+        message: 'Foto master part berhasil dihapus',
       });
       fetchParts();
     } catch (err: any) {

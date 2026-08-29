@@ -40,6 +40,7 @@ router.get('/', SiteConfigController.getConfig);
 
 // Super-Admin only routes for site configuration mutation
 router.put('/', verifyToken, requireRole(['super-admin']), SiteConfigController.updateConfig);
+router.post('/check-storage-impact', verifyToken, requireRole(['super-admin']), SiteConfigController.checkStorageImpact);
 router.post('/upload', verifyToken, requireRole(['super-admin']), upload.single('file'), SiteConfigController.uploadFile);
 
 export default router;
