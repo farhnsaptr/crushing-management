@@ -1,0 +1,17 @@
+node_modules
+dist
+uploads
+.env
+.env.*
+!.env.example
+.git
+.gitignore
+*.log
+npm-debug.log*
+coverage
+.vscode
+.idea
+Dockerfile
+.dockerignore
+README.md
+*.md
