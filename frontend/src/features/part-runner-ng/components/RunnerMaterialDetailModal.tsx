@@ -45,16 +45,6 @@ export const RunnerMaterialDetailModal: React.FC<RunnerMaterialDetailModalProps>
 }) => {
   if (!isOpen) return null;
 
-  const formatDate = (dateStr?: string) => {
-    if (!dateStr) return '-';
-    try {
-      const d = new Date(dateStr);
-      return isNaN(d.getTime()) ? String(dateStr) : d.toLocaleString('id-ID');
-    } catch {
-      return String(dateStr);
-    }
-  };
-
   const currentMonth = materialDetail?.month || (new Date().getMonth() + 1);
   const currentMonthLabel = MONTH_NAMES[currentMonth - 1] || 'Bulan';
 

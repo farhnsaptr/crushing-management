@@ -3,7 +3,7 @@ import { Card } from '../../../components/common/Card';
 import { Button } from '../../../components/common/Button';
 import { Badge } from '../../../components/common/Badge';
 import type { MasterPart } from '../types/masterParts.types';
-import { Camera, Upload, Eye, Info, Check, RotateCcw } from 'lucide-react';
+import { Camera, Upload, Eye, Check, RotateCcw } from 'lucide-react';
 
 interface MasterPartImageViewerCardProps {
   selectedPart: MasterPart | null;

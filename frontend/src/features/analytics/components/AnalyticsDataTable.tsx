@@ -7,10 +7,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Layers,
-  Box,
-  Scale,
-  Calendar,
-  Building2,
   Cpu,
 } from 'lucide-react';
 import type { ProductionAnalyticsItem } from '../types/analytics.types';

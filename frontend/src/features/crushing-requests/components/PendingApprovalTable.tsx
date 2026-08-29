@@ -9,15 +9,12 @@ import {
   Clock,
   CheckCircle2,
   Eye,
-  Check,
   Search,
   ChevronLeft,
   ChevronRight,
   Building2,
-  Network,
   Scale,
   RefreshCw,
-  SlidersHorizontal,
 } from 'lucide-react';
 
 interface PendingApprovalTableProps {

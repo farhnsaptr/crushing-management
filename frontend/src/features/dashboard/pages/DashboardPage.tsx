@@ -12,7 +12,6 @@ import { ExportDateModal } from '../components/ExportDateModal';
 import { VerificationModal } from '../../verification/components/VerificationModal';
 import type { PlantLocation } from '../types/dashboard.types';
 import {
-  PlusCircle,
   FileSpreadsheet,
   MapPin,
   Calendar,

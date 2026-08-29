@@ -3,7 +3,7 @@ import { Modal } from '../../../components/common/Modal';
 import { Input } from '../../../components/common/Input';
 import { Button } from '../../../components/common/Button';
 import type { Material, CreateMaterialPayload } from '../types/materials.types';
-import { Layers, FileText, RefreshCw } from 'lucide-react';
+import { Layers, FileText } from 'lucide-react';
 
 interface MaterialModalProps {
   isOpen: boolean;

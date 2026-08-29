@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Card } from '../../../components/common/Card';
 import { Input } from '../../../components/common/Input';
 import { Button } from '../../../components/common/Button';
-import { Badge } from '../../../components/common/Badge';
 import { MaterialSearchInput } from './MaterialSearchInput';
 import { apiClient } from '../../../services/api.client';
 import { PlusCircle, Calendar, Scale, Save, Trash2, Plus, Sun, Moon, Layers } from 'lucide-react';

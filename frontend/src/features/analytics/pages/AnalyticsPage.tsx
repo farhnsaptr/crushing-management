@@ -14,7 +14,6 @@ import {
   RefreshCw,
   Layers,
   AlertCircle,
-  TrendingUp,
   RotateCcw,
 } from 'lucide-react';
 import { AnalyticsRollbackModal } from '../components/AnalyticsRollbackModal';
@@ -52,10 +51,6 @@ export const AnalyticsPage: React.FC = () => {
     setIsUploadModalOpen,
     isRollbackModalOpen,
     setIsRollbackModalOpen,
-    fetchYearlyData,
-    fetchRecords,
-    fetchParetoMaterials,
-    fetchParetoPartsNg,
     fetchBatches,
     refreshAll,
     handleUploadReport,
