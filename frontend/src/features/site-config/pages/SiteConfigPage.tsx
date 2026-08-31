@@ -4,8 +4,7 @@ import { Card } from '../../../components/common/Card';
 import { Input } from '../../../components/common/Input';
 import { Button } from '../../../components/common/Button';
 import { Toast } from '../../../components/common/Toast';
-import { StorageMigrationModal } from '../components/StorageMigrationModal';
-import { Image, Type, Save, RotateCcw, Info, AlertTriangle, CheckCircle2, ShieldAlert, Globe, FolderTree, ExternalLink } from 'lucide-react';
+import { Image, Type, Save, RotateCcw, Info, AlertTriangle, CheckCircle2, ShieldAlert } from 'lucide-react';
 
 export const SiteConfigPage: React.FC = () => {
   const {
@@ -21,10 +20,6 @@ export const SiteConfigPage: React.FC = () => {
     setLightSecondary,
     lightAccent,
     setLightAccent,
-    minioBaseUrl,
-    setMinioBaseUrl,
-    minioFolderMasterParts,
-    setMinioFolderMasterParts,
     logoPreview,
     backgroundPreview,
     handleLogoFileChange,
@@ -32,11 +27,6 @@ export const SiteConfigPage: React.FC = () => {
     isSubmitting,
     isBrandingDirty,
     isThemeDirty,
-    isStorageDirty,
-    impactData,
-    isImpactModalOpen,
-    setIsImpactModalOpen,
-    handleConfirmMigration,
     toast,
     setToast,
     handleSaveConfig,
@@ -250,81 +240,7 @@ export const SiteConfigPage: React.FC = () => {
           </div>
         </Card>
 
-        {/* SECTION 3: PENGATURAN MINIO S3 STORAGE (Shows accent border line if unsaved) */}
-        <Card
-          title="Pengaturan MinIO / S3 Storage"
-          subtitle="Atur alamat Base URL domain publik dan prefix folder penyimpanan foto Master Parts"
-          hasUnsavedChanges={isStorageDirty}
-        >
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.25rem' }}>
-              {/* MinIO Base URL */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
-                <Input
-                  label="Base URL MinIO (Domain / IP & Port)"
-                  placeholder="misal http://172.19.85.141:9000 atau https://storage.domain.com"
-                  value={minioBaseUrl}
-                  onChange={(e) => setMinioBaseUrl(e.target.value)}
-                  leftIcon={<Globe size={18} />}
-                  required
-                />
-                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                  Alamat server MinIO yang diakses langsung oleh browser klien (tanpa nama bucket).
-                </span>
-              </div>
-
-              {/* MinIO Master Parts Folder Prefix */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
-                <Input
-                  label="Prefix Folder Master Parts"
-                  placeholder="misal master-parts atau master-parts-2026"
-                  value={minioFolderMasterParts}
-                  onChange={(e) => setMinioFolderMasterParts(e.target.value)}
-                  leftIcon={<FolderTree size={18} />}
-                  required
-                />
-                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                  Sub-folder di dalam bucket untuk mengelompokkan foto master part.
-                </span>
-              </div>
-            </div>
-
-            {/* Dynamic Live URL Preview Box */}
-            <div
-              style={{
-                padding: '0.85rem 1rem',
-                backgroundColor: 'rgba(59, 130, 246, 0.06)',
-                border: '1px solid rgba(59, 130, 246, 0.2)',
-                borderRadius: 'var(--radius-md)',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '0.35rem',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#2563eb', fontSize: '0.8rem', fontWeight: 700 }}>
-                <ExternalLink size={15} />
-                <span>Format Pratinjau URL Gambar yang Dihasilkan:</span>
-              </div>
-              <code
-                style={{
-                  fontSize: '0.8rem',
-                  color: 'var(--text-main)',
-                  backgroundColor: 'var(--bg-card)',
-                  padding: '0.35rem 0.6rem',
-                  borderRadius: 'var(--radius-sm)',
-                  border: '1px solid var(--border-color)',
-                  wordBreak: 'break-all',
-                  fontFamily: 'monospace',
-                }}
-              >
-                {(minioBaseUrl || 'http://127.0.0.1:9000').replace(/\/+$/, '')}/crushing-management-parts/
-                {(minioFolderMasterParts || 'master-parts').replace(/^\/+|\/+$/g, '')}/example-uuid.jpg
-              </code>
-            </div>
-          </div>
-        </Card>
-
-        {/* SECTION 4: SEMANTIC LEGEND STATUS COLORS (FIXED & UNAFFECTED BY ACCENT) */}
+        {/* SECTION 3: SEMANTIC LEGEND STATUS COLORS (FIXED & UNAFFECTED BY ACCENT) */}
         <Card
           title="Warna Legend Indikator Status (Fixed Legend Colors)"
           subtitle="Warna legend berikut bersifat tetap untuk indikator sistem dan TIDAK terpengaruh oleh warna Accent"
@@ -437,15 +353,6 @@ export const SiteConfigPage: React.FC = () => {
           </Button>
         </div>
       </form>
-
-      {/* Storage Migration Confirmation & Affected Parts Modal */}
-      <StorageMigrationModal
-        isOpen={isImpactModalOpen}
-        onClose={() => setIsImpactModalOpen(false)}
-        impactData={impactData}
-        isSubmitting={isSubmitting}
-        onConfirmMigration={handleConfirmMigration}
-      />
 
       {/* Toast Notification */}
       <Toast toast={toast} onClose={() => setToast(null)} />

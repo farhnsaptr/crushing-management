@@ -6,20 +6,20 @@ RESTful API service untuk sistem pencatatan dan pemantauan daur ulang material p
 ```
 backend/
 ├── src/
-│   ├── config/             # Database (MySQL), Swagger, dan Environment variables
+│   ├── config/             # Database (MySQL), S3/MinIO, Swagger, dan Environment variables
 │   ├── middlewares/        # Auth JWT, Rate Limiting, Request Logger (MySQL Audit), Error Handler
 │   ├── modules/
 │   │   ├── auth/           # Login & Token Verification
 │   │   ├── users/          # User Management (Admin)
 │   │   ├── factories/      # Master Data Pabrik/Lokasi Operasional
 │   │   ├── machines/       # Master Data Mesin Inject Mold & Tonnage
-│   │   ├── master-parts/   # Master Part catalog, QR lookup, & autocomplete
+│   │   ├── master-parts/   # Master Part catalog, QR lookup, autocomplete & S3 image upload
 │   │   ├── crushing-requests/ # Pengajuan kirim part NG, draft SQL & verifikasi operator
 │   │   ├── ng-transactions/# Input Transaksi Part NG (Ketik & Scan)
 │   │   ├── production-actual/# Import data aktual produksi dari CSV shopfloor
 │   │   ├── dashboard/      # Stat Summary, Pareto, Charts, SSE stream, & Export
 │   │   ├── analytics/      # Data analitik produksi, 3-bar chart, gap matriks, pareto & rollback
-│   │   ├── site-config/    # Application theme configuration (Admin)
+│   │   ├── site-config/    # Application theme & visual branding configuration
 │   │   └── global-logs/    # Global API audit trail logs (MySQL)
 │   ├── utils/              # Response helper & SSE Event Emitter
 │   ├── app.ts              # Express application config & routing
@@ -28,13 +28,12 @@ backend/
 
 ## Features
 - RESTful endpoints dengan standar JSON response.
-- Pemisahan data master `factories` dan `machines` secara fleksibel.
-- Interactive API Documentation via Swagger UI (`http://localhost:4000/api-docs`).
+- Interactive API Documentation via Swagger UI (`/api-docs`).
 - Rate limiting via `express-rate-limit`.
 - Audit log otomatis ke tabel MySQL `api_audit_logs`.
-- Pengajuan dan penyimpanan draft pengiriman part NG langsung ke database MySQL (`is_submitted = FALSE/TRUE`).
 - Real-time updates via Server-Sent Events (SSE).
 - Role-based authorization (`super-admin`, `admin`, `operator`, `pengirim`).
+- Cloud Object Storage (MinIO / S3) untuk upload dan kompresi foto master part.
 
 ## Environment Setup
 Pastikan file `.env` di folder `backend/` memiliki konfigurasi berikut:
@@ -46,13 +45,29 @@ DB_USER=root
 DB_PASSWORD=
 DB_NAME=crushing_management
 JWT_SECRET=your_jwt_secret
-JWT_EXPIRES_IN=24h
-CORS_ORIGIN=http://localhost:5173
+JWT_EXPIRES_IN=8h
+CORS_ORIGIN=http://172.19.85.135:3000
+COOKIE_SECURE=false
+
+# Swagger / API Documentation Server URL (Opsional: jika kosong, otomatis menggunakan host/domain saat ini)
+API_BASE_URL=
+
+# MinIO / AWS S3 Config
+MINIO_ACCESS_KEY=minioadmin
+MINIO_SECRET_KEY=minioadmin
+MINIO_BUCKET_NAME=crushing-management-parts
+MINIO_REGION=us-east-1
+MINIO_BASE_URL=http://172.19.85.135:9000
+MINIO_FOLDER_MASTER_PARTS=master-parts
 ```
 
 ## Run Locally
 ```bash
-# Terminal (di folder backend)
+# Development (Hot reload)
 npm run dev
+
+# Production Build & Run
+npm run build
+npm start
 ```
-Backend akan berjalan di `http://localhost:4000` menggunakan `tsx watch` (hot-reload cepat tanpa issue kompatibilitas TypeScript). Dokumentasi Swagger interaktif di `http://localhost:4000/api-docs`.
+Dokumentasi Swagger interaktif dapat diakses di `/api-docs` (misal: `http://localhost:4000/api-docs` atau `http://<IP_SERVER>:<PORT>/api-docs`).

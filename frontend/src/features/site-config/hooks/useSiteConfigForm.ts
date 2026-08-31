@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { SiteConfigService } from '../services/siteConfig.service';
 import { useTheme } from '../../../context/ThemeContext';
 import type { ToastMessage } from '../../../components/common/Toast';
-import type { StorageImpactResult } from '../types/siteConfig.types';
 
 export const useSiteConfigForm = () => {
   const { updateThemeColors, fetchThemeConfig } = useTheme();
@@ -15,8 +14,6 @@ export const useSiteConfigForm = () => {
     lightPrimary: '#008d51',
     lightSecondary: '#E76114',
     lightAccent: '#037233',
-    minioBaseUrl: 'http://172.19.85.141:9000',
-    minioFolderMasterParts: 'master-parts',
   });
 
   // Current Form State
@@ -27,10 +24,6 @@ export const useSiteConfigForm = () => {
   const [lightPrimary, setLightPrimary] = useState<string>('#008d51');
   const [lightSecondary, setLightSecondary] = useState<string>('#E76114');
   const [lightAccent, setLightAccent] = useState<string>('#037233');
-
-  // MinIO Storage State (Hanya Base URL & Prefix Folder yang dikonfigurasi)
-  const [minioBaseUrl, setMinioBaseUrl] = useState<string>('http://172.19.85.141:9000');
-  const [minioFolderMasterParts, setMinioFolderMasterParts] = useState<string>('master-parts');
 
   // File objects & Instant Live Preview URLs
   const [logoFile, setLogoFile] = useState<File | null>(null);
@@ -53,8 +46,6 @@ export const useSiteConfigForm = () => {
       const loadedPrimary = config.theme_light_primary || '#008d51';
       const loadedSecondary = config.theme_light_secondary || '#E76114';
       const loadedAccent = config.theme_light_accent || '#037233';
-      const loadedMinioBase = config.minio_base_url || 'http://172.19.85.141:9000';
-      const loadedMinioFolder = config.minio_folder_master_parts || 'master-parts';
 
       setInitialState({
         siteTitle: loadedTitle,
@@ -63,8 +54,6 @@ export const useSiteConfigForm = () => {
         lightPrimary: loadedPrimary,
         lightSecondary: loadedSecondary,
         lightAccent: loadedAccent,
-        minioBaseUrl: loadedMinioBase,
-        minioFolderMasterParts: loadedMinioFolder,
       });
 
       setSiteTitle(loadedTitle);
@@ -73,8 +62,6 @@ export const useSiteConfigForm = () => {
       setLightPrimary(loadedPrimary);
       setLightSecondary(loadedSecondary);
       setLightAccent(loadedAccent);
-      setMinioBaseUrl(loadedMinioBase);
-      setMinioFolderMasterParts(loadedMinioFolder);
 
       setLogoFile(null);
       setLogoPreview('');
@@ -109,11 +96,8 @@ export const useSiteConfigForm = () => {
     setBackgroundPreview(objectUrl);
   };
 
-  // Storage Migration Modal State
-  const [impactData, setImpactData] = useState<StorageImpactResult | null>(null);
-  const [isImpactModalOpen, setIsImpactModalOpen] = useState<boolean>(false);
-
-  const executeSaveConfig = async (migrationAction?: 'migrate_all' | 'config_only') => {
+  const handleSaveConfig = async (e: React.FormEvent) => {
+    e.preventDefault();
     setIsSubmitting(true);
 
     try {
@@ -143,11 +127,10 @@ export const useSiteConfigForm = () => {
         { key: 'theme_light_accent', value: lightAccent },
         { key: 'theme_dark_primary', value: lightPrimary },
         { key: 'theme_dark_secondary', value: lightSecondary },
-        { key: 'minio_base_url', value: minioBaseUrl.trim() },
-        { key: 'minio_folder_master_parts', value: minioFolderMasterParts.trim() },
+        { key: 'theme_dark_accent', value: lightAccent },
       ];
 
-      await SiteConfigService.updateConfig(items, migrationAction);
+      await SiteConfigService.updateConfig(items);
 
       updateThemeColors({
         site_title: siteTitle,
@@ -170,26 +153,17 @@ export const useSiteConfigForm = () => {
         lightPrimary,
         lightSecondary,
         lightAccent,
-        minioBaseUrl,
-        minioFolderMasterParts,
       });
 
       setLogoFile(null);
       setLogoPreview('');
       setBackgroundFile(null);
       setBackgroundPreview('');
-      setIsImpactModalOpen(false);
-      setImpactData(null);
-
-      const successMsg =
-        migrationAction === 'migrate_all'
-          ? `Konfigurasi berhasil disimpan dan ${impactData?.affectedCount || 0} master part berhasil dimigrasikan ke lokasi baru!`
-          : 'Konfigurasi situs & MinIO Storage berhasil diperbarui.';
 
       setToast({
         id: Date.now().toString(),
         type: 'success',
-        message: successMsg,
+        message: 'Konfigurasi situs berhasil diperbarui.',
       });
     } catch (err: any) {
       setToast({
@@ -202,42 +176,6 @@ export const useSiteConfigForm = () => {
     }
   };
 
-  const handleSaveConfig = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    // Cek apakah prefix folder MinIO diubah
-    const isFolderChanged =
-      minioFolderMasterParts.trim() !== initialState.minioFolderMasterParts.trim();
-
-    if (isFolderChanged) {
-      setIsSubmitting(true);
-      try {
-        const impact = await SiteConfigService.checkStorageImpact(
-          undefined,
-          minioFolderMasterParts.trim()
-        );
-
-        if (impact && impact.affectedCount > 0) {
-          setImpactData(impact);
-          setIsImpactModalOpen(true);
-          setIsSubmitting(false);
-          return;
-        }
-      } catch (err) {
-        console.warn('Failed to check storage impact:', err);
-      } finally {
-        setIsSubmitting(false);
-      }
-    }
-
-    // Jika tidak ada data yang terpengaruh atau hanya Base URL yang berubah, simpan langsung
-    await executeSaveConfig();
-  };
-
-  const handleConfirmMigration = async (action: 'migrate_all' | 'config_only') => {
-    await executeSaveConfig(action);
-  };
-
   const handleResetDefault = () => {
     setSiteTitle('Material Management - PT Sugity Creatives');
     setSiteLogo('/logo.png');
@@ -245,8 +183,6 @@ export const useSiteConfigForm = () => {
     setLightPrimary('#008d51');
     setLightSecondary('#E76114');
     setLightAccent('#037233');
-    setMinioBaseUrl('http://172.19.85.141:9000');
-    setMinioFolderMasterParts('master-parts');
 
     setLogoFile(null);
     setLogoPreview('');
@@ -267,11 +203,7 @@ export const useSiteConfigForm = () => {
     lightSecondary !== initialState.lightSecondary ||
     lightAccent !== initialState.lightAccent;
 
-  const isStorageDirty =
-    minioBaseUrl !== initialState.minioBaseUrl ||
-    minioFolderMasterParts !== initialState.minioFolderMasterParts;
-
-  const isFormDirty = isBrandingDirty || isThemeDirty || isStorageDirty;
+  const isFormDirty = isBrandingDirty || isThemeDirty;
 
   return {
     siteTitle,
@@ -286,10 +218,6 @@ export const useSiteConfigForm = () => {
     setLightSecondary,
     lightAccent,
     setLightAccent,
-    minioBaseUrl,
-    setMinioBaseUrl,
-    minioFolderMasterParts,
-    setMinioFolderMasterParts,
     logoPreview,
     backgroundPreview,
     handleLogoFileChange,
@@ -298,16 +226,10 @@ export const useSiteConfigForm = () => {
     isSubmitting,
     isBrandingDirty,
     isThemeDirty,
-    isStorageDirty,
     isFormDirty,
-    impactData,
-    isImpactModalOpen,
-    setIsImpactModalOpen,
-    handleConfirmMigration,
     toast,
     setToast,
     handleSaveConfig,
     handleResetDefault,
   };
 };
-
