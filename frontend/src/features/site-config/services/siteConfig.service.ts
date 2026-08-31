@@ -1,5 +1,4 @@
 import { apiClient } from '../../../services/api.client';
-import type { StorageImpactResult } from '../types/siteConfig.types';
 
 export class SiteConfigService {
   static async getConfig(): Promise<Record<string, string>> {
@@ -7,19 +6,10 @@ export class SiteConfigService {
     return response.data.data;
   }
 
-  static async checkStorageImpact(newBucket?: string, newFolder?: string): Promise<StorageImpactResult> {
-    const response = await apiClient.post('/api/site-config/check-storage-impact', {
-      new_bucket_name: newBucket,
-      new_folder_master_parts: newFolder,
-    });
-    return response.data.data;
-  }
-
   static async updateConfig(
-    items: { key: string; value: string }[],
-    migrationAction?: 'migrate_all' | 'config_only'
+    items: { key: string; value: string }[]
   ): Promise<Record<string, string>> {
-    const response = await apiClient.put('/api/site-config', { items, migrationAction });
+    const response = await apiClient.put('/api/site-config', { items });
     return response.data.data;
   }
 

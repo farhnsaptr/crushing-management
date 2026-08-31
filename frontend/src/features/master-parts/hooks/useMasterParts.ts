@@ -103,7 +103,7 @@ export const useMasterParts = () => {
       setToast({
         id: Date.now().toString(),
         type: 'info',
-        message: 'Foto berhasil diambil. Periksa pratinjau dan klik "Submit Foto" untuk mengompres & mengunggah ke S3.',
+        message: 'Foto berhasil diambil. Periksa pratinjau dan klik "Submit Foto"',
       });
     } catch (err) {
       console.error('Failed to create blob from camera dataUrl', err);
@@ -119,7 +119,7 @@ export const useMasterParts = () => {
       setToast({
         id: Date.now().toString(),
         type: 'info',
-        message: `Foto ${file.name} dipilih. Klik "Submit Foto" untuk mengompres & mengunggah ke S3.`,
+        message: `Foto ${file.name} dipilih. Klik "Submit Foto"`,
       });
     };
     reader.readAsDataURL(file);

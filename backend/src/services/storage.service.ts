@@ -1,9 +1,7 @@
 import { PutObjectCommand, DeleteObjectCommand, CopyObjectCommand } from '@aws-sdk/client-s3';
 import { s3Client } from '../config/s3.config';
 import { env } from '../config/env.config';
-import { SiteConfigService } from '../modules/site-config/siteConfig.service';
 import { randomUUID } from 'crypto';
-import path from 'path';
 import sharp from 'sharp';
 
 export class StorageService {
@@ -15,8 +13,7 @@ export class StorageService {
     const cleanStr = imageUrlOrKey.trim();
     if (!cleanStr) return null;
 
-    const storageConfig = SiteConfigService.getStorageConfigSync();
-    const bucketName = storageConfig.minio_bucket_name;
+    const bucketName = env.MINIO_BUCKET_NAME;
 
     // Jika mengandung bucket name
     if (cleanStr.includes(`${bucketName}/`)) {
@@ -43,31 +40,29 @@ export class StorageService {
   }
 
   /**
-   * Membentuk public URL lengkap secara dinamis berdasarkan site_config (dengan fallback ke .env)
+   * Membentuk public URL lengkap secara dinamis berdasarkan konfigurasi .env
    */
   static formatImageUrl(keyOrUrl: string | null | undefined): string | null {
     const key = this.extractKey(keyOrUrl);
     if (!key) return null;
 
-    const storageConfig = SiteConfigService.getStorageConfigSync();
-    const baseUrl = storageConfig.minio_base_url.replace(/\/+$/, '');
-    const bucket = storageConfig.minio_bucket_name.replace(/^\/+|\/+$/g, '');
+    const baseUrl = env.MINIO_BASE_URL.replace(/\/+$/, '');
+    const bucket = env.MINIO_BUCKET_NAME.replace(/^\/+|\/+$/g, '');
 
     return `${baseUrl}/${bucket}/${key}`;
   }
 
   /**
    * Upload buffer / image file to MinIO S3 bucket after compressing with Sharp
-   * Menggunakan nama folder dinamis dari site_config jika tidak dispesifikasikan eksplisit.
+   * Menggunakan nama folder dari env jika tidak dispesifikasikan eksplisit.
    */
   static async uploadImageBuffer(
     buffer: Buffer,
-    originalname: string = 'image.jpg',
-    mimetype: string = 'image/jpeg',
+    _originalname: string = 'image.jpg',
+    _mimetype: string = 'image/jpeg',
     folder?: string
   ): Promise<string> {
-    const storageConfig = SiteConfigService.getStorageConfigSync();
-    const targetFolder = folder || storageConfig.minio_folder_master_parts || 'master-parts';
+    const targetFolder = folder || env.MINIO_FOLDER_MASTER_PARTS || 'master-parts';
 
     const ext = '.jpg'; // Store compressed image as web-optimized JPEG
     const key = `${targetFolder}/${randomUUID()}${ext}`;
@@ -97,7 +92,7 @@ export class StorageService {
 
     await s3Client.send(
       new PutObjectCommand({
-        Bucket: storageConfig.minio_bucket_name,
+        Bucket: env.MINIO_BUCKET_NAME,
         Key: key,
         Body: finalBuffer,
         ContentType: 'image/jpeg',
@@ -161,12 +156,10 @@ export class StorageService {
     const key = this.extractKey(imageUrlOrKey);
     if (!key) return;
 
-    const storageConfig = SiteConfigService.getStorageConfigSync();
-
     try {
       await s3Client.send(
         new DeleteObjectCommand({
-          Bucket: storageConfig.minio_bucket_name,
+          Bucket: env.MINIO_BUCKET_NAME,
           Key: key,
         })
       );
@@ -176,4 +169,3 @@ export class StorageService {
     }
   }
 }
-
