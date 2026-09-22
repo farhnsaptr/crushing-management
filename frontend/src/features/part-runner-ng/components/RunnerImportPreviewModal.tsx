@@ -19,6 +19,8 @@ interface RunnerImportPreviewModalProps {
   previewData: RunnerMaterialPreviewResponse | null;
   onConfirmSave: () => void;
   isSaving: boolean;
+  onChangeDateFilter?: (date: string) => void;
+  selectedDateFilter?: string;
 }
 
 export const RunnerImportPreviewModal: React.FC<RunnerImportPreviewModalProps> = ({
@@ -27,13 +29,24 @@ export const RunnerImportPreviewModal: React.FC<RunnerImportPreviewModalProps> =
   previewData,
   onConfirmSave,
   isSaving,
+  onChangeDateFilter,
+  selectedDateFilter,
 }) => {
   const [activeTab, setActiveTab] = useState<'materials' | 'unmatched'>('materials');
   const [expandedMaterialIndex, setExpandedMaterialIndex] = useState<number | null>(null);
 
   if (!previewData) return null;
 
-  const { summary, matched_materials = [], unmatched_sebangos = [], transaction_date } = previewData;
+  const {
+    transaction_date,
+    matched_materials = [],
+    unmatched_sebangos = [],
+    summary,
+    available_dates = [],
+    selected_date,
+  } = previewData;
+
+  const isAllSelected = selectedDateFilter === 'all' || selected_date === 'all';
 
   const toggleExpand = (idx: number) => {
     setExpandedMaterialIndex(expandedMaterialIndex === idx ? null : idx);
@@ -62,14 +75,60 @@ export const RunnerImportPreviewModal: React.FC<RunnerImportPreviewModalProps> =
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-            <Calendar size={18} color="var(--primary-color, #008d51)" />
+            <Calendar size={20} color="var(--primary-color, #008d51)" />
             <div>
               <span style={{ fontSize: '0.75rem', color: 'var(--text-muted, #64748b)', fontWeight: 600 }}>
-                Tanggal Produksi (CSV):
+                Tanggal Produksi (Excel):
               </span>
-              <p style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--text-main, #0f172a)' }}>
-                {transaction_date}
-              </p>
+              {available_dates.length > 1 && onChangeDateFilter ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.2rem', flexWrap: 'wrap' }}>
+                  <select
+                    value={selectedDateFilter || selected_date || 'all'}
+                    onChange={(e) => onChangeDateFilter(e.target.value)}
+                    disabled={isSaving}
+                    style={{
+                      padding: '0.35rem 0.65rem',
+                      borderRadius: 'var(--radius-sm, 6px)',
+                      border: '1.5px solid var(--primary-color, #008d51)',
+                      fontSize: '0.875rem',
+                      fontWeight: 800,
+                      color: 'var(--primary-color, #008d51)',
+                      backgroundColor: '#ffffff',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <option value="all">
+                      Semua Tanggal
+                    </option>
+                    {available_dates.map((d) => (
+                      <option key={d.date} value={d.date}>
+                        {d.date}
+                      </option>
+                    ))}
+                  </select>
+                  <span style={{ fontSize: '0.725rem', color: 'var(--text-muted, #64748b)', fontWeight: 600 }}>
+                    ({available_dates.length} tanggal terdeteksi di file)
+                  </span>
+                  {(selectedDateFilter === 'all' || selected_date === 'all') && available_dates.length > 0 && (
+                    <span
+                      style={{
+                        fontSize: '0.75rem',
+                        color: 'var(--primary-color, #008d51)',
+                        fontWeight: 700,
+                        backgroundColor: 'rgba(0, 141, 81, 0.1)',
+                        padding: '0.2rem 0.5rem',
+                        borderRadius: '4px',
+                      }}
+                    >
+                      Rentang: {available_dates[available_dates.length - 1]?.date} s/d {available_dates[0]?.date}
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <p style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--text-main, #0f172a)' }}>
+                  {transaction_date}
+                </p>
+              )}
             </div>
           </div>
 
@@ -216,6 +275,9 @@ export const RunnerImportPreviewModal: React.FC<RunnerImportPreviewModalProps> =
                 <thead>
                   <tr style={{ backgroundColor: 'var(--bg-main, #f1f5f9)', textAlign: 'left', color: 'var(--text-muted, #475569)' }}>
                     <th style={{ padding: '0.65rem 0.85rem' }}>No</th>
+                    {isAllSelected && (
+                      <th style={{ padding: '0.65rem 0.85rem' }}>Tanggal</th>
+                    )}
                     <th style={{ padding: '0.65rem 0.85rem' }}>Nama Material</th>
                     <th style={{ padding: '0.65rem 0.85rem' }}>Shift</th>
                     <th style={{ padding: '0.65rem 0.85rem', textAlign: 'center' }}>Jumlah Sebango</th>
@@ -229,7 +291,7 @@ export const RunnerImportPreviewModal: React.FC<RunnerImportPreviewModalProps> =
                     const details = mat.sebango_details || [];
 
                     return (
-                      <React.Fragment key={(mat.material_name || '') + (mat.shift || '') + idx}>
+                      <React.Fragment key={(mat.transaction_date || '') + (mat.material_name || '') + (mat.shift || '') + idx}>
                         {/* Main Material Summary Row */}
                         <tr
                           onClick={() => toggleExpand(idx)}
@@ -243,6 +305,14 @@ export const RunnerImportPreviewModal: React.FC<RunnerImportPreviewModalProps> =
                           <td style={{ padding: '0.75rem 0.85rem', fontWeight: 700, color: 'var(--text-muted, #64748b)' }}>
                             {idx + 1}
                           </td>
+                          {isAllSelected && (
+                            <td style={{ padding: '0.75rem 0.85rem', fontWeight: 700, color: 'var(--text-main, #0f172a)', whiteSpace: 'nowrap' }}>
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.8rem', backgroundColor: 'var(--bg-main, #f1f5f9)', padding: '0.2rem 0.45rem', borderRadius: '4px' }}>
+                                <Calendar size={13} color="var(--primary-color, #008d51)" />
+                                {mat.transaction_date || transaction_date}
+                              </span>
+                            </td>
+                          )}
                           <td style={{ padding: '0.75rem 0.85rem', fontWeight: 800, color: 'var(--text-main, #0f172a)' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                               <Layers size={16} color="var(--primary-color, #008d51)" />
@@ -285,7 +355,7 @@ export const RunnerImportPreviewModal: React.FC<RunnerImportPreviewModalProps> =
                         {/* Sub-row for expanded sebango breakdown */}
                         {isExpanded && (
                           <tr>
-                            <td colSpan={6} style={{ padding: '0.75rem 1rem', backgroundColor: 'var(--bg-main, #f8fafc)', borderBottom: '2px solid var(--border-color, #cbd5e1)' }}>
+                            <td colSpan={isAllSelected ? 7 : 6} style={{ padding: '0.75rem 1rem', backgroundColor: 'var(--bg-main, #f8fafc)', borderBottom: '2px solid var(--border-color, #cbd5e1)' }}>
                               <div style={{ padding: '0.75rem', borderRadius: 'var(--radius-md, 6px)', backgroundColor: 'var(--bg-card, #ffffff)', border: '1px solid var(--border-color, #e2e8f0)' }}>
                                 <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-main, #0f172a)', marginBottom: '0.5rem', display: 'block' }}>
                                   Rincian Sebango Kontributor untuk Material "{mat.material_name}":
@@ -350,7 +420,7 @@ export const RunnerImportPreviewModal: React.FC<RunnerImportPreviewModalProps> =
                 color: '#dc2626',
               }}
             >
-              <strong>Perhatian:</strong> {unmatched_sebangos.length} kode sebango berikut dari file CSV tidak ditemukan di katalog Master Parts sistem. Sebango ini <strong>TIDAK akan dihitung/dicatat</strong> ke dalam runner material.
+              <strong>Perhatian:</strong> {unmatched_sebangos.length} kode sebango berikut dari file Excel / CSV tidak ditemukan di katalog Master Parts sistem. Sebango ini <strong>TIDAK akan dihitung/dicatat</strong> ke dalam runner material.
             </div>
 
             <div style={{ overflowX: 'auto' }}>
@@ -358,7 +428,7 @@ export const RunnerImportPreviewModal: React.FC<RunnerImportPreviewModalProps> =
                 <thead>
                   <tr style={{ backgroundColor: 'var(--bg-main, #f1f5f9)', textAlign: 'left', color: 'var(--text-muted, #475569)' }}>
                     <th style={{ padding: '0.55rem 0.75rem' }}>No</th>
-                    <th style={{ padding: '0.55rem 0.75rem' }}>Kode Sebango (CSV)</th>
+                    <th style={{ padding: '0.55rem 0.75rem' }}>Kode Sebango (Excel / CSV)</th>
                     <th style={{ padding: '0.55rem 0.75rem', textAlign: 'right' }}>ACT TOTAL (pcs)</th>
                     <th style={{ padding: '0.55rem 0.75rem' }}>Keterangan Status</th>
                   </tr>

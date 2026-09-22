@@ -1,7 +1,11 @@
 import { useState, useCallback, useEffect } from 'react';
-import { parseProductionCsv } from '../utils/csvParser.util';
 import { RunnerMaterialService } from '../services/runnerMaterial.service';
-import type { RunnerMaterialPreviewResponse, RunnerMaterialRecord, UpdateRunnerMaterialPayload } from '../types/runnerMaterial.types';
+import type {
+  RunnerMaterialPreviewResponse,
+  RunnerMaterialRecord,
+  UpdateRunnerMaterialPayload,
+  RunnerBatchItem,
+} from '../types/runnerMaterial.types';
 
 export const useRunnerImport = () => {
   const [entryMode, setEntryMode] = useState<'csv' | 'manual'>('csv');
@@ -9,6 +13,7 @@ export const useRunnerImport = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [parseError, setParseError] = useState<string | null>(null);
+  const [selectedDateFilter, setSelectedDateFilter] = useState<string>('');
 
   const [previewModalOpen, setPreviewModalOpen] = useState<boolean>(false);
   const [previewData, setPreviewData] = useState<RunnerMaterialPreviewResponse | null>(null);
@@ -21,10 +26,14 @@ export const useRunnerImport = () => {
   const [totalRecords, setTotalRecords] = useState<number>(0);
   const [totalPages, setTotalPages] = useState<number>(1);
 
-  // Individual Edit & Delete Modals State
+  // Individual Edit & Rollback Modals State
   const [editingRecord, setEditingRecord] = useState<RunnerMaterialRecord | null>(null);
   const [isEditingModalOpen, setIsEditingModalOpen] = useState<boolean>(false);
   const [isDeletingAllModalOpen, setIsDeletingAllModalOpen] = useState<boolean>(false);
+  const [isRollbackModalOpen, setIsRollbackModalOpen] = useState<boolean>(false);
+  const [selectedBatchToRollback, setSelectedBatchToRollback] = useState<string>('');
+  const [batchesList, setBatchesList] = useState<RunnerBatchItem[]>([]);
+  const [isLoadingBatches, setIsLoadingBatches] = useState<boolean>(false);
   const [isActionLoading, setIsActionLoading] = useState<boolean>(false);
 
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
@@ -58,52 +67,55 @@ export const useRunnerImport = () => {
 
   const handleFileSelect = (file: File) => {
     setParseError(null);
-    if (!file.name.toLowerCase().endsWith('.csv')) {
-      setParseError('Format file tidak valid. Harap pilih file berformat .csv');
+    const lowerName = file.name.toLowerCase();
+    if (!lowerName.endsWith('.xlsx') && !lowerName.endsWith('.xls') && !lowerName.endsWith('.csv')) {
+      setParseError('Format file tidak didukung. Harap pilih file Excel (.xlsx / .xls) atau .csv.');
       return;
     }
     setSelectedFile(file);
+    setSelectedDateFilter('');
   };
 
   const handleClearFile = () => {
     setSelectedFile(null);
     setParseError(null);
     setPreviewData(null);
+    setSelectedDateFilter('');
   };
 
-  const handleProcessFile = async () => {
+  const handleProcessFile = async (dateOverride?: string) => {
     if (!selectedFile) return;
 
     setIsLoading(true);
     setParseError(null);
 
     try {
-      const csvText = await selectedFile.text();
-      const parsedRows = parseProductionCsv(csvText);
-
-      if (parsedRows.length === 0) {
-        setParseError('File CSV tidak memiliki baris data valid atau ACT TOTAL > 0.');
-        setIsLoading(false);
-        return;
-      }
-
-      // Call backend API preview for master parts lookup & per-material calculation
-      const resData = await RunnerMaterialService.previewImport(parsedRows);
+      const validOverride = typeof dateOverride === 'string' && dateOverride.trim() !== '' && !dateOverride.includes('[object') ? dateOverride.trim() : undefined;
+      const dateToUse = validOverride || selectedDateFilter || undefined;
+      const resData = await RunnerMaterialService.previewImportFile(selectedFile, dateToUse);
 
       if (!resData || !Array.isArray(resData.matched_materials) || resData.matched_materials.length === 0) {
-        setParseError('Tidak ada kode Sebango yang cocok dengan Master Parts di sistem.');
+        setParseError('Tidak ada kode Sebango yang cocok dengan Master Parts di sistem untuk tanggal yang dipilih.');
         setIsLoading(false);
         return;
       }
 
       setPreviewData(resData);
+      if (resData.selected_date) {
+        setSelectedDateFilter(resData.selected_date);
+      }
       setPreviewModalOpen(true);
     } catch (err: any) {
-      console.error('Error processing CSV:', err);
-      setParseError(err.message || 'Gagal memproses file CSV Produksi.');
+      console.error('Error processing production file:', err);
+      setParseError(err.response?.data?.error || err.message || 'Gagal memproses file Laporan Produksi.');
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleChangeDateFilter = async (newDate: string) => {
+    setSelectedDateFilter(newDate);
+    await handleProcessFile(newDate);
   };
 
   const handleConfirmSave = async () => {
@@ -117,6 +129,7 @@ export const useRunnerImport = () => {
         shift: m.shift || 'Pagi',
         total_pcs: m.total_pcs,
         total_runner_weight_kg: m.total_runner_weight_kg,
+        transaction_date: m.transaction_date || previewData.transaction_date,
       }));
 
       const res = await RunnerMaterialService.saveRecords({
@@ -234,7 +247,46 @@ export const useRunnerImport = () => {
     }
   };
 
-  // Delete all records (Super-Admin only)
+  // Fetch batches for rollback
+  const fetchBatches = useCallback(async () => {
+    setIsLoadingBatches(true);
+    try {
+      const list = await RunnerMaterialService.listBatches();
+      setBatchesList(Array.isArray(list) ? list : []);
+    } catch (err) {
+      console.warn('Failed to load batches for rollback:', err);
+    } finally {
+      setIsLoadingBatches(false);
+    }
+  }, []);
+
+  // Rollback records per batch
+  const handleRollbackBatch = async (batchRef: string) => {
+    if (!batchRef) return;
+    setIsActionLoading(true);
+    try {
+      const res = await RunnerMaterialService.rollbackBatch(batchRef);
+      setToast({
+        message: `Berhasil me-rollback batch ${res.batchRef} (${res.deletedCount} data dihapus).`,
+        type: 'success',
+      });
+      setIsRollbackModalOpen(false);
+      setSelectedBatchToRollback('');
+      setPage(1);
+      await fetchHistory(1, limit);
+      await fetchBatches();
+    } catch (err: any) {
+      console.error('Error rolling back batch:', err);
+      setToast({
+        message: err.response?.data?.error || err.message || 'Gagal melakukan rollback batch.',
+        type: 'error',
+      });
+    } finally {
+      setIsActionLoading(false);
+    }
+  };
+
+  // Delete all records (Super-Admin only - backwards compatibility)
   const handleDeleteAllRecords = async () => {
     setIsActionLoading(true);
     try {
@@ -267,6 +319,9 @@ export const useRunnerImport = () => {
     handleFileSelect,
     handleClearFile,
     handleProcessFile,
+    selectedDateFilter,
+    setSelectedDateFilter,
+    handleChangeDateFilter,
     previewModalOpen,
     setPreviewModalOpen,
     previewData,
@@ -287,6 +342,14 @@ export const useRunnerImport = () => {
     setIsEditingModalOpen,
     isDeletingAllModalOpen,
     setIsDeletingAllModalOpen,
+    isRollbackModalOpen,
+    setIsRollbackModalOpen,
+    selectedBatchToRollback,
+    setSelectedBatchToRollback,
+    batchesList,
+    isLoadingBatches,
+    fetchBatches,
+    handleRollbackBatch,
     isActionLoading,
     handleUpdateRecord,
     handleDeleteRecord,

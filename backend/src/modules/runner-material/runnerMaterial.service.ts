@@ -1,4 +1,5 @@
 import { randomUUID } from 'crypto';
+import XLSX from 'xlsx';
 import { pool } from '../../config/database';
 import { RowDataPacket } from 'mysql2';
 
@@ -15,6 +16,7 @@ export interface MaterialRunnerSaveItemDto {
   shift?: 'Pagi' | 'Malam';
   total_pcs: number;
   total_runner_weight_kg: number;
+  transaction_date?: string;
 }
 
 function normalizeShift(s?: string): 'Pagi' | 'Malam' {
@@ -24,43 +26,247 @@ function normalizeShift(s?: string): 'Pagi' | 'Malam' {
   return 'Pagi';
 }
 
-export class RunnerMaterialService {
-  /**
-   * Process raw CSV parsed rows, aggregate shift D & N per (sebango, shift),
-   * match against master parts, calculate runner weight, and group by (material, shift).
-   */
-  static async previewImport(parsedRows: ParsedCsvRowDto[]) {
-    if (!parsedRows || parsedRows.length === 0) {
-      throw new Error('Data CSV kosong atau tidak valid.');
+/**
+ * Standardizes various date formats (DD-MM-YYYY, YYYY-MM-DD, Excel serial date) to YYYY-MM-DD.
+ */
+function formatStandardDate(val: any): string {
+  if (!val) return '';
+  if (typeof val === 'number') {
+    // Excel serial date code
+    const utcDays = Math.floor(val - 25569);
+    const date = new Date(utcDays * 86400 * 1000);
+    const y = date.getUTCFullYear();
+    const m = String(date.getUTCMonth() + 1).padStart(2, '0');
+    const d = String(date.getUTCDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+  const s = String(val).trim();
+  // Check DD-MM-YYYY or DD/MM/YYYY
+  const dmyMatch = s.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
+  if (dmyMatch) {
+    const day = dmyMatch[1].padStart(2, '0');
+    const month = dmyMatch[2].padStart(2, '0');
+    const year = dmyMatch[3];
+    return `${year}-${month}-${day}`;
+  }
+  // Check YYYY-MM-DD or YYYY/MM/DD
+  const ymdMatch = s.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
+  if (ymdMatch) {
+    const year = ymdMatch[1];
+    const month = ymdMatch[2].padStart(2, '0');
+    const day = ymdMatch[3].padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+  if (val instanceof Date && !isNaN(val.getTime())) {
+    const y = val.getFullYear();
+    const m = String(val.getMonth() + 1).padStart(2, '0');
+    const d = String(val.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+  return s;
+}
+
+/**
+ * Loads master_materials lookup from the system database.
+ * If user or part specifies a material name that differs from master_materials,
+ * the canonical name in master_materials is always used.
+ */
+async function getMasterMaterialsLookup() {
+  const [rows] = await pool.query<RowDataPacket[]>(
+    'SELECT id, material_name, recycle_type FROM master_materials'
+  );
+
+  const byId = new Map<string, { id: string; material_name: string }>();
+  const byNormalized = new Map<string, { id: string; material_name: string }>();
+
+  for (const r of rows) {
+    const entry = { id: r.id, material_name: r.material_name };
+    byId.set(r.id, entry);
+
+    // Normalize: lowercase, trim, strip spaces, dashes, underscores, slashes
+    const normKey = r.material_name.trim().toLowerCase().replace(/[\s\-_/]/g, '');
+    byNormalized.set(normKey, entry);
+  }
+
+  const resolve = (materialId?: string | null, rawName?: string | null): { id: string | null; name: string } => {
+    // 1. Check by ID first
+    if (materialId && byId.has(materialId)) {
+      const found = byId.get(materialId)!;
+      return { id: found.id, name: found.material_name };
     }
 
-    // 1. Determine dominant production date from CSV rows
-    const firstValidDate = parsedRows.find((r) => r.date && r.date.trim() !== '')?.date || new Date().toISOString().substring(0, 10);
+    // 2. Check by rawName against master_materials
+    if (rawName && rawName.trim()) {
+      const trimmed = rawName.trim();
+      const normKey = trimmed.toLowerCase().replace(/[\s\-_/]/g, '');
+      if (byNormalized.has(normKey)) {
+        const found = byNormalized.get(normKey)!;
+        return { id: found.id, name: found.material_name };
+      }
 
-    // 2. Aggregate ACT TOTAL per (sebango_code, shift)
-    const sebangoShiftMap = new Map<string, { sebango_code: string; shift: 'Pagi' | 'Malam'; total_pcs: number; dates: Set<string> }>();
+      // Check substring match if length >= 3: e.g. "PP B200" matches "PP-B200"
+      for (const [key, entry] of byNormalized.entries()) {
+        if (normKey.length >= 3 && (key === normKey || key.includes(normKey) || normKey.includes(key))) {
+          return { id: entry.id, name: entry.material_name };
+        }
+      }
 
-    for (const row of parsedRows) {
+      return { id: null, name: trimmed };
+    }
+
+    return { id: null, name: 'Unassigned Material' };
+  };
+
+  return { byId, byNormalized, resolve };
+}
+
+export class RunnerMaterialService {
+  /**
+   * Parses file buffer (XLSX, XLS, or CSV) into standardized ParsedCsvRowDto array.
+   */
+  static parseFileBuffer(fileBuffer: Buffer, originalFilename?: string): ParsedCsvRowDto[] {
+    let workbook: XLSX.WorkBook;
+    try {
+      workbook = XLSX.read(fileBuffer, { type: 'buffer' });
+    } catch (err: any) {
+      throw new Error(
+        `Sistem tidak dapat membaca file ${originalFilename || ''}. Harap pastikan file tidak corrupt dan berformat .xlsx, .xls, atau .csv.`
+      );
+    }
+
+    const sheetName = workbook.SheetNames[0];
+    if (!sheetName) {
+      throw new Error('File tidak memiliki lembar kerja (worksheet).');
+    }
+
+    const sheet = workbook.Sheets[sheetName];
+    const rawRows: any[] = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+    if (!rawRows || rawRows.length === 0) {
+      throw new Error('File kosong atau tidak memiliki baris data.');
+    }
+
+    // Inspect first row keys to find column names
+    const sampleRow = rawRows[0];
+    const keys = Object.keys(sampleRow);
+
+    const findKey = (possibleNames: string[]): string | undefined => {
+      const lowerNames = possibleNames.map((n) => n.toLowerCase());
+      return keys.find((k) => lowerNames.includes(k.replace(/[\r\n]+/g, ' ').trim().toLowerCase()));
+    };
+
+    const dateKey = findKey(['PRODUCTION DATE', 'DATE', 'TANGGAL', 'TGL PRODUKSI', 'PROD DATE']);
+    const sebangoKey = findKey(['SEBANGO', 'KODE SEBANGO', 'SEBANGO CODE', 'SEBANGO_CODE']);
+    const shiftKey = findKey(['SHIFT']);
+    const actTotalKey = findKey(['ACTUAL TOTAL (PCS)', 'ACT TOTAL', 'ACTUAL TOTAL', 'ACT_TOTAL', 'TOTAL']);
+
+    if (!sebangoKey || !actTotalKey) {
+      throw new Error(
+        'Format file tidak valid. Pastikan header memuat kolom "SEBANGO" dan "ACTUAL TOTAL (PCS)" atau "ACT TOTAL".'
+      );
+    }
+
+    const result: ParsedCsvRowDto[] = [];
+
+    for (const r of rawRows) {
+      const rawSebango = String(r[sebangoKey] || '').trim();
+      const rawActTotal = parseInt(String(r[actTotalKey] || '0').replace(/,/g, ''), 10);
+      if (!rawSebango || isNaN(rawActTotal) || rawActTotal <= 0) {
+        continue;
+      }
+
+      const rawDate = dateKey ? r[dateKey] : '';
+      const stdDate = formatStandardDate(rawDate);
+      const rawShift = shiftKey ? String(r[shiftKey] || '').trim() : '';
+
+      result.push({
+        date: stdDate,
+        sebango_code: rawSebango,
+        shift: rawShift,
+        act_total_pcs: rawActTotal,
+      });
+    }
+
+    return result;
+  }
+
+  /**
+   * Process raw CSV/Excel parsed rows, aggregate shift D & N per (sebango, shift),
+   * match against master parts, calculate runner weight, and group by (material, shift).
+   * Supports optional selectedDate filter for monthly files spanning multiple dates.
+   */
+  static async previewImport(parsedRows: ParsedCsvRowDto[], selectedDate?: string) {
+    if (!parsedRows || parsedRows.length === 0) {
+      throw new Error('Data file kosong atau tidak valid.');
+    }
+
+    // 1. Analyze all available unique dates in the dataset
+    const dateCountMap = new Map<string, number>();
+    for (const r of parsedRows) {
+      const d = r.date ? r.date.trim() : '';
+      if (d) {
+        dateCountMap.set(d, (dateCountMap.get(d) || 0) + 1);
+      }
+    }
+
+    const availableDates = Array.from(dateCountMap.entries())
+      .map(([date, count]) => ({ date, count }))
+      .sort((a, b) => b.date.localeCompare(a.date)); // Newest date first
+
+    // Determine target date & filter rows accordingly
+    let targetDate = '';
+    let rowsToProcess = parsedRows;
+
+    const isDateValid = selectedDate && (selectedDate === 'all' || availableDates.some((d) => d.date === selectedDate));
+
+    if (selectedDate && selectedDate !== 'all' && isDateValid) {
+      targetDate = selectedDate;
+      rowsToProcess = parsedRows.filter((r) => r.date === selectedDate);
+    } else if (selectedDate === 'all') {
+      targetDate = availableDates.length > 0 ? availableDates[0].date : new Date().toISOString().substring(0, 10);
+      rowsToProcess = parsedRows;
+    } else {
+      // Default: if multi-date file, select all dates by default
+      if (availableDates.length > 1) {
+        targetDate = availableDates[0].date;
+        rowsToProcess = parsedRows;
+        selectedDate = 'all';
+      } else if (availableDates.length === 1) {
+        targetDate = availableDates[0].date;
+        rowsToProcess = parsedRows;
+        selectedDate = availableDates[0].date;
+      } else {
+        targetDate = new Date().toISOString().substring(0, 10);
+        rowsToProcess = parsedRows;
+      }
+    }
+
+    // 2. Aggregate ACT TOTAL per (date, sebango_code, shift)
+    const sebangoShiftMap = new Map<string, { date: string; sebango_code: string; shift: 'Pagi' | 'Malam'; total_pcs: number }>();
+    const uniqueSebangosSet = new Set<string>();
+
+    for (const row of rowsToProcess) {
       const cleanSebango = (row.sebango_code || '').trim();
       const pcs = Number(row.act_total_pcs) || 0;
       if (!cleanSebango || pcs <= 0) continue;
 
+      uniqueSebangosSet.add(cleanSebango);
+
       const normShift = normalizeShift(row.shift);
-      const key = `${cleanSebango}__${normShift}`;
+      const rowDate = (row.date && row.date.trim()) || targetDate || new Date().toISOString().substring(0, 10);
+      const key = `${rowDate}__${cleanSebango}__${normShift}`;
 
       const existing = sebangoShiftMap.get(key) || {
+        date: rowDate,
         sebango_code: cleanSebango,
         shift: normShift,
         total_pcs: 0,
-        dates: new Set(),
       };
       existing.total_pcs += pcs;
-      if (row.date) existing.dates.add(row.date.trim());
       sebangoShiftMap.set(key, existing);
     }
 
     if (sebangoShiftMap.size === 0) {
-      throw new Error('Tidak ada data sebango valid dengan ACT TOTAL > 0 dalam file CSV.');
+      throw new Error('Tidak ada data sebango valid dengan ACT TOTAL > 0 untuk tanggal yang dipilih.');
     }
 
     // 3. Fetch active master parts for matching
@@ -72,6 +278,8 @@ export class RunnerMaterialService {
        WHERE mp.is_active = TRUE`
     );
 
+    const matLookup = await getMasterMaterialsLookup();
+
     // Index master parts by sebango_code
     const masterPartMap = new Map<string, RowDataPacket>();
     for (const part of partRows) {
@@ -82,6 +290,7 @@ export class RunnerMaterialService {
       material_id: string | null;
       material_name: string;
       shift: 'Pagi' | 'Malam';
+      transaction_date: string;
       total_pcs: number;
       total_runner_weight_kg: number;
       sebango_count: number;
@@ -93,13 +302,14 @@ export class RunnerMaterialService {
         berat_runner_gr: number;
         runner_weight_kg: number;
         shift: 'Pagi' | 'Malam';
+        date?: string;
       }>;
     }
 
     const materialMap = new Map<string, MaterialGroup>();
     const unmatchedSebangosMap = new Map<string, { sebango_code: string; act_pcs: number; shift: string; reason: string }>();
 
-    for (const [key, aggregated] of sebangoShiftMap.entries()) {
+    for (const [, aggregated] of sebangoShiftMap.entries()) {
       const matchedPart = masterPartMap.get(aggregated.sebango_code);
 
       if (!matchedPart) {
@@ -114,18 +324,24 @@ export class RunnerMaterialService {
         continue;
       }
 
-      // Material Name precedence: master_materials name -> master_parts material snapshot -> 'Unassigned Material'
-      const materialName = matchedPart.master_material_name || matchedPart.material || 'Unassigned Material';
-      const materialId = matchedPart.material_id || null;
+      // Resolve official material name: prioritize master_materials table in system database
+      const resolvedMat = matLookup.resolve(
+        matchedPart.material_id,
+        matchedPart.master_material_name || matchedPart.material
+      );
+      const materialName = resolvedMat.name;
+      const materialId = resolvedMat.id;
       const beratRunnerGr = Number(matchedPart.berat_runner_gr) || 0;
       const runnerWeightKg = Number(((aggregated.total_pcs * beratRunnerGr) / 1000).toFixed(2));
 
-      const groupKey = `${materialName}__${aggregated.shift}`;
+      // Group per (date, material, shift) to guarantee each production date retains its true transaction date
+      const groupKey = `${aggregated.date}__${materialName}__${aggregated.shift}`;
 
       const existingMat: MaterialGroup = materialMap.get(groupKey) || {
         material_id: materialId,
         material_name: materialName,
         shift: aggregated.shift,
+        transaction_date: aggregated.date,
         total_pcs: 0,
         total_runner_weight_kg: 0,
         sebango_count: 0,
@@ -143,24 +359,37 @@ export class RunnerMaterialService {
         berat_runner_gr: beratRunnerGr,
         runner_weight_kg: runnerWeightKg,
         shift: aggregated.shift,
+        date: aggregated.date,
       });
 
       materialMap.set(groupKey, existingMat);
     }
 
     const matchedMaterials = Array.from(materialMap.values());
+    // Sort descending by transaction_date (newest date first), then material name, then shift
+    matchedMaterials.sort((a, b) => {
+      const dateCmp = b.transaction_date.localeCompare(a.transaction_date);
+      if (dateCmp !== 0) return dateCmp;
+      const matCmp = a.material_name.localeCompare(b.material_name);
+      if (matCmp !== 0) return matCmp;
+      return a.shift.localeCompare(b.shift);
+    });
+
     const unmatchedSebangos = Array.from(unmatchedSebangosMap.values());
     const grandTotalRunnerKg = Number(matchedMaterials.reduce((acc, curr) => acc + curr.total_runner_weight_kg, 0).toFixed(2));
 
     return {
-      transaction_date: firstValidDate,
+      transaction_date: targetDate,
       batch_ref: `batch_runner_${Date.now()}`,
+      selected_date: selectedDate || (availableDates.length > 1 ? 'all' : targetDate),
+      available_dates: availableDates,
       matched_materials: matchedMaterials,
       unmatched_sebangos: unmatchedSebangos,
       summary: {
-        total_csv_rows: parsedRows.length,
-        unique_sebangos: sebangoShiftMap.size,
-        matched_sebangos: sebangoShiftMap.size - unmatchedSebangos.length,
+        total_rows: rowsToProcess.length,
+        total_file_rows: parsedRows.length,
+        unique_sebangos: uniqueSebangosSet.size,
+        matched_sebangos: Math.max(0, uniqueSebangosSet.size - unmatchedSebangos.length),
         unmatched_sebangos: unmatchedSebangos.length,
         total_materials: matchedMaterials.length,
         total_runner_weight_kg: grandTotalRunnerKg,
@@ -170,6 +399,8 @@ export class RunnerMaterialService {
 
   /**
    * Save confirmed runner material aggregated records into runner_material_transactions.
+   * Supports individual item-level transaction_date or default transactionDate.
+   * Enforces master_materials names from database if any differences exist.
    */
   static async saveRecords(
     materialItems: MaterialRunnerSaveItemDto[],
@@ -180,22 +411,31 @@ export class RunnerMaterialService {
       throw new Error('Tidak ada data material runner yang akan disimpan.');
     }
 
+    const matLookup = await getMasterMaterialsLookup();
     const importBatch = batchRef || `batch_runner_${Date.now()}`;
+    const defaultDate = transactionDate && transactionDate !== 'all'
+      ? transactionDate
+      : new Date().toISOString().substring(0, 10);
     let successCount = 0;
 
     for (const item of materialItems) {
       const id = randomUUID();
-      const matId = item.material_id || null;
-      const matName = item.material_name.trim();
+      // Ensure the official material name from database master_materials is used
+      const resolvedMat = matLookup.resolve(item.material_id, item.material_name);
+      const matId = resolvedMat.id;
+      const matName = resolvedMat.name;
       const normShift = normalizeShift(item.shift);
       const pcs = Number(item.total_pcs) || 0;
       const weightKg = Number(item.total_runner_weight_kg) || 0;
+      const itemDate = (item.transaction_date && item.transaction_date !== 'all')
+        ? item.transaction_date
+        : defaultDate;
 
       await pool.query(
         `INSERT INTO runner_material_transactions
          (id, material_id, material_name_snapshot, total_pcs, total_runner_weight_kg, transaction_date, shift, import_batch_ref)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        [id, matId, matName, pcs, weightKg, transactionDate, normShift, importBatch]
+        [id, matId, matName, pcs, weightKg, itemDate, normShift, importBatch]
       );
       successCount++;
     }
@@ -248,6 +488,7 @@ export class RunnerMaterialService {
 
   /**
    * Update an individual runner material transaction record by ID.
+   * Resolves material name against master_materials database.
    */
   static async updateRecord(
     id: string,
@@ -272,8 +513,14 @@ export class RunnerMaterialService {
     const params: any[] = [];
 
     if (payload.material_name_snapshot !== undefined) {
+      const matLookup = await getMasterMaterialsLookup();
+      const resolvedMat = matLookup.resolve(undefined, payload.material_name_snapshot);
       updates.push('material_name_snapshot = ?');
-      params.push(payload.material_name_snapshot.trim());
+      params.push(resolvedMat.name);
+      if (resolvedMat.id) {
+        updates.push('material_id = ?');
+        params.push(resolvedMat.id);
+      }
     }
     if (payload.shift !== undefined) {
       updates.push('shift = ?');
@@ -317,6 +564,56 @@ export class RunnerMaterialService {
     }
 
     return { id, deleted: true };
+  }
+
+  /**
+   * Rollback / delete all runner material transactions associated with a specific batch reference.
+   */
+  static async rollbackBatch(batchRef: string) {
+    if (!batchRef || !batchRef.trim()) {
+      throw new Error('Referensi batch (batchRef) wajib disertakan untuk rollback.');
+    }
+
+    const [result] = await pool.query<any>(
+      'DELETE FROM runner_material_transactions WHERE import_batch_ref = ?',
+      [batchRef.trim()]
+    );
+
+    return {
+      batchRef: batchRef.trim(),
+      deletedCount: result.affectedRows,
+    };
+  }
+
+  /**
+   * Get list of unique batches with summary metadata for rollback UI.
+   */
+  static async listBatches() {
+    const [rows] = await pool.query<RowDataPacket[]>(
+      `SELECT 
+        import_batch_ref,
+        COUNT(*) AS total_records,
+        SUM(total_runner_weight_kg) AS total_weight_kg,
+        SUM(total_pcs) AS total_pcs,
+        MIN(transaction_date) AS min_date,
+        MAX(transaction_date) AS max_date,
+        MAX(created_at) AS created_at
+       FROM runner_material_transactions
+       WHERE import_batch_ref IS NOT NULL AND import_batch_ref != ''
+       GROUP BY import_batch_ref
+       ORDER BY created_at DESC
+       LIMIT 100`
+    );
+
+    return rows.map((r) => ({
+      batch_ref: r.import_batch_ref,
+      total_records: Number(r.total_records) || 0,
+      total_weight_kg: Number(Number(r.total_weight_kg || 0).toFixed(2)),
+      total_pcs: Number(r.total_pcs) || 0,
+      min_date: r.min_date,
+      max_date: r.max_date,
+      created_at: r.created_at,
+    }));
   }
 
   /**

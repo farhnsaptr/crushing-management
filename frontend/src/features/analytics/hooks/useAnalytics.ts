@@ -137,10 +137,19 @@ export const useAnalytics = (initialYear?: number) => {
   }, [fetchYearlyData, fetchRecords, fetchParetoMaterials, fetchParetoPartsNg, fetchBatches]);
 
   // Upload production report handler
-  const handleUploadReport = async (filename: string, rawRows: RawProductionCsvRow[], batchName?: string) => {
+  const handleUploadReport = async (
+    fileOrFilename: File | string,
+    rawRows?: RawProductionCsvRow[],
+    batchName?: string
+  ) => {
     setIsUploading(true);
     try {
-      const res = await AnalyticsService.uploadProductionReport(filename, rawRows, batchName);
+      let res: any;
+      if (fileOrFilename instanceof File) {
+        res = await AnalyticsService.uploadProductionFile(fileOrFilename, batchName);
+      } else {
+        res = await AnalyticsService.uploadProductionReport(fileOrFilename, rawRows || [], batchName);
+      }
       setToast({
         message: `Berhasil mengimpor ${res.total_rows} baris (${res.matched_rows} part cocok)! Total Allowance: ${res.total_allowance_kg} kg.`,
         type: 'success',

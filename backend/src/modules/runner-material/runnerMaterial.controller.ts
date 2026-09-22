@@ -6,13 +6,23 @@ import { AuthenticatedRequest } from '../../middlewares/auth.middleware';
 export class RunnerMaterialController {
   static async preview(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
-      const { records } = req.body;
+      let records = req.body?.records;
+      const rawDate = (req.query?.selected_date as string) || (req.body?.selected_date as string);
+      let selectedDate: string | undefined = undefined;
+      if (rawDate && typeof rawDate === 'string' && rawDate.trim() !== '' && rawDate !== 'undefined' && rawDate !== 'null' && !rawDate.includes('[object')) {
+        selectedDate = rawDate.trim();
+      }
+
+      if (req.file) {
+        records = RunnerMaterialService.parseFileBuffer(req.file.buffer, req.file.originalname);
+      }
+
       if (!records || !Array.isArray(records)) {
-        sendError(res, 'Payload `records` array wajib disediakan', 400);
+        sendError(res, 'File Excel/CSV atau payload `records` array wajib disediakan', 400);
         return;
       }
 
-      const previewData = await RunnerMaterialService.previewImport(records);
+      const previewData = await RunnerMaterialService.previewImport(records, selectedDate);
       sendSuccess(res, previewData, 'Preview runner material berhasil dihitung');
     } catch (error: any) {
       sendError(res, error.message || 'Gagal menghitung preview runner material', 500);
@@ -79,6 +89,29 @@ export class RunnerMaterialController {
       sendSuccess(res, result, 'Record runner material berhasil dihapus');
     } catch (error: any) {
       sendError(res, error.message || 'Gagal menghapus record runner material', 500);
+    }
+  }
+
+  static async rollbackBatch(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      const batchRef = (req.params.batchRef as string) || (req.body?.batch_ref as string);
+      if (!batchRef || typeof batchRef !== 'string' || !batchRef.trim()) {
+        sendError(res, 'Referensi batch (batchRef) wajib diisi untuk rollback', 400);
+        return;
+      }
+      const result = await RunnerMaterialService.rollbackBatch(batchRef.trim());
+      sendSuccess(res, result, `Berhasil me-rollback batch ${batchRef} (${result.deletedCount} data dihapus)`);
+    } catch (error: any) {
+      sendError(res, error.message || 'Gagal melakukan rollback batch', 500);
+    }
+  }
+
+  static async listBatches(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      const batches = await RunnerMaterialService.listBatches();
+      sendSuccess(res, batches, 'Daftar batch runner material berhasil diambil');
+    } catch (error: any) {
+      sendError(res, error.message || 'Gagal mengambil daftar batch', 500);
     }
   }
 

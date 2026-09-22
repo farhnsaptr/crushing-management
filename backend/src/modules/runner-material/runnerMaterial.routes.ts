@@ -1,7 +1,13 @@
 import { Router } from 'express';
+import multer from 'multer';
 import { RunnerMaterialController } from './runnerMaterial.controller';
 import { verifyToken, requireRole } from '../../middlewares/auth.middleware';
 import { importLimiter } from '../../middlewares/rateLimiter.middleware';
+
+const uploadMemory = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 25 * 1024 * 1024 }, // 25MB limit for large Excel spreadsheets
+});
 
 const router = Router();
 
@@ -11,28 +17,18 @@ router.use(verifyToken);
  * @openapi
  * /api/runner-material/preview:
  *   post:
- *     summary: Preview and calculate runner weight per material from CSV parsed rows
+ *     summary: Preview and calculate runner weight per material from Excel (.xlsx/.xls) or CSV file
  *     tags: [Runner Material]
  *     security:
  *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [records]
- *             properties:
- *               records:
- *                 type: array
- *                 items:
- *                   type: object
- *                   required: [date, sebango_code, shift, act_total_pcs]
+ *     consumes:
+ *       - multipart/form-data
+ *       - application/json
  *     responses:
  *       200:
  *         description: Preview calculation grouped per material
  */
-router.post('/preview', importLimiter, RunnerMaterialController.preview);
+router.post('/preview', importLimiter, uploadMemory.single('file'), RunnerMaterialController.preview);
 
 /**
  * @openapi
@@ -78,6 +74,17 @@ router.get('/analytics/summary', RunnerMaterialController.getAnalyticsSummary);
  * Monthly trend chart & transaction history for a material
  */
 router.get('/analytics/detail', RunnerMaterialController.getAnalyticsDetail);
+
+/**
+ * List unique import batches with metadata for rollback (Super-Admin & Admin)
+ */
+router.get('/batches', requireRole(['super-admin', 'admin']), RunnerMaterialController.listBatches);
+
+/**
+ * Rollback all records in a specific batch (Super-Admin & Admin)
+ */
+router.delete('/batch/:batchRef', requireRole(['super-admin', 'admin']), RunnerMaterialController.rollbackBatch);
+router.post('/rollback-batch', requireRole(['super-admin', 'admin']), RunnerMaterialController.rollbackBatch);
 
 /**
  * Delete all runner material transactions (Super-Admin only)

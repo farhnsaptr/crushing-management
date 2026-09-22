@@ -1,4 +1,5 @@
 import { randomUUID } from 'crypto';
+import XLSX from 'xlsx';
 import { pool } from '../../config/database';
 import { RowDataPacket } from 'mysql2';
 
@@ -21,7 +22,139 @@ export interface ImportProductionReportPayload {
   records: RawProductionRecord[];
 }
 
+/**
+ * Standardizes various date formats (DD-MM-YYYY, YYYY-MM-DD, Excel serial date) to YYYY-MM-DD.
+ */
+function formatStandardDate(val: any): string {
+  if (!val) return '';
+  if (typeof val === 'number') {
+    // Excel serial date code
+    const utcDays = Math.floor(val - 25569);
+    const date = new Date(utcDays * 86400 * 1000);
+    const y = date.getUTCFullYear();
+    const m = String(date.getUTCMonth() + 1).padStart(2, '0');
+    const d = String(date.getUTCDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+  const s = String(val).trim();
+  // Check DD-MM-YYYY or DD/MM/YYYY
+  const dmyMatch = s.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
+  if (dmyMatch) {
+    const day = dmyMatch[1].padStart(2, '0');
+    const month = dmyMatch[2].padStart(2, '0');
+    const year = dmyMatch[3];
+    return `${year}-${month}-${day}`;
+  }
+  // Check YYYY-MM-DD or YYYY/MM/DD
+  const ymdMatch = s.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
+  if (ymdMatch) {
+    const year = ymdMatch[1];
+    const month = ymdMatch[2].padStart(2, '0');
+    const day = ymdMatch[3].padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+  if (val instanceof Date && !isNaN(val.getTime())) {
+    const y = val.getFullYear();
+    const m = String(val.getMonth() + 1).padStart(2, '0');
+    const d = String(val.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+  return s;
+}
+
 export class AnalyticsService {
+  /**
+   * Parses file buffer (XLSX, XLS, or CSV) into standardized RawProductionRecord array.
+   * Supports both 08. LAPORAN AGUSTUS 2026.xlsx format and Report Production.csv format.
+   */
+  static parseFileBuffer(fileBuffer: Buffer, originalFilename?: string): RawProductionRecord[] {
+    let workbook: XLSX.WorkBook;
+    try {
+      workbook = XLSX.read(fileBuffer, { type: 'buffer' });
+    } catch (err: any) {
+      throw new Error(
+        `Sistem tidak dapat membaca file ${originalFilename || ''}. Harap pastikan file tidak corrupt dan berformat .xlsx, .xls, atau .csv.`
+      );
+    }
+
+    const sheetName = workbook.SheetNames[0];
+    if (!sheetName) {
+      throw new Error('File tidak memiliki lembar kerja (worksheet).');
+    }
+
+    const sheet = workbook.Sheets[sheetName];
+    const rawRows: any[] = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+    if (!rawRows || rawRows.length === 0) {
+      throw new Error('File kosong atau tidak memiliki baris data.');
+    }
+
+    const keys = Object.keys(rawRows[0]);
+    const findKey = (possibleNames: string[]): string | undefined => {
+      const lowerNames = possibleNames.map((n) => n.toLowerCase());
+      return keys.find((k) => lowerNames.includes(k.replace(/[\r\n]+/g, ' ').trim().toLowerCase()));
+    };
+
+    const dateKey = findKey(['PRODUCTION DATE', 'DATE', 'TANGGAL', 'TGL PRODUKSI', 'PROD DATE']);
+    const factoryKey = findKey(['FACTORY', 'PABRIK', 'LOKASI']);
+    const tonaseKey = findKey(['TONNAGE', 'TONASE', 'TONASE MESIN']);
+    const sebangoKey = findKey(['SEBANGO', 'KODE SEBANGO', 'SEBANGO CODE', 'SEBANGO_CODE']);
+    const shiftKey = findKey(['SHIFT']);
+    const operatorKey = findKey(['OPERATOR', 'OPERATOR NAME', 'TL', 'MANAGER']);
+    const mesinKey = findKey(['MACHINE NO', 'MESIN', 'NO MESIN', 'MACHINE']);
+    const actTotalKey = findKey(['ACTUAL TOTAL (PCS)', 'ACT TOTAL', 'ACTUAL TOTAL', 'ACT_TOTAL', 'TOTAL']);
+    const actOkKey = findKey(['ACTUAL OK PART (PCS)', 'ACT OK', 'ACTUAL OK', 'ACT_OK', 'DIRECT OK (PCS)', 'DIRECT OK']);
+    const ngTotalKey = findKey(['ACTUAL NG TOTAL (PCS)', 'NG TOTAL', 'NG_TOTAL', 'TOTAL NG']);
+
+    if (!sebangoKey || (!actTotalKey && !actOkKey)) {
+      throw new Error(
+        'Format file tidak valid. Pastikan header memuat kolom "SEBANGO" dan "ACTUAL TOTAL (PCS)" atau "ACT TOTAL".'
+      );
+    }
+
+    const result: RawProductionRecord[] = [];
+
+    for (const r of rawRows) {
+      const rawSebango = String(r[sebangoKey] || '').trim();
+      const rawDate = dateKey ? r[dateKey] : '';
+      const stdDate = formatStandardDate(rawDate);
+
+      if (!rawSebango || !stdDate) {
+        continue;
+      }
+
+      const rawActTotal = actTotalKey ? parseInt(String(r[actTotalKey] || '0').replace(/,/g, ''), 10) : 0;
+      const rawActOk = actOkKey ? parseInt(String(r[actOkKey] || '0').replace(/,/g, ''), 10) : 0;
+      const rawNgTotal = ngTotalKey ? parseInt(String(r[ngTotalKey] || '0').replace(/,/g, ''), 10) : 0;
+
+      // Operator can be OPERATOR, or TL, or MANAGER
+      let operatorVal = '';
+      if (r['OPERATOR'] && String(r['OPERATOR']).trim()) {
+        operatorVal = String(r['OPERATOR']).trim();
+      } else if (r['TL'] && String(r['TL']).trim()) {
+        operatorVal = String(r['TL']).trim();
+      } else if (r['MANAGER'] && String(r['MANAGER']).trim()) {
+        operatorVal = String(r['MANAGER']).trim();
+      } else if (operatorKey && r[operatorKey]) {
+        operatorVal = String(r[operatorKey]).trim();
+      }
+
+      result.push({
+        date: stdDate,
+        factory: factoryKey ? String(r[factoryKey] || '').trim() : undefined,
+        tonase: tonaseKey ? String(r[tonaseKey] || '').trim() : undefined,
+        sebango: rawSebango,
+        shift: shiftKey ? String(r[shiftKey] || '').trim() : undefined,
+        operator: operatorVal || undefined,
+        mesin: mesinKey ? String(r[mesinKey] || '').trim() : undefined,
+        act_total: isNaN(rawActTotal) ? 0 : rawActTotal,
+        act_ok: isNaN(rawActOk) ? 0 : rawActOk,
+        ng_total: isNaN(rawNgTotal) ? 0 : rawNgTotal,
+      });
+    }
+
+    return result;
+  }
+
   /**
    * Preview and analyze production report CSV records before committing.
    */
@@ -34,11 +167,11 @@ export class AnalyticsService {
     // 1. Clean and normalize records
     const cleanedRecords = records
       .map((r) => {
-        const rawDate = String(r.date || '').trim();
+        const rawDate = formatStandardDate(r.date);
         const rawSebango = String(r.sebango || '').trim();
         const rawShift = String(r.shift || 'D').toUpperCase().trim();
         const normalizedShift: 'Pagi' | 'Malam' =
-          rawShift === 'N' || rawShift === 'MALAM' ? 'Malam' : 'Pagi';
+          rawShift === 'N' || rawShift === 'MALAM' || rawShift === 'NIGHT' ? 'Malam' : 'Pagi';
 
         return {
           date: rawDate,
@@ -183,14 +316,13 @@ export class AnalyticsService {
       throw new Error('Data laporan produksi kosong atau tidak valid.');
     }
 
-    // 1. Clean and normalize records
     const cleanedRecords = records
       .map((r) => {
-        const rawDate = String(r.date || '').trim();
+        const rawDate = formatStandardDate(r.date);
         const rawSebango = String(r.sebango || '').trim();
         const rawShift = String(r.shift || 'D').toUpperCase().trim();
         const normalizedShift: 'Pagi' | 'Malam' =
-          rawShift === 'N' || rawShift === 'MALAM' ? 'Malam' : 'Pagi';
+          rawShift === 'N' || rawShift === 'MALAM' || rawShift === 'NIGHT' ? 'Malam' : 'Pagi';
 
         return {
           date: rawDate,

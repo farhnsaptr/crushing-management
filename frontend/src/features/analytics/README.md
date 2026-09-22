@@ -3,8 +3,8 @@
 Modul ini menyediakan antarmuka analitik visual komprehensif untuk menghubungkan data laporan produksi dengan data riil crushing dan transaksi NG di sistem.
 
 ## Fitur Utama
-1. **Upload File Laporan Produksi CSV & Live Preview Kecocokan**:
-   - Mendukung format file CSV `Report  Production.csv`.
+1. **Upload File Laporan Produksi Excel/CSV & Live Preview Kecocokan**:
+   - Mendukung format file Excel Laporan Produksi (seperti `08. LAPORAN AGUSTUS 2026.xlsx`) serta retro-kompatibilitas file CSV `Report  Production.csv`.
    - **Live Preview & Match Analysis**: Sebelum submit, sistem otomatis menganalisis setiap baris Sebango terhadap Master Part di database.
    - Menampilkan statistik kecocokan (Total Baris, Baris Cocok/Diproses, dan Baris Tidak Cocok/Di-skip).
    - Menyediakan tabel pratinjau interaktif dengan filter tab (*Semua*, *Cocok*, *Di-skip*) dan fitur pencarian Sebango.

@@ -16,6 +16,7 @@ export interface MaterialRunnerPreviewItem {
   material_id: string | null;
   material_name: string;
   shift: 'Pagi' | 'Malam';
+  transaction_date?: string;
   total_pcs: number;
   total_runner_weight_kg: number;
   sebango_count: number;
@@ -29,13 +30,22 @@ export interface UnmatchedSebangoItem {
   reason: string;
 }
 
+export interface AvailableDateOption {
+  date: string;
+  count: number;
+}
+
 export interface RunnerMaterialPreviewResponse {
   transaction_date: string;
   batch_ref: string;
+  selected_date?: string;
+  available_dates?: AvailableDateOption[];
   matched_materials: MaterialRunnerPreviewItem[];
   unmatched_sebangos: UnmatchedSebangoItem[];
   summary: {
-    total_csv_rows: number;
+    total_rows?: number;
+    total_file_rows?: number;
+    total_csv_rows?: number;
     unique_sebangos: number;
     matched_sebangos: number;
     unmatched_sebangos: number;
@@ -53,6 +63,7 @@ export interface RunnerMaterialSavePayload {
     shift?: 'Pagi' | 'Malam';
     total_pcs: number;
     total_runner_weight_kg: number;
+    transaction_date?: string;
   }>;
 }
 
@@ -65,6 +76,16 @@ export interface RunnerMaterialRecord {
   total_runner_weight_kg: number;
   transaction_date: string;
   import_batch_ref: string | null;
+  created_at: string;
+}
+
+export interface RunnerBatchItem {
+  batch_ref: string;
+  total_records: number;
+  total_weight_kg: number;
+  total_pcs: number;
+  min_date: string;
+  max_date: string;
   created_at: string;
 }
 

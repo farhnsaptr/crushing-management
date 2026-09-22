@@ -7,16 +7,40 @@ import type {
   UpdateRunnerMaterialPayload,
   RunnerMaterialAnalyticsSummaryResponse,
   RunnerMaterialAnalyticsDetailResponse,
+  RunnerBatchItem,
 } from '../types/runnerMaterial.types';
 
 export class RunnerMaterialService {
   /**
-   * Sends client-parsed CSV rows to backend for matching & per-material calculation.
+   * Sends uploaded Excel (.xlsx/.xls) or CSV file to backend for parsing & calculation.
    */
-  static async previewImport(records: ParsedCsvRow[]): Promise<RunnerMaterialPreviewResponse> {
+  static async previewImportFile(file: File, selectedDate?: string): Promise<RunnerMaterialPreviewResponse> {
+    const formData = new FormData();
+    formData.append('file', file);
+
     const response = await apiClient.post<{ success: boolean; data: RunnerMaterialPreviewResponse }>(
       '/api/runner-material/preview',
-      { records }
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+        params: selectedDate ? { selected_date: selectedDate } : undefined,
+      }
+    );
+    return response.data.data;
+  }
+
+  /**
+   * Backwards compatibility: sends parsed rows to backend for matching & calculation.
+   */
+  static async previewImport(records: ParsedCsvRow[], selectedDate?: string): Promise<RunnerMaterialPreviewResponse> {
+    const response = await apiClient.post<{ success: boolean; data: RunnerMaterialPreviewResponse }>(
+      '/api/runner-material/preview',
+      { records },
+      {
+        params: selectedDate ? { selected_date: selectedDate } : undefined,
+      }
     );
     return response.data.data;
   }
@@ -68,6 +92,26 @@ export class RunnerMaterialService {
    */
   static async deleteRecord(id: string): Promise<any> {
     const response = await apiClient.delete(`/api/runner-material/${id}`);
+    return response.data.data;
+  }
+
+  /**
+   * Retrieves unique runner material import batches with summary metadata.
+   */
+  static async listBatches(): Promise<RunnerBatchItem[]> {
+    const response = await apiClient.get<{ success: boolean; data: RunnerBatchItem[] }>(
+      '/api/runner-material/batches'
+    );
+    return response.data.data;
+  }
+
+  /**
+   * Rollback / delete all runner material transaction records for a specific batch.
+   */
+  static async rollbackBatch(batchRef: string): Promise<{ batchRef: string; deletedCount: number }> {
+    const response = await apiClient.delete<{ success: boolean; data: { batchRef: string; deletedCount: number } }>(
+      `/api/runner-material/batch/${encodeURIComponent(batchRef)}`
+    );
     return response.data.data;
   }
 

@@ -6,7 +6,7 @@ import { RunnerCsvUploadCard } from '../components/RunnerCsvUploadCard';
 import { RunnerManualFormCard } from '../components/RunnerManualFormCard';
 import { RunnerImportPreviewModal } from '../components/RunnerImportPreviewModal';
 import { RunnerMaterialEditModal } from '../components/RunnerMaterialEditModal';
-import { RunnerDeleteAllModal } from '../components/RunnerDeleteAllModal';
+import { RunnerBatchRollbackModal } from '../components/RunnerBatchRollbackModal';
 import { RunnerMaterialSortedList } from '../components/RunnerMaterialSortedList';
 import { RunnerMaterialDetailModal } from '../components/RunnerMaterialDetailModal';
 import { Card } from '../../../components/common/Card';
@@ -22,13 +22,12 @@ import {
   Trash2,
   ChevronLeft,
   ChevronRight,
-  AlertTriangle,
   BarChart3,
+  RotateCcw,
 } from 'lucide-react';
 
 export const PartRunnerNgPage: React.FC = () => {
   const { user } = useAuth();
-  const isSuperAdmin = user?.role === 'super-admin';
   const isAdminOrSuperAdmin = user?.role === 'super-admin' || user?.role === 'admin';
 
   // Main Page Tabs: 'catat' (Input / Record Form & History) vs 'detail' (Material Analytics & Monthly Charts)
@@ -45,6 +44,8 @@ export const PartRunnerNgPage: React.FC = () => {
     handleFileSelect,
     handleClearFile,
     handleProcessFile,
+    selectedDateFilter,
+    handleChangeDateFilter,
     previewModalOpen,
     setPreviewModalOpen,
     previewData,
@@ -62,12 +63,17 @@ export const PartRunnerNgPage: React.FC = () => {
     setEditingRecord,
     isEditingModalOpen,
     setIsEditingModalOpen,
-    isDeletingAllModalOpen,
-    setIsDeletingAllModalOpen,
+    isRollbackModalOpen,
+    setIsRollbackModalOpen,
+    selectedBatchToRollback,
+    setSelectedBatchToRollback,
+    batchesList,
+    isLoadingBatches,
+    fetchBatches,
+    handleRollbackBatch,
     isActionLoading,
     handleUpdateRecord,
     handleDeleteRecord,
-    handleDeleteAllRecords,
     toast,
     setToast,
   } = useRunnerImport();
@@ -146,7 +152,7 @@ export const PartRunnerNgPage: React.FC = () => {
               Input Part Runner NG
             </h1>
             <p style={{ fontSize: '0.85rem', color: 'var(--text-muted, #64748b)' }}>
-              Pencatatan data runner material (CSV & Manual) serta analisis rincian agregasi dan tren bulanan.
+              Pencatatan data runner material (Excel & Manual) serta analisis rincian agregasi dan tren bulanan.
             </p>
           </div>
         </div>
@@ -241,7 +247,7 @@ export const PartRunnerNgPage: React.FC = () => {
               }}
             >
               <FileSpreadsheet size={18} />
-              <span>Import CSV Produksi</span>
+              <span>Import Excel Produksi</span>
             </button>
 
             <button
@@ -272,7 +278,7 @@ export const PartRunnerNgPage: React.FC = () => {
               selectedFile={selectedFile}
               onFileSelect={handleFileSelect}
               onClearFile={handleClearFile}
-              onProcessFile={handleProcessFile}
+              onProcessFile={() => handleProcessFile()}
               isLoading={isLoading}
               parseError={parseError}
             />
@@ -286,7 +292,7 @@ export const PartRunnerNgPage: React.FC = () => {
             />
           )}
 
-          {/* Interactive Preview Modal (for CSV mode) */}
+          {/* Interactive Preview Modal (for Excel mode) */}
           <RunnerImportPreviewModal
             isOpen={previewModalOpen}
             onClose={() => setPreviewModalOpen(false)}
@@ -296,6 +302,8 @@ export const PartRunnerNgPage: React.FC = () => {
               fetchSummary();
             }}
             isSaving={isSaving}
+            selectedDateFilter={selectedDateFilter}
+            onChangeDateFilter={handleChangeDateFilter}
           />
 
           {/* History of Material Runner Records */}
@@ -307,7 +315,31 @@ export const PartRunnerNgPage: React.FC = () => {
                   Riwayat Pencatatan Runner Material
                 </h3>
               </div>
-              <Badge variant="info">Total {totalRecords} Record Data</Badge>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                <Badge variant="info">Total {totalRecords} Record Data</Badge>
+                {isAdminOrSuperAdmin && (
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => {
+                      fetchBatches();
+                      setSelectedBatchToRollback('');
+                      setIsRollbackModalOpen(true);
+                    }}
+                    leftIcon={<RotateCcw size={14} />}
+                    style={{
+                      fontSize: '0.78rem',
+                      color: '#dc2626',
+                      borderColor: 'rgba(239, 68, 68, 0.4)',
+                      backgroundColor: 'rgba(239, 68, 68, 0.05)',
+                      padding: '0.35rem 0.65rem',
+                      fontWeight: 700,
+                    }}
+                  >
+                    Rollback Batch
+                  </Button>
+                )}
+              </div>
             </div>
 
             {isLoadingHistory ? (
@@ -369,7 +401,36 @@ export const PartRunnerNgPage: React.FC = () => {
                             {Number(rec.total_runner_weight_kg || 0).toFixed(2)} kg
                           </td>
                           <td style={{ padding: '0.65rem 0.85rem', fontSize: '0.8rem', color: 'var(--text-muted, #64748b)' }}>
-                            <code>{rec.import_batch_ref || '-'}</code>
+                            {rec.import_batch_ref ? (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                <code>{rec.import_batch_ref}</code>
+                                {isAdminOrSuperAdmin && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setSelectedBatchToRollback(rec.import_batch_ref || '');
+                                      fetchBatches();
+                                      setIsRollbackModalOpen(true);
+                                    }}
+                                    title={`Rollback batch ${rec.import_batch_ref}`}
+                                    style={{
+                                      background: 'none',
+                                      border: 'none',
+                                      cursor: 'pointer',
+                                      padding: '2px',
+                                      color: '#dc2626',
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      borderRadius: '4px',
+                                    }}
+                                  >
+                                    <RotateCcw size={13} />
+                                  </button>
+                                )}
+                              </div>
+                            ) : (
+                              <code>-</code>
+                            )}
                           </td>
                           <td style={{ padding: '0.65rem 0.85rem', fontSize: '0.8rem', color: 'var(--text-muted, #64748b)' }}>
                             {formatDate(rec.created_at)}
@@ -487,8 +548,8 @@ export const PartRunnerNgPage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Bottom Actions Area (Super-Admin Bulk Delete All Button) */}
-                {isSuperAdmin && totalRecords > 0 && (
+                {/* Bottom Actions Area (Rollback Batch Transaksi) */}
+                {isAdminOrSuperAdmin && totalRecords > 0 && (
                   <div
                     style={{
                       display: 'flex',
@@ -497,25 +558,29 @@ export const PartRunnerNgPage: React.FC = () => {
                       marginTop: '0.75rem',
                       padding: '0.85rem 1.15rem',
                       borderRadius: 'var(--radius-md, 8px)',
-                      backgroundColor: 'rgba(239, 68, 68, 0.06)',
-                      border: '1px dashed rgba(239, 68, 68, 0.3)',
+                      backgroundColor: 'rgba(239, 68, 68, 0.04)',
+                      border: '1px dashed rgba(239, 68, 68, 0.25)',
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#b91c1c', fontSize: '0.825rem' }}>
-                      <AlertTriangle size={18} />
+                      <RotateCcw size={18} />
                       <span>
-                        <strong>Area Super-Admin:</strong> Hapus seluruh {totalRecords} data pencatatan runner material sekaligus.
+                        <strong>Rollback Batch:</strong> Batalkan atau tarik kembali transaksi runner per nomor batch import tertentu secara aman.
                       </span>
                     </div>
 
                     <Button
                       variant="danger"
                       size="sm"
-                      onClick={() => setIsDeletingAllModalOpen(true)}
+                      onClick={() => {
+                        fetchBatches();
+                        setSelectedBatchToRollback('');
+                        setIsRollbackModalOpen(true);
+                      }}
                       disabled={isActionLoading}
-                      leftIcon={<Trash2 size={16} />}
+                      leftIcon={<RotateCcw size={16} />}
                     >
-                      Hapus Semua Data ({totalRecords})
+                      Rollback Per Batch
                     </Button>
                   </div>
                 )}
@@ -583,16 +648,18 @@ export const PartRunnerNgPage: React.FC = () => {
         isLoading={isActionLoading}
       />
 
-      {/* Delete All Confirmation Modal (Super-Admin only) */}
-      <RunnerDeleteAllModal
-        isOpen={isDeletingAllModalOpen}
-        onClose={() => setIsDeletingAllModalOpen(false)}
-        onConfirmDeleteAll={async () => {
-          await handleDeleteAllRecords();
+      {/* Rollback Batch Confirmation Modal (Super-Admin & Admin) */}
+      <RunnerBatchRollbackModal
+        isOpen={isRollbackModalOpen}
+        onClose={() => setIsRollbackModalOpen(false)}
+        batches={batchesList}
+        isLoadingBatches={isLoadingBatches}
+        onConfirmRollback={async (batchRef) => {
+          await handleRollbackBatch(batchRef);
           fetchSummary();
         }}
-        totalRecordsCount={totalRecords}
-        isLoading={isActionLoading}
+        initialBatchRef={selectedBatchToRollback}
+        isActionLoading={isActionLoading}
       />
     </div>
   );
