@@ -4,14 +4,18 @@ import { sendSuccess, sendError } from '../../utils/response.util';
 
 export class AnalyticsController {
   /**
-   * Preview production report CSV data and match against Master Parts.
+   * Preview production report Excel (.xlsx/.xls) or CSV data and match against Master Parts.
    */
   static async previewProductionReport(req: Request, res: Response): Promise<void> {
     try {
-      const { records } = req.body;
+      let records = req.body?.records;
+
+      if (req.file) {
+        records = AnalyticsService.parseFileBuffer(req.file.buffer, req.file.originalname);
+      }
 
       if (!Array.isArray(records) || records.length === 0) {
-        sendError(res, 'Array data records laporan produksi wajib disertakan.', 400);
+        sendError(res, 'File Excel/CSV atau array data records laporan produksi wajib disertakan.', 400);
         return;
       }
 
@@ -24,15 +28,22 @@ export class AnalyticsController {
   }
 
   /**
-   * Import production report CSV data.
+   * Import production report Excel (.xlsx/.xls) or CSV data.
    */
   static async importProductionReport(req: Request, res: Response): Promise<void> {
     try {
-      const { filename, batch_name, records } = req.body;
+      let records = req.body?.records;
+      let filename = req.body?.filename;
+      const batch_name = req.body?.batch_name || req.body?.batchTitle;
       const user = (req as any).user;
 
+      if (req.file) {
+        filename = req.file.originalname;
+        records = AnalyticsService.parseFileBuffer(req.file.buffer, req.file.originalname);
+      }
+
       if (!filename || !Array.isArray(records) || records.length === 0) {
-        sendError(res, 'File name dan array data records laporan produksi wajib disertakan.', 400);
+        sendError(res, 'File Excel/CSV atau file name dan array data records laporan produksi wajib disertakan.', 400);
         return;
       }
 

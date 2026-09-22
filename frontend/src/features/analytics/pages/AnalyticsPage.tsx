@@ -1,5 +1,6 @@
 import React from 'react';
 import { useAnalytics } from '../hooks/useAnalytics';
+import { useAuth } from '../../../context/AuthContext';
 import { AnalyticsYearlyChart } from '../components/AnalyticsYearlyChart';
 import { AnalyticsMonthlyGapTable } from '../components/AnalyticsMonthlyGapTable';
 import { AnalyticsParetoMaterial } from '../components/AnalyticsParetoMaterial';
@@ -19,6 +20,9 @@ import {
 import { AnalyticsRollbackModal } from '../components/AnalyticsRollbackModal';
 
 export const AnalyticsPage: React.FC = () => {
+  const { user } = useAuth();
+  const canManage = user && user.role !== 'pengirim';
+
   const {
     activeTab,
     setActiveTab,
@@ -155,42 +159,46 @@ export const AnalyticsPage: React.FC = () => {
             Segarkan
           </Button>
 
-          {/* Rollback Data Button */}
-          <Button
-            type="button"
-            variant="danger"
-            onClick={() => {
-              fetchBatches();
-              setIsRollbackModalOpen(true);
-            }}
-            leftIcon={<RotateCcw size={16} />}
-            style={{
-              padding: '0.55rem 1.15rem',
-              fontWeight: 800,
-              backgroundColor: '#ef4444',
-              fontSize: '0.85rem',
-              boxShadow: '0 4px 12px rgba(239, 68, 68, 0.2)',
-            }}
-          >
-            Rollback Data
-          </Button>
+          {/* Rollback Data Button (Operator up to Super Admin only) */}
+          {canManage && (
+            <Button
+              type="button"
+              variant="danger"
+              onClick={() => {
+                fetchBatches();
+                setIsRollbackModalOpen(true);
+              }}
+              leftIcon={<RotateCcw size={16} />}
+              style={{
+                padding: '0.55rem 1.15rem',
+                fontWeight: 800,
+                backgroundColor: '#ef4444',
+                fontSize: '0.85rem',
+                boxShadow: '0 4px 12px rgba(239, 68, 68, 0.2)',
+              }}
+            >
+              Rollback Data
+            </Button>
+          )}
 
-          {/* Upload CSV Modal Button */}
-          <Button
-            type="button"
-            variant="primary"
-            onClick={() => setIsUploadModalOpen(true)}
-            leftIcon={<UploadCloud size={18} />}
-            style={{
-              padding: '0.55rem 1.35rem',
-              fontWeight: 800,
-              backgroundColor: '#008d51',
-              fontSize: '0.85rem',
-              boxShadow: '0 4px 12px rgba(0, 141, 81, 0.25)',
-            }}
-          >
-            Upload Data Produksi
-          </Button>
+          {/* Upload Data Produksi Modal Button (Operator up to Super Admin only) */}
+          {canManage && (
+            <Button
+              type="button"
+              variant="primary"
+              onClick={() => setIsUploadModalOpen(true)}
+              leftIcon={<UploadCloud size={18} />}
+              style={{
+                padding: '0.55rem 1.35rem',
+                fontWeight: 800,
+                backgroundColor: '#008d51',
+                fontSize: '0.85rem',
+                boxShadow: '0 4px 12px rgba(0, 141, 81, 0.25)',
+              }}
+            >
+              Upload Data Produksi
+            </Button>
+          )}
         </div>
       </div>
 
@@ -327,25 +335,29 @@ export const AnalyticsPage: React.FC = () => {
         />
       )}
 
-      {/* Upload CSV Modal */}
-      <AnalyticsUploadModal
-        isOpen={isUploadModalOpen}
-        onClose={() => setIsUploadModalOpen(false)}
-        onUpload={handleUploadReport}
-        isUploading={isUploading}
-      />
+      {/* Upload Modal (Operator up to Super Admin only) */}
+      {canManage && (
+        <AnalyticsUploadModal
+          isOpen={isUploadModalOpen}
+          onClose={() => setIsUploadModalOpen(false)}
+          onUpload={handleUploadReport}
+          isUploading={isUploading}
+        />
+      )}
 
-      {/* Rollback Batch Modal */}
-      <AnalyticsRollbackModal
-        isOpen={isRollbackModalOpen}
-        onClose={() => setIsRollbackModalOpen(false)}
-        batches={batches}
-        onRollbackLatest={handleRollbackLatestBatch}
-        onDeleteBatch={handleDeleteBatch}
-        onRefreshBatches={fetchBatches}
-        isRollbacking={isRollbacking}
-        isLoadingBatches={isLoadingBatches}
-      />
+      {/* Rollback Batch Modal (Operator up to Super Admin only) */}
+      {canManage && (
+        <AnalyticsRollbackModal
+          isOpen={isRollbackModalOpen}
+          onClose={() => setIsRollbackModalOpen(false)}
+          batches={batches}
+          onRollbackLatest={handleRollbackLatestBatch}
+          onDeleteBatch={handleDeleteBatch}
+          onRefreshBatches={fetchBatches}
+          isRollbacking={isRollbacking}
+          isLoadingBatches={isLoadingBatches}
+        />
+      )}
     </div>
   );
 };

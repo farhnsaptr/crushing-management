@@ -8,7 +8,48 @@ import type {
 
 export class AnalyticsService {
   /**
-   * Preview and analyze production CSV report before uploading.
+   * Preview and analyze production Excel (.xlsx/.xls) or CSV file via FormData.
+   */
+  static async previewProductionFile(file: File): Promise<any> {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await apiClient.post<{ success: boolean; data: any }>(
+      '/api/analytics/preview',
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      }
+    );
+    return response.data.data;
+  }
+
+  /**
+   * Upload and import production report directly using file via FormData.
+   */
+  static async uploadProductionFile(file: File, batch_name?: string): Promise<any> {
+    const formData = new FormData();
+    formData.append('file', file);
+    if (batch_name) {
+      formData.append('batch_name', batch_name);
+    }
+
+    const response = await apiClient.post<{ success: boolean; data: any }>(
+      '/api/analytics/upload',
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      }
+    );
+    return response.data.data;
+  }
+
+  /**
+   * Preview and analyze production CSV report before uploading (JSON payload).
    */
   static async previewProductionReport(
     records: RawProductionCsvRow[]
@@ -21,7 +62,7 @@ export class AnalyticsService {
   }
 
   /**
-   * Upload and import production CSV report.
+   * Upload and import production CSV report (JSON payload).
    */
   static async uploadProductionReport(
     filename: string,

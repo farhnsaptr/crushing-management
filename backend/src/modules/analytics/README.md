@@ -3,13 +3,13 @@
 Modul ini menyediakan layanan analitik produksi, komparasi 3-komponen (*Allowance, Input NG & Runner, Output Crushing*), matriks selisih bulanan (*Gap NG* dan *Gap Crushing*), analisis **Pareto Material** & **Pareto Part NG**, serta fitur **Live Preview Kecocokan & Rollback Batch**.
 
 ## Fitur Utama
-1. **Live Preview & Validasi Kecocokan CSV (`POST /api/analytics/preview`)**:
-   - Menerima raw records CSV dan melakukan pencocokan instan ke `master_parts`.
+1. **Live Preview & Validasi Kecocokan Excel/CSV (`POST /api/analytics/preview`)**:
+   - Menerima file Excel (`.xlsx` / `.xls` seperti `08. LAPORAN AGUSTUS 2026.xlsx`) via `multipart/form-data` atau raw records CSV, lalu melakukan pencocokan instan ke `master_parts`.
    - Mengembalikan ringkasan statistik (jumlah baris cocok vs tidak cocok, match rate %, total estimasi allowance kg, daftar Sebango yang tidak terdaftar).
    - Menghitung Shikake aktual per (Tanggal + Sebango) dan estimasi allowance per baris sebelum disimpan.
 
-2. **Import Data Laporan Produksi CSV (`POST /api/analytics/upload`)**:
-   - Memproses data dari file CSV laporan produksi.
+2. **Import Data Laporan Produksi Excel/CSV (`POST /api/analytics/upload`)**:
+   - Memproses data dari file Excel Laporan Produksi atau file CSV.
    - Menyimpan batch header ke `production_analytics_batches` dan rincian ke `production_analytics_items`.
    - Baris dengan Sebango yang tidak terdaftar di Master Part **otomatis di-skip**.
 

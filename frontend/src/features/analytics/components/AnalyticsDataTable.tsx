@@ -158,7 +158,7 @@ export const AnalyticsDataTable: React.FC<AnalyticsDataTableProps> = ({
             Belum ada data laporan produksi yang diunggah.
           </p>
           <p style={{ fontSize: '0.8rem', margin: '0.25rem 0 0 0' }}>
-            Silakan klik tombol "Upload Data Produksi" di atas untuk mengunggah file CSV.
+            Silakan klik tombol "Upload Data Produksi" di atas untuk mengunggah file Excel / CSV.
           </p>
         </div>
       ) : (

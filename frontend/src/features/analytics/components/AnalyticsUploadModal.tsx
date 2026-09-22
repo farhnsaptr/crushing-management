@@ -21,7 +21,7 @@ import type {
 interface AnalyticsUploadModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onUpload: (filename: string, records: RawProductionCsvRow[], batchName?: string) => Promise<void>;
+  onUpload: (fileOrFilename: File | string, records?: RawProductionCsvRow[], batchName?: string) => Promise<void>;
   isUploading: boolean;
 }
 
@@ -33,7 +33,6 @@ export const AnalyticsUploadModal: React.FC<AnalyticsUploadModalProps> = ({
 }) => {
   const [file, setFile] = useState<File | null>(null);
   const [batchTitle, setBatchTitle] = useState<string>('');
-  const [parsedRows, setParsedRows] = useState<RawProductionCsvRow[]>([]);
   const [previewData, setPreviewData] = useState<ProductionPreviewResponse | null>(null);
   const [isPreviewLoading, setIsPreviewLoading] = useState<boolean>(false);
   const [parseError, setParseError] = useState<string | null>(null);
@@ -46,143 +45,56 @@ export const AnalyticsUploadModal: React.FC<AnalyticsUploadModalProps> = ({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Simple CSV parser for RFC 4180 / quoted CSV
-  const parseCsvText = async (text: string) => {
+  // Process file upload directly via backend preview API
+  const processSelectedFile = async (selectedFile: File) => {
+    const lowerName = selectedFile.name.toLowerCase();
+    if (!lowerName.endsWith('.xlsx') && !lowerName.endsWith('.xls') && !lowerName.endsWith('.csv')) {
+      setParseError('Format file tidak didukung. Harap unggah file Excel (.xlsx / .xls) atau .csv.');
+      return;
+    }
+
+    setFile(selectedFile);
+    setBatchTitle(selectedFile.name.replace(/\.[^/.]+$/, ''));
+    setPreviewPage(1);
+    setParseError(null);
+    setIsPreviewLoading(true);
+
     try {
-      const lines = text.split(/\r\n|\n/).filter((l) => l.trim().length > 0);
-      if (lines.length < 2) {
-        throw new Error('File CSV kosong atau tidak memiliki baris data.');
-      }
-
-      // Helper to parse a single CSV line with quotes
-      const parseCsvLine = (line: string): string[] => {
-        const result: string[] = [];
-        let cur = '';
-        let inQuotes = false;
-
-        for (let i = 0; i < line.length; i++) {
-          const char = line[i];
-          if (char === '"') {
-            inQuotes = !inQuotes;
-          } else if (char === ',' && !inQuotes) {
-            result.push(cur.trim());
-            cur = '';
-          } else {
-            cur += char;
-          }
-        }
-        result.push(cur.trim());
-        return result.map((c) => c.replace(/^"|"$/g, '').trim());
-      };
-
-      const headers = parseCsvLine(lines[0]).map((h) => h.toUpperCase().trim());
-
-      const dateIdx = headers.indexOf('DATE');
-      const factoryIdx = headers.indexOf('FACTORY');
-      const tonaseIdx = headers.indexOf('TONASE');
-      const sebangoIdx = headers.indexOf('SEBANGO');
-      const shiftIdx = headers.indexOf('SHIFT');
-      const operatorIdx = headers.indexOf('OPERATOR');
-      const mesinIdx = headers.indexOf('MESIN');
-      const actTotalIdx = headers.findIndex((h) => h.includes('ACT TOTAL') || h === 'ACT_TOTAL');
-      const actOkIdx = headers.findIndex((h) => h.includes('ACT OK') || h === 'ACT_OK');
-      const ngTotalIdx = headers.findIndex((h) => h.includes('NG TOTAL') || h === 'NG_TOTAL');
-
-      if (dateIdx === -1 || sebangoIdx === -1) {
-        throw new Error('Format kolom tidak sesuai: Kolom "DATE" dan "SEBANGO" wajib ada di header CSV.');
-      }
-
-      const rows: RawProductionCsvRow[] = [];
-
-      for (let i = 1; i < lines.length; i++) {
-        const cols = parseCsvLine(lines[i]);
-        if (cols.length <= 1) continue;
-
-        const rowDate = cols[dateIdx] || '';
-        const rowSebango = cols[sebangoIdx] || '';
-
-        if (!rowDate || !rowSebango) continue;
-
-        rows.push({
-          date: rowDate,
-          factory: factoryIdx !== -1 ? cols[factoryIdx] : undefined,
-          tonase: tonaseIdx !== -1 ? cols[tonaseIdx] : undefined,
-          sebango: rowSebango,
-          shift: shiftIdx !== -1 ? cols[shiftIdx] : undefined,
-          operator: operatorIdx !== -1 ? cols[operatorIdx] : undefined,
-          mesin: mesinIdx !== -1 ? cols[mesinIdx] : undefined,
-          act_total: actTotalIdx !== -1 ? parseInt(cols[actTotalIdx], 10) || 0 : 0,
-          act_ok: actOkIdx !== -1 ? parseInt(cols[actOkIdx], 10) || 0 : 0,
-          ng_total: ngTotalIdx !== -1 ? parseInt(cols[ngTotalIdx], 10) || 0 : 0,
-        });
-      }
-
-      if (rows.length === 0) {
-        throw new Error('Tidak ada baris data yang berhasil diparsing.');
-      }
-
-      setParsedRows(rows);
-      setParseError(null);
-
-      // Call backend preview API to match with master_parts
-      setIsPreviewLoading(true);
-      try {
-        const previewRes = await AnalyticsService.previewProductionReport(rows);
-        setPreviewData(previewRes);
-      } catch (previewErr: any) {
-        console.error('Preview error:', previewErr);
-        setParseError(previewErr?.response?.data?.message || 'Gagal memproses analisis kecocokan Master Part.');
-      } finally {
-        setIsPreviewLoading(false);
-      }
-    } catch (err: any) {
-      setParseError(err.message || 'Gagal membaca format CSV.');
-      setParsedRows([]);
+      const previewRes = await AnalyticsService.previewProductionFile(selectedFile);
+      setPreviewData(previewRes);
+    } catch (previewErr: any) {
+      console.error('Preview error:', previewErr);
+      setParseError(
+        previewErr?.response?.data?.message ||
+          previewErr?.message ||
+          'Gagal membaca dan menganalisis kecocokan file laporan produksi.'
+      );
       setPreviewData(null);
+    } finally {
+      setIsPreviewLoading(false);
     }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      const selectedFile = e.target.files[0];
-      setFile(selectedFile);
-      setBatchTitle(selectedFile.name.replace(/\.[^/.]+$/, ''));
-      setPreviewPage(1);
-
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const text = event.target?.result as string;
-        parseCsvText(text);
-      };
-      reader.readAsText(selectedFile);
+      processSelectedFile(e.target.files[0]);
     }
   };
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      const selectedFile = e.dataTransfer.files[0];
-      setFile(selectedFile);
-      setBatchTitle(selectedFile.name.replace(/\.[^/.]+$/, ''));
-      setPreviewPage(1);
-
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const text = event.target?.result as string;
-        parseCsvText(text);
-      };
-      reader.readAsText(selectedFile);
+      processSelectedFile(e.dataTransfer.files[0]);
     }
   };
 
   const handleSubmit = async () => {
-    if (!file || parsedRows.length === 0) return;
-    await onUpload(file.name, parsedRows, batchTitle || file.name);
+    if (!file || !previewData || !previewData.items || previewData.items.length === 0) return;
+    await onUpload(file, [], batchTitle || file.name);
   };
 
   const resetForm = () => {
     setFile(null);
-    setParsedRows([]);
     setPreviewData(null);
     setParseError(null);
     setPreviewTab('all');
@@ -226,7 +138,7 @@ export const AnalyticsUploadModal: React.FC<AnalyticsUploadModalProps> = ({
 
   const matchedCount = previewData?.summary?.matched_rows ?? 0;
   const unmatchedCount = previewData?.summary?.unmatched_rows ?? 0;
-  const totalRowsCount = previewData?.summary?.total_rows ?? parsedRows.length;
+  const totalRowsCount = previewData?.summary?.total_rows ?? 0;
   const totalAllowanceKg = Number(previewData?.summary?.total_estimated_allowance_kg) || 0;
   const matchRate = Number(previewData?.summary?.match_rate_percentage) || 0;
 
@@ -258,16 +170,16 @@ export const AnalyticsUploadModal: React.FC<AnalyticsUploadModalProps> = ({
             </div>
             <div>
               <p style={{ fontWeight: 800, fontSize: '1rem', color: '#0f172a', margin: 0 }}>
-                Klik untuk memilih file atau seret file CSV ke sini
+                Klik untuk memilih file atau seret file Excel / CSV ke sini
               </p>
               <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '0.35rem 0 0 0' }}>
-                Mendukung file format <code>Report  Production.csv</code> (Kolom: DATE, SEBANGO, ACT TOTAL, NG TOTAL, dll.)
+                Mendukung format Excel Laporan Produksi (contoh: <code>08. LAPORAN AGUSTUS 2026.xlsx</code>) atau CSV
               </p>
             </div>
             <input
               type="file"
               ref={fileInputRef}
-              accept=".csv,text/csv"
+              accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv"
               onChange={handleFileChange}
               style={{ display: 'none' }}
             />
@@ -285,7 +197,7 @@ export const AnalyticsUploadModal: React.FC<AnalyticsUploadModalProps> = ({
                     {file.name}
                   </div>
                   <div style={{ fontSize: '0.775rem', color: '#64748b' }}>
-                    {(file.size / 1024).toFixed(1)} KB • {parsedRows.length} total baris terdeteksi
+                    {(file.size / 1024).toFixed(1)} KB • {totalRowsCount} total baris terdeteksi
                   </div>
                 </div>
               </div>
@@ -340,7 +252,7 @@ export const AnalyticsUploadModal: React.FC<AnalyticsUploadModalProps> = ({
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem' }}>
                 {/* Total Rows Card */}
                 <div style={{ padding: '0.85rem 1rem', borderRadius: '12px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
-                  <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 700 }}>Total Baris CSV</span>
+                  <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 700 }}>Total Baris Laporan</span>
                   <div style={{ fontSize: '1.25rem', fontWeight: 900, color: '#0f172a' }}>
                     {totalRowsCount.toLocaleString()} Baris
                   </div>
