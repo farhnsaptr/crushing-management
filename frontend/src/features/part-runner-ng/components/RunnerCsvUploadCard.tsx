@@ -32,7 +32,8 @@ export const RunnerCsvUploadCard: React.FC<RunnerCsvUploadCardProps> = ({
     e.stopPropagation();
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       const file = e.dataTransfer.files[0];
-      if (file.name.endsWith('.csv')) {
+      const lowerName = file.name.toLowerCase();
+      if (lowerName.endsWith('.xlsx') || lowerName.endsWith('.xls') || lowerName.endsWith('.csv')) {
         onFileSelect(file);
       }
     }
@@ -49,10 +50,10 @@ export const RunnerCsvUploadCard: React.FC<RunnerCsvUploadCardProps> = ({
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
         <div>
           <h2 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-main, #0f172a)' }}>
-            Import Data Part Runner NG (CSV Produksi)
+            Import Data Part Runner NG (Excel Produksi)
           </h2>
           <p style={{ fontSize: '0.85rem', color: 'var(--text-muted, #64748b)', marginTop: '0.25rem' }}>
-            Unggah file CSV Laporan Produksi untuk menghitung dan mencatat berat runner per jenis material ke sistem.
+            Unggah file Excel Laporan Produksi untuk menghitung dan mencatat berat runner per jenis material ke sistem.
           </p>
         </div>
 
@@ -71,7 +72,7 @@ export const RunnerCsvUploadCard: React.FC<RunnerCsvUploadCardProps> = ({
             }}
           >
             <FileSpreadsheet size={14} />
-            <span>Format: .CSV</span>
+            <span>Format: .XLSX / .XLS / .CSV</span>
           </span>
         </div>
       </div>
@@ -91,14 +92,17 @@ export const RunnerCsvUploadCard: React.FC<RunnerCsvUploadCardProps> = ({
         }}
       >
         <span style={{ fontWeight: 800, color: 'var(--secondary-color, #e76114)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-          <FileText size={15} /> Aturan & Kolom Wajib CSV Produksi:
+          <FileText size={15} /> Aturan & Kolom Wajib File Produksi:
         </span>
         <ul style={{ margin: 0, paddingLeft: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
           <li>
-            Silahkan upload data produksi dari <strong>apps.sugity.co.id</strong> pada sistem <strong>Production</strong>
+            Mendukung file Excel Laporan Produksi (contoh: <code>08. LAPORAN AGUSTUS 2026.xlsx</code>) atau CSV dari sistem Shopfloor.
           </li>
           <li>
-            Format yang hanya diterima adalah <strong>.csv</strong>
+            Pastikan kolom utama tersedia: <strong>PRODUCTION DATE</strong>, <strong>SHIFT</strong> (DAY/NIGHT), <strong>SEBANGO</strong>, dan <strong>ACTUAL TOTAL (PCS)</strong>.
+          </li>
+          <li>
+            Jika file berisi multi-tanggal (laporan bulanan), Anda dapat memilih tanggal produksi spesifik di jendela preview.
           </li>
         </ul>
       </div>
@@ -107,7 +111,7 @@ export const RunnerCsvUploadCard: React.FC<RunnerCsvUploadCardProps> = ({
       <input
         ref={fileInputRef}
         type="file"
-        accept=".csv"
+        accept=".xlsx, .xls, .csv"
         onChange={handleInputChange}
         style={{ display: 'none' }}
       />
@@ -147,10 +151,10 @@ export const RunnerCsvUploadCard: React.FC<RunnerCsvUploadCardProps> = ({
           </div>
           <div>
             <p style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--text-main, #0f172a)' }}>
-              Klik di sini atau tarik file CSV Produksi Anda
+              Klik di sini atau tarik file Excel / CSV Produksi Anda
             </p>
             <p style={{ fontSize: '0.8rem', color: 'var(--text-muted, #64748b)', marginTop: '0.2rem' }}>
-              Mendukung file <code>Report Production.csv</code> (Maksimal 10MB)
+              Mendukung file Excel <code>.xlsx / .xls</code> & <code>.csv</code> (Maksimal 25MB)
             </p>
           </div>
         </div>

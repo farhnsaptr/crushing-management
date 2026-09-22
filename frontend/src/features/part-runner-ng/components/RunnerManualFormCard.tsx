@@ -136,7 +136,18 @@ export const RunnerManualFormCard: React.FC<RunnerManualFormCardProps> = ({
       let finalMatId: string | null = null;
 
       if (r.selectedMaterialId === 'CUSTOM' || !r.selectedMaterialId) {
-        finalMatName = r.customMaterialName.trim();
+        const rawCustom = r.customMaterialName.trim();
+        const normCustom = rawCustom.toLowerCase().replace(/[\s\-_/]/g, '');
+        // Prioritize matching against existing master_materials in database
+        const matched = materials.find(
+          (m) => m.material_name.toLowerCase().replace(/[\s\-_/]/g, '') === normCustom
+        );
+        if (matched) {
+          finalMatName = matched.material_name;
+          finalMatId = matched.id;
+        } else {
+          finalMatName = rawCustom;
+        }
       } else {
         const foundMat = materials.find((m) => m.id === r.selectedMaterialId);
         if (foundMat) {
