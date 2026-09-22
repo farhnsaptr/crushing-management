@@ -326,10 +326,10 @@ export const SenderDashboardView: React.FC<SenderDashboardViewProps> = ({
             </div>
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: '0.75rem', color: 'var(--text-muted, #64748b)', fontWeight: 700, textTransform: 'uppercase' }}>
-                Total Pengajuan Tiket
+                Total Pengajuan
               </div>
               <div style={{ fontSize: '1.45rem', fontWeight: 900, color: 'var(--text-main, #0f172a)', marginTop: '0.1rem' }}>
-                {isLoading ? '...' : `${Number(stats?.total_requests || 0)} Tiket`}
+                {isLoading ? '...' : `${Number(stats?.total_requests || 0)} Pengajuan`}
               </div>
               <div style={{ display: 'flex', gap: '0.35rem', marginTop: '0.2rem', flexWrap: 'wrap' }}>
                 <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#008d51', backgroundColor: 'rgba(0, 141, 81, 0.1)', padding: '0.1rem 0.35rem', borderRadius: '4px' }}>
@@ -488,19 +488,19 @@ export const SenderDashboardView: React.FC<SenderDashboardViewProps> = ({
 
       {/* 6. Recent Department Submissions Table */}
       <Card
-        title={`Pengajuan Tiket Terkini ${departmentTitle}`}
+        title={`Pengajuan Terkini ${departmentTitle}`}
         subtitle="5 permohonan pengiriman reject terakhir yang diajukan oleh seluruh pengguna dalam departemen ini"
       >
         {(!stats?.recent_requests || stats.recent_requests.length === 0) ? (
           <div style={{ padding: '2rem 1.5rem', textAlign: 'center', color: 'var(--text-muted, #64748b)', fontSize: '0.85rem' }}>
-            Belum ada tiket pengajuan yang dibuat dari departemen ini.
+            Belum ada pengajuan yang dibuat dari departemen ini.
           </div>
         ) : (
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
               <thead>
                 <tr style={{ backgroundColor: 'var(--bg-main, #f1f5f9)', textAlign: 'left', color: 'var(--text-muted, #475569)', borderBottom: '1px solid var(--border-color, #cbd5e1)' }}>
-                  <th style={{ padding: '0.65rem 0.85rem' }}>No. Tiket</th>
+                  <th style={{ padding: '0.65rem 0.85rem' }}>No. Pengajuan</th>
                   <th style={{ padding: '0.65rem 0.85rem' }}>Pengirim</th>
                   <th style={{ padding: '0.65rem 0.85rem' }}>Tanggal & Shift</th>
                   <th style={{ padding: '0.65rem 0.85rem', textAlign: 'right' }}>Total (Pcs)</th>
