@@ -54,6 +54,9 @@ export function useCrushingRequests() {
   const [isDetailModalOpen, setIsDetailModalOpen] = useState<boolean>(false);
   const [isLoadingDetail, setIsLoadingDetail] = useState<boolean>(false);
 
+  // Submit Confirmation Modal State
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState<boolean>(false);
+
   // Toast
   const [toast, setToast] = useState<ToastState | null>(null);
 
@@ -438,6 +441,19 @@ export function useCrushingRequests() {
     setToast({ type: 'info', message: 'Draf pengiriman telah dikosongkan.' });
   };
 
+  // Open / Close Confirm Modal
+  const handleOpenConfirmModal = () => {
+    if (items.length === 0) {
+      setToast({ type: 'error', message: 'Tambahkan minimal 1 item part atau runner ke daftar rincian pengiriman sebelum mengirim.' });
+      return;
+    }
+    setIsConfirmModalOpen(true);
+  };
+
+  const handleCloseConfirmModal = () => {
+    setIsConfirmModalOpen(false);
+  };
+
   // Submit Request with Undo Capability
   const handleSubmitRequest = async () => {
     if (items.length === 0) {
@@ -463,6 +479,9 @@ export function useCrushingRequests() {
         items,
       });
 
+      // Close confirmation modal
+      setIsConfirmModalOpen(false);
+
       // Clear form
       setItems([]);
       setNotes('');
@@ -471,11 +490,11 @@ export function useCrushingRequests() {
       // Refresh history list in background
       fetchHistory();
 
-      // Show Success Toast with Interactive Undo Action
+      // Show Success Toast with Interactive Undo Action (durationMs: 0 means stays until manually closed)
       setToast({
         type: 'success',
         message: `Pengiriman '${newReq.request_number}' (${backupItems.length} item) berhasil dikirim!`,
-        durationMs: 7000,
+        durationMs: 0,
         action: {
           label: 'Undo',
           onClick: async () => {
@@ -491,11 +510,13 @@ export function useCrushingRequests() {
               setToast({
                 type: 'info',
                 message: `Pengiriman '${newReq.request_number}' dibatalkan. Draf item telah dipulihkan.`,
+                durationMs: 5000,
               });
             } catch (err: any) {
               setToast({
                 type: 'error',
                 message: err.response?.data?.message || err.message || 'Gagal membatalkan pengiriman',
+                durationMs: 5000,
               });
             }
           },
@@ -580,6 +601,10 @@ export function useCrushingRequests() {
     handleClearDraft,
     isSubmitting,
     isSavingDraft,
+    isConfirmModalOpen,
+    setIsConfirmModalOpen,
+    handleOpenConfirmModal,
+    handleCloseConfirmModal,
     handleSubmitRequest,
     estimatedTotalWeightKg,
     estimatedTotalPcs,

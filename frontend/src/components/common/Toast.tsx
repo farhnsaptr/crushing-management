@@ -36,10 +36,10 @@ export const Toast: React.FC<ToastProps> = ({
   const activeMessage = toast?.message || message;
   const activeType = toast?.type || type;
   const activeAction = toast?.action || action;
-  const activeDuration = toast?.durationMs || durationMs;
+  const activeDuration = toast?.durationMs !== undefined ? toast.durationMs : durationMs;
 
   useEffect(() => {
-    if (activeMessage) {
+    if (activeMessage && activeDuration > 0) {
       const timer = setTimeout(onClose, activeDuration);
       return () => clearTimeout(timer);
     }

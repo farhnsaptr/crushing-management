@@ -523,8 +523,8 @@ export const CreateRequestForm: React.FC<CreateRequestFormProps> = ({
                           {part.part_name}
                         </div>
 
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 'auto', paddingTop: '0.35rem' }}>
-                          <code
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', marginTop: 'auto', paddingTop: '0.35rem' }}>
+                          <span
                             style={{
                               fontSize: '0.725rem',
                               fontWeight: 700,
@@ -535,11 +535,7 @@ export const CreateRequestForm: React.FC<CreateRequestFormProps> = ({
                               border: '1px solid #e2e8f0',
                             }}
                           >
-                            {part.part_number}
-                          </code>
-
-                          <span style={{ fontSize: '0.775rem', color: 'var(--secondary-color, #e76114)', fontWeight: 900 }}>
-                            {Number(part.berat_part_gr)} gr
+                            {part.material || '-'}
                           </span>
                         </div>
 
@@ -699,13 +695,23 @@ export const CreateRequestForm: React.FC<CreateRequestFormProps> = ({
                             {part.part_name}
                           </div>
                           <div style={{ fontSize: '0.725rem', color: 'var(--text-muted, #64748b)', display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.1rem' }}>
-                            <code>{part.part_number}</code>
+                            <span
+                              style={{
+                                backgroundColor: '#f1f5f9',
+                                border: '1px solid #e2e8f0',
+                                padding: '0.05rem 0.35rem',
+                                borderRadius: '4px',
+                                fontWeight: 700,
+                                color: 'var(--text-main, #0f172a)',
+                              }}
+                            >
+                              {part.material || '-'}
+                            </span>
                             {part.model_code && (
                               <span style={{ backgroundColor: '#f1f5f9', padding: '0.05rem 0.35rem', borderRadius: '4px', fontWeight: 700, color: '#334155' }}>
                                 {part.model_code}
                               </span>
                             )}
-                            <span>• {Number(part.berat_part_gr)} gr</span>
                           </div>
                         </div>
                       </div>

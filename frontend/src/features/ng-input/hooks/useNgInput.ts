@@ -132,6 +132,7 @@ export const useNgInput = () => {
         (p) =>
           (p.part_name || '').toLowerCase().includes(q) ||
           (p.part_number || '').toLowerCase().includes(q) ||
+          (p.material || '').toLowerCase().includes(q) ||
           (p.model_code || '').toLowerCase().includes(q) ||
           (p.sebango_code || '').toLowerCase().includes(q)
       );

@@ -156,7 +156,7 @@ export const NgPartGridCard: React.FC<NgPartGridCardProps> = ({
 
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 'auto', paddingTop: '0.25rem' }}>
                     <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)' }}>
-                      {part.part_number}
+                      {part.material || '-'}
                     </span>
 
                     {part.model_code && (
