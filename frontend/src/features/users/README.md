@@ -5,6 +5,6 @@ Modul ini menyediakan antarmuka bagi Administrator untuk mengelola akun pengguna
 ## Fitur Utama
 1. **Daftar Pengguna**: Menampilkan tabel pengguna (`full_name`, `username`, `role`, `status`, `created_at`).
 2. **Pencarian Instant**: Filter pengguna berdasarkan nama, username, atau role.
-3. **Tambah Pengguna Baru**: Modal form pembuatan akun baru (`admin` / `operator`).
+3. **Tambah & Edit Pengguna**: Modal form pembuatan dan pengeditan akun baru (`pengirim`, `operator`, `admin`, `super-admin`) dengan dukungan opsi penugasan pabrik ke **ALL (Semua Factory)** untuk akses katalog part lintas pabrik.
 4. **Toggle Status Keaktifan**: Mengubah status aktif/non-aktif akun secara instant (`PUT /api/users/:id/status`).
 5. **Hapus Pengguna**: Menghapus akun pengguna dari sistem (`DELETE /api/users/:id`).

@@ -7,7 +7,8 @@ export class UsersService {
   static async listUsers(currentUserId?: string) {
     let query = `
       SELECT 
-        u.id, u.username, u.full_name, u.role, u.factory_id, f.name AS factory_name,
+        u.id, u.username, u.full_name, u.role, u.factory_id,
+        COALESCE(f.name, IF(u.factory_id IS NULL AND u.role = 'pengirim', 'Semua Factory (ALL)', NULL)) AS factory_name,
         u.department_id, d.name AS department_name,
         u.is_active, u.last_login_at, u.created_at, u.updated_at 
       FROM users u
@@ -45,10 +46,12 @@ export class UsersService {
     }
 
     if (data.role === 'pengirim') {
-      if (!data.factory_id || !data.department_id) {
-        throw new Error('Pengguna dengan role Pengirim wajib memilih Factory dan Departemen');
+      if (!data.department_id) {
+        throw new Error('Pengguna dengan role Pengirim wajib memilih Departemen');
       }
     }
+
+    const factoryId = (data.factory_id === 'ALL' || !data.factory_id) ? null : data.factory_id;
 
     const id = randomUUID();
     const passwordHash = await bcrypt.hash(data.password, 10);
@@ -60,7 +63,7 @@ export class UsersService {
         passwordHash,
         data.full_name,
         data.role,
-        data.factory_id || null,
+        factoryId,
         data.department_id || null,
       ]
     );
@@ -70,7 +73,7 @@ export class UsersService {
       username: data.username,
       full_name: data.full_name,
       role: data.role,
-      factory_id: data.factory_id || null,
+      factory_id: factoryId,
       department_id: data.department_id || null,
       is_active: true,
     };
@@ -130,7 +133,8 @@ export class UsersService {
 
     const [updatedRows] = await pool.query<RowDataPacket[]>(
       `SELECT 
-        u.id, u.username, u.full_name, u.role, u.factory_id, f.name AS factory_name,
+        u.id, u.username, u.full_name, u.role, u.factory_id,
+        COALESCE(f.name, IF(u.factory_id IS NULL AND u.role = 'pengirim', 'Semua Factory (ALL)', NULL)) AS factory_name,
         u.department_id, d.name AS department_name,
         u.is_active, u.last_login_at, u.created_at, u.updated_at 
       FROM users u

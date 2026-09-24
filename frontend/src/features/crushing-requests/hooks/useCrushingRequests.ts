@@ -140,8 +140,8 @@ export function useCrushingRequests() {
   const fetchParts = useCallback(async () => {
     setIsLoadingParts(true);
     try {
-      const factoryId = user?.factory_id || undefined;
-      const res = await MasterPartsService.getParts(1, 300, '', '', '', 'asc', factoryId);
+      const factoryId = (user?.factory_id && user.factory_id !== 'ALL') ? user.factory_id : undefined;
+      const res = await MasterPartsService.getParts(1, 500, '', '', '', 'asc', factoryId);
       setAvailableParts(res.parts || []);
     } catch (err: any) {
       console.error('Failed to load parts for sender:', err);

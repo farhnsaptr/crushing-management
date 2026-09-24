@@ -43,8 +43,8 @@ export interface CrushingRequestRow extends RowDataPacket {
   sender_id: string;
   sender_name?: string;
   sender_username?: string;
-  factory_id: string;
-  factory_name?: string;
+  factory_id?: string | null;
+  factory_name?: string | null;
   factory_code?: string;
   department_id: string;
   department_name?: string;
@@ -88,6 +88,7 @@ export interface CrushingRequestItemRow extends RowDataPacket {
   notes: string | null;
   created_at: string;
   image_url?: string | null;
+  part_factory_id?: string | null;
 }
 
 function getBackendAutoShiftAndDate(): { shift: 'Pagi' | 'Malam'; date: string } {
@@ -126,7 +127,7 @@ export class CrushingRequestsService {
    */
   private static async processItemsPayload(
     items: CreateRequestItemDto[],
-    factoryId: string,
+    factoryId?: string | null,
     userRole?: string
   ) {
     let totalWeightKg = 0;
@@ -144,6 +145,7 @@ export class CrushingRequestsService {
       quantity_pcs: number;
       weight_kg: number;
       notes: string | null;
+      part_factory_id?: string | null;
     }> = [];
 
     for (const item of items) {
@@ -167,8 +169,8 @@ export class CrushingRequestsService {
 
         const part = partRows[0];
 
-        // Security validation: verify part belongs to user's assigned factory
-        if (userRole === 'pengirim' && part.factory_id !== factoryId) {
+        // Security validation: verify part belongs to user's assigned factory (skip if ALL / null)
+        if (userRole === 'pengirim' && factoryId && factoryId !== 'ALL' && part.factory_id !== factoryId) {
           throw new Error(`Part '${part.part_name}' bukan berasal dari pabrik yang ditugaskan ke Anda`);
         }
 
@@ -192,6 +194,7 @@ export class CrushingRequestsService {
           quantity_pcs: qtyPcs,
           weight_kg: itemWeightKg,
           notes: item.notes || null,
+          part_factory_id: part.factory_id || null,
         });
       } else if (item.item_type === 'runner_ng') {
         let materialName = item.material_name || 'Material Runner';
@@ -238,12 +241,10 @@ export class CrushingRequestsService {
       throw new Error('Permintaan wajib memiliki minimal 1 item part atau runner');
     }
 
-    const factoryId = user.factory_id || dto.factory_id;
+    const rawFactoryId = user.factory_id || dto.factory_id;
+    const factoryId = (rawFactoryId && rawFactoryId !== 'ALL') ? rawFactoryId : null;
     const departmentId = user.department_id || dto.department_id;
 
-    if (!factoryId) {
-      throw new Error('Factory penugasan tidak ditemukan pada akun Anda');
-    }
     if (!departmentId) {
       throw new Error('Departemen pengirim tidak ditemukan pada akun Anda');
     }
@@ -269,6 +270,8 @@ export class CrushingRequestsService {
         ? 'runner_ng'
         : 'mixed');
 
+    const targetFactoryId = factoryId || (processedItems.find((i) => i.part_factory_id)?.part_factory_id) || null;
+
     // Check if an existing unsubmitted draft exists for this sender
     const [existingDrafts] = await pool.query<RowDataPacket[]>(
       `SELECT id FROM crushing_requests WHERE sender_id = ? AND is_submitted = FALSE LIMIT 1`,
@@ -291,7 +294,7 @@ export class CrushingRequestsService {
          WHERE id = ?`,
         [
           finalRequestNumber,
-          factoryId,
+          targetFactoryId,
           departmentId,
           inferredType,
           finalShift,
@@ -318,7 +321,7 @@ export class CrushingRequestsService {
           requestId,
           finalRequestNumber,
           user.id,
-          factoryId,
+          targetFactoryId,
           departmentId,
           inferredType,
           finalShift,
@@ -443,7 +446,7 @@ export class CrushingRequestsService {
     const [rows] = await pool.query<CrushingRequestRow[]>(
       `SELECT 
         r.id, r.request_number, r.sender_id, u.full_name AS sender_name, u.username AS sender_username,
-        r.factory_id, f.name AS factory_name, f.code AS factory_code,
+        r.factory_id, COALESCE(f.name, 'Semua Factory (ALL)') AS factory_name, f.code AS factory_code,
         r.department_id, d.name AS department_name, d.code AS department_code,
         r.request_type, r.shift, r.request_date, r.status, r.is_submitted, r.submitted_at,
         r.validated_by, v.full_name AS validator_name, r.validated_at,
@@ -452,7 +455,7 @@ export class CrushingRequestsService {
         (SELECT COUNT(*) FROM crushing_request_items WHERE request_id = r.id) AS item_count
        FROM crushing_requests r
        JOIN users u ON r.sender_id = u.id
-       JOIN factories f ON r.factory_id = f.id
+       LEFT JOIN factories f ON r.factory_id = f.id
        JOIN departments d ON r.department_id = d.id
        LEFT JOIN users v ON r.validated_by = v.id
        ${whereClause}
@@ -476,7 +479,7 @@ export class CrushingRequestsService {
     const [rows] = await pool.query<CrushingRequestRow[]>(
       `SELECT 
         r.id, r.request_number, r.sender_id, u.full_name AS sender_name, u.username AS sender_username,
-        r.factory_id, f.name AS factory_name, f.code AS factory_code,
+        r.factory_id, COALESCE(f.name, 'Semua Factory (ALL)') AS factory_name, f.code AS factory_code,
         r.department_id, d.name AS department_name, d.code AS department_code,
         r.request_type, r.shift, r.request_date, r.status, r.is_submitted, r.submitted_at,
         r.validated_by, v.full_name AS validator_name, r.validated_at,
@@ -484,7 +487,7 @@ export class CrushingRequestsService {
         r.total_weight_kg, r.total_pcs, r.notes, r.created_at, r.updated_at
        FROM crushing_requests r
        JOIN users u ON r.sender_id = u.id
-       JOIN factories f ON r.factory_id = f.id
+       LEFT JOIN factories f ON r.factory_id = f.id
        JOIN departments d ON r.department_id = d.id
        LEFT JOIN users v ON r.validated_by = v.id
        WHERE r.id = ?`,
@@ -510,9 +513,11 @@ export class CrushingRequestsService {
         i.quantity_pcs, i.weight_kg,
         i.verified_quantity_pcs, i.verified_weight_kg, i.adjustment_notes,
         i.notes, i.created_at,
-        mp.image_url
+        mp.image_url,
+        mc.factory_id AS part_factory_id
        FROM crushing_request_items i
        LEFT JOIN master_parts mp ON i.master_part_id = mp.id
+       LEFT JOIN machines mc ON mp.machine_id = mc.id
        WHERE i.request_id = ?
        ORDER BY i.created_at ASC`,
       [id]
@@ -643,7 +648,7 @@ export class CrushingRequestsService {
             item.master_part_id,
             requestId,
             request.department_id,
-            request.factory_id,
+            request.factory_id || item.part_factory_id || null,
             item.part_number_snapshot,
             item.part_name_snapshot,
             item.model_snapshot,
@@ -724,10 +729,11 @@ export class CrushingRequestsService {
    * Save temporary ticket draft to MySQL crushing_requests & crushing_request_items (is_submitted = FALSE)
    */
   static async saveDraft(user: JwtPayloadUser, draftData: any) {
-    const factoryId = user.factory_id || draftData.factory_id;
+    const rawFactoryId = user.factory_id || draftData.factory_id;
+    const factoryId = (rawFactoryId && rawFactoryId !== 'ALL') ? rawFactoryId : null;
     const departmentId = user.department_id || draftData.department_id;
 
-    if (!factoryId || !departmentId) {
+    if (!departmentId) {
       return null;
     }
 
@@ -814,6 +820,8 @@ export class CrushingRequestsService {
 
     let draftRequestId: string;
 
+    const targetFactoryId = factoryId || (processedItems.find((i) => i.part_factory_id)?.part_factory_id) || null;
+
     if (existingDraftRows.length > 0) {
       draftRequestId = existingDraftRows[0].id;
       // Update existing draft header
@@ -824,7 +832,7 @@ export class CrushingRequestsService {
              notes = ?, updated_at = NOW()
          WHERE id = ?`,
         [
-          factoryId,
+          targetFactoryId,
           departmentId,
           inferredType,
           finalShift,
@@ -852,7 +860,7 @@ export class CrushingRequestsService {
           draftRequestId,
           draftNumber,
           user.id,
-          factoryId,
+          targetFactoryId,
           departmentId,
           inferredType,
           finalShift,
