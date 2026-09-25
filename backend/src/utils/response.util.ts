@@ -34,9 +34,24 @@ export function sendError(
   error: string,
   statusCode: number = 400
 ): Response {
+  let userFriendlyError = error || 'Terjadi kesalahan pada sistem';
+
+  if (typeof error === 'string') {
+    if (error.includes('ER_DUP_ENTRY') || error.includes('Duplicate entry')) {
+      userFriendlyError = 'Data yang dimasukkan sudah terdaftar di sistem.';
+    } else if (error.includes('a foreign key constraint fails') || error.includes('foreign key constraint fails')) {
+      userFriendlyError = 'Data berelasi tidak ditemukan atau masih digunakan oleh data lain.';
+    } else if (error.includes('Data truncated') || error.includes('Incorrect integer value') || error.includes('Incorrect decimal value')) {
+      userFriendlyError = 'Format input data tidak valid.';
+    } else if (error.includes('ECONNREFUSED')) {
+      userFriendlyError = 'Gagal terhubung ke server database.';
+    }
+  }
+
   const body: ApiResponse = {
     success: false,
-    error,
+    error: userFriendlyError,
+    message: userFriendlyError,
   };
   return res.status(statusCode).json(body);
 }

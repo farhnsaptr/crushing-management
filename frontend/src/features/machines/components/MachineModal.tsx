@@ -5,6 +5,7 @@ import { Button } from '../../../components/common/Button';
 import type { Machine, CreateMachinePayload, UpdateMachinePayload } from '../types/machines.types';
 import type { Factory } from '../../factories/types/factories.types';
 import { Cpu, Tag, Building2, Layers, Gauge, Activity } from 'lucide-react';
+import { extractErrorMessage } from '../../../services/api.client';
 
 interface MachineModalProps {
   isOpen: boolean;
@@ -86,7 +87,7 @@ export const MachineModal: React.FC<MachineModalProps> = ({
         });
       }
     } catch (err: any) {
-      setError(err.message || 'Gagal menyimpan data mesin.');
+      setError(extractErrorMessage(err, 'Gagal menyimpan data mesin.'));
     } finally {
       setIsSubmitting(false);
     }

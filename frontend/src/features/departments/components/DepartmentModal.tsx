@@ -4,6 +4,7 @@ import { Input } from '../../../components/common/Input';
 import { Button } from '../../../components/common/Button';
 import type { Department, CreateDepartmentPayload, UpdateDepartmentPayload } from '../types/departments.types';
 import { Network, Tag, FileText } from 'lucide-react';
+import { extractErrorMessage } from '../../../services/api.client';
 
 interface DepartmentModalProps {
   isOpen: boolean;
@@ -66,7 +67,7 @@ export const DepartmentModal: React.FC<DepartmentModalProps> = ({
         });
       }
     } catch (err: any) {
-      setError(err.message || 'Gagal menyimpan data departemen.');
+      setError(extractErrorMessage(err, 'Gagal menyimpan data departemen.'));
     } finally {
       setIsSubmitting(false);
     }

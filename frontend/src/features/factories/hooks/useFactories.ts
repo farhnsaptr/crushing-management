@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { FactoriesService } from '../services/factories.service';
 import type { Factory, CreateFactoryPayload, UpdateFactoryPayload } from '../types/factories.types';
 import type { ToastMessage } from '../../../components/common/Toast';
+import { extractErrorMessage } from '../../../services/api.client';
 
 export const useFactories = () => {
   const [factories, setFactories] = useState<Factory[]>([]);
@@ -20,7 +21,7 @@ export const useFactories = () => {
       setToast({
         id: Date.now().toString(),
         type: 'error',
-        message: err.response?.data?.message || 'Gagal memuat daftar pabrik.',
+        message: extractErrorMessage(err, 'Gagal memuat daftar pabrik.'),
       });
     } finally {
       setIsLoading(false);
@@ -55,8 +56,9 @@ export const useFactories = () => {
       setToast({
         id: Date.now().toString(),
         type: 'error',
-        message: err.response?.data?.message || 'Gagal menambahkan data pabrik.',
+        message: extractErrorMessage(err, 'Gagal menambahkan data pabrik.'),
       });
+      throw err;
     }
   };
 
@@ -75,8 +77,9 @@ export const useFactories = () => {
       setToast({
         id: Date.now().toString(),
         type: 'error',
-        message: err.response?.data?.message || 'Gagal memperbarui data pabrik.',
+        message: extractErrorMessage(err, 'Gagal memperbarui data pabrik.'),
       });
+      throw err;
     }
   };
 
@@ -97,7 +100,7 @@ export const useFactories = () => {
       setToast({
         id: Date.now().toString(),
         type: 'error',
-        message: err.response?.data?.message || 'Gagal menghapus data pabrik.',
+        message: extractErrorMessage(err, 'Gagal menghapus data pabrik.'),
       });
     }
   };

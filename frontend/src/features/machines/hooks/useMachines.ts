@@ -4,6 +4,7 @@ import { FactoriesService } from '../../factories/services/factories.service';
 import type { Machine, CreateMachinePayload, UpdateMachinePayload } from '../types/machines.types';
 import type { Factory } from '../../factories/types/factories.types';
 import type { ToastMessage } from '../../../components/common/Toast';
+import { extractErrorMessage } from '../../../services/api.client';
 
 export const useMachines = () => {
   const [machines, setMachines] = useState<Machine[]>([]);
@@ -29,7 +30,7 @@ export const useMachines = () => {
       setToast({
         id: Date.now().toString(),
         type: 'error',
-        message: err.response?.data?.message || 'Gagal memuat data mesin dan pabrik.',
+        message: extractErrorMessage(err, 'Gagal memuat data mesin dan pabrik.'),
       });
     } finally {
       setIsLoading(false);
@@ -64,8 +65,9 @@ export const useMachines = () => {
       setToast({
         id: Date.now().toString(),
         type: 'error',
-        message: err.response?.data?.message || 'Gagal menambahkan data mesin.',
+        message: extractErrorMessage(err, 'Gagal menambahkan data mesin.'),
       });
+      throw err;
     }
   };
 
@@ -84,8 +86,9 @@ export const useMachines = () => {
       setToast({
         id: Date.now().toString(),
         type: 'error',
-        message: err.response?.data?.message || 'Gagal memperbarui data mesin.',
+        message: extractErrorMessage(err, 'Gagal memperbarui data mesin.'),
       });
+      throw err;
     }
   };
 
@@ -106,7 +109,7 @@ export const useMachines = () => {
       setToast({
         id: Date.now().toString(),
         type: 'error',
-        message: err.response?.data?.message || 'Gagal menghapus data mesin.',
+        message: extractErrorMessage(err, 'Gagal menghapus data mesin.'),
       });
     }
   };
@@ -128,7 +131,7 @@ export const useMachines = () => {
       setToast({
         id: Date.now().toString(),
         type: 'error',
-        message: err.response?.data?.message || 'Gagal menghapus seluruh data mesin.',
+        message: extractErrorMessage(err, 'Gagal menghapus seluruh data mesin.'),
       });
     }
   };

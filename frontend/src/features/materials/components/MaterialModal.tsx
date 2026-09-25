@@ -4,6 +4,7 @@ import { Input } from '../../../components/common/Input';
 import { Button } from '../../../components/common/Button';
 import type { Material, CreateMaterialPayload } from '../types/materials.types';
 import { Layers, FileText } from 'lucide-react';
+import { extractErrorMessage } from '../../../services/api.client';
 
 interface MaterialModalProps {
   isOpen: boolean;
@@ -77,7 +78,7 @@ export const MaterialModal: React.FC<MaterialModalProps> = ({
         });
       }
     } catch (err: any) {
-      setError(err.message || 'Gagal menyimpan data master material.');
+      setError(extractErrorMessage(err, 'Gagal menyimpan data master material.'));
     } finally {
       setIsSubmitting(false);
     }

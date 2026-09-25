@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Modal } from '../../../components/common/Modal';
 import { Button } from '../../../components/common/Button';
 import { Upload, Download, FileSpreadsheet, AlertCircle, Info, CheckCircle } from 'lucide-react';
+import { extractErrorMessage } from '../../../services/api.client';
 
 interface MasterPartUploadModalProps {
   isOpen: boolean;
@@ -54,7 +55,7 @@ export const MasterPartUploadModal: React.FC<MasterPartUploadModalProps> = ({
     try {
       await onUploadFile(selectedFile);
     } catch (err: any) {
-      setError(err.message || 'Gagal memproses file Excel.');
+      setError(extractErrorMessage(err, 'Gagal memproses file Excel.'));
     }
   };
 

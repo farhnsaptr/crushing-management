@@ -6,6 +6,7 @@ import type { User, UserRole, CreateUserPayload, UpdateUserPayload } from '../ty
 import type { Factory } from '../../factories/types/factories.types';
 import type { Department } from '../../departments/types/departments.types';
 import { User as UserIcon, Lock, UserCheck, Shield, Building2, Network } from 'lucide-react';
+import { extractErrorMessage } from '../../../services/api.client';
 
 interface UserModalProps {
   isOpen: boolean;
@@ -83,7 +84,7 @@ export const UserModal: React.FC<UserModalProps> = ({
           password: password.trim() ? password : undefined,
         });
       } catch (err: any) {
-        setError(err.message || 'Gagal memperbarui data user.');
+        setError(extractErrorMessage(err, 'Gagal memperbarui data user.'));
       } finally {
         setIsSubmitting(false);
       }
@@ -104,7 +105,7 @@ export const UserModal: React.FC<UserModalProps> = ({
           department_id: departmentId || null,
         });
       } catch (err: any) {
-        setError(err.message || 'Gagal menyimpan data user.');
+        setError(extractErrorMessage(err, 'Gagal menyimpan data user.'));
       } finally {
         setIsSubmitting(false);
       }

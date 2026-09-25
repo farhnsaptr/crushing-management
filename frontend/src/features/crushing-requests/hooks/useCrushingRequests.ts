@@ -8,6 +8,7 @@ import type { MasterPart } from '../../master-parts/types/masterParts.types';
 import type { Material } from '../../materials/types/materials.types';
 import type { ToastState } from '../../../components/common/Toast';
 import { getAutoShiftAndDate } from '../../../config/shift.config';
+import { extractErrorMessage } from '../../../services/api.client';
 
 export function useCrushingRequests() {
   const { user } = useAuth();
@@ -190,7 +191,7 @@ export function useCrushingRequests() {
     } catch (err: any) {
       setToast({
         type: 'error',
-        message: err.response?.data?.message || err.message || 'Gagal memuat riwayat permintaan',
+        message: extractErrorMessage(err, 'Gagal memuat riwayat permintaan'),
       });
     } finally {
       setIsLoadingHistory(false);
@@ -515,7 +516,7 @@ export function useCrushingRequests() {
             } catch (err: any) {
               setToast({
                 type: 'error',
-                message: err.response?.data?.message || err.message || 'Gagal membatalkan pengiriman',
+                message: extractErrorMessage(err, 'Gagal membatalkan pengiriman'),
                 durationMs: 5000,
               });
             }
@@ -525,7 +526,7 @@ export function useCrushingRequests() {
     } catch (err: any) {
       setToast({
         type: 'error',
-        message: err.response?.data?.message || err.message || 'Gagal membuat pengiriman',
+        message: extractErrorMessage(err, 'Gagal membuat pengiriman'),
       });
     } finally {
       setIsSubmitting(false);
@@ -542,7 +543,7 @@ export function useCrushingRequests() {
     } catch (err: any) {
       setToast({
         type: 'error',
-        message: err.response?.data?.message || err.message || 'Gagal memuat detail pengiriman',
+        message: extractErrorMessage(err, 'Gagal memuat detail pengiriman'),
       });
     } finally {
       setIsLoadingDetail(false);

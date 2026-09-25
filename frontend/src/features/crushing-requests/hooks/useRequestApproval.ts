@@ -5,6 +5,7 @@ import { useDebounce } from '../../../hooks';
 import type { CrushingRequest, ApproveCrushingRequestPayload } from '../types/crushingRequests.types';
 import type { Department } from '../../departments/types/departments.types';
 import type { ToastState } from '../../../components/common/Toast';
+import { extractErrorMessage } from '../../../services/api.client';
 
 export function useRequestApproval() {
   const [requests, setRequests] = useState<CrushingRequest[]>([]);
@@ -50,7 +51,7 @@ export function useRequestApproval() {
     } catch (err: any) {
       setToast({
         type: 'error',
-        message: err.response?.data?.message || err.message || 'Gagal memuat daftar verifikasi pengiriman',
+        message: extractErrorMessage(err, 'Gagal memuat daftar verifikasi pengiriman'),
       });
     } finally {
       setIsLoading(false);
@@ -74,7 +75,7 @@ export function useRequestApproval() {
     } catch (err: any) {
       setToast({
         type: 'error',
-        message: err.response?.data?.message || err.message || 'Gagal mengambil detail pengiriman',
+        message: extractErrorMessage(err, 'Gagal mengambil detail pengiriman'),
       });
     } finally {
       setIsLoadingDetail(false);
@@ -95,7 +96,7 @@ export function useRequestApproval() {
     } catch (err: any) {
       setToast({
         type: 'error',
-        message: err.response?.data?.message || err.message || 'Gagal memverifikasi pengiriman',
+        message: extractErrorMessage(err, 'Gagal memverifikasi pengiriman'),
       });
     } finally {
       setIsActionLoading(false);

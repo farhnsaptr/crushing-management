@@ -44,10 +44,13 @@ export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
       setIsCameraReady(true);
     } catch (err: any) {
       console.error('[Camera Access Error]', err);
-      setError(
-        err.message ||
-          'Gagal mengaktifkan kamera. Harap beri izin akses kamera di pengaturan browser Anda.'
-      );
+      let cameraMsg = 'Gagal mengaktifkan kamera. Harap beri izin akses kamera di pengaturan browser Anda.';
+      if (err?.name === 'NotAllowedError' || err?.message?.includes('Permission denied')) {
+        cameraMsg = 'Akses kamera ditolak. Harap izinkan penggunaan kamera pada browser Anda.';
+      } else if (err?.name === 'NotFoundError' || err?.message?.includes('not found')) {
+        cameraMsg = 'Perangkat kamera tidak terdeteksi pada perangkat ini.';
+      }
+      setError(cameraMsg);
     }
   };
 

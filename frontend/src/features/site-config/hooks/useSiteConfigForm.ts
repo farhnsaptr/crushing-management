@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { SiteConfigService } from '../services/siteConfig.service';
 import { useTheme } from '../../../context/ThemeContext';
 import type { ToastMessage } from '../../../components/common/Toast';
+import { extractErrorMessage } from '../../../services/api.client';
 
 export const useSiteConfigForm = () => {
   const { updateThemeColors, fetchThemeConfig } = useTheme();
@@ -71,7 +72,7 @@ export const useSiteConfigForm = () => {
       setToast({
         id: Date.now().toString(),
         type: 'error',
-        message: 'Gagal memuat konfigurasi situs.',
+        message: extractErrorMessage(err, 'Gagal memuat konfigurasi situs.'),
       });
     } finally {
       setIsLoading(false);
@@ -169,7 +170,7 @@ export const useSiteConfigForm = () => {
       setToast({
         id: Date.now().toString(),
         type: 'error',
-        message: err.response?.data?.message || 'Gagal menyimpan konfigurasi situs.',
+        message: extractErrorMessage(err, 'Gagal menyimpan konfigurasi situs.'),
       });
     } finally {
       setIsSubmitting(false);

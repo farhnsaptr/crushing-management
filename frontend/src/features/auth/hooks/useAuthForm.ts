@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { AuthService } from '../services/auth.service';
 import { useAuth } from '../../../context/AuthContext';
 import { verifySystemSignature } from '../../system/utils/signatureEvaluator';
+import { extractErrorMessage } from '../../../services/api.client';
 
 export const useAuthForm = () => {
   const [username, setUsername] = useState<string>('');
@@ -34,7 +35,7 @@ export const useAuthForm = () => {
       setSession(data.user);
       navigate('/dashboard');
     } catch (err: any) {
-      const msg = err.response?.data?.message || 'Login gagal. Periksa kembali username & password.';
+      const msg = extractErrorMessage(err, 'Login gagal. Periksa kembali username & password.');
       setError(msg);
     } finally {
       setIsLoading(false);

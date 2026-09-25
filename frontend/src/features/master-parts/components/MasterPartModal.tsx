@@ -9,6 +9,7 @@ import { MasterPartsService } from '../services/masterParts.service';
 import { MaterialsService } from '../../materials/services/materials.service';
 import type { Material } from '../../materials/types/materials.types';
 import { Tag, Cpu, UserCheck, Layers, Scale, Code, Search, Check, Box, Car } from 'lucide-react';
+import { extractErrorMessage } from '../../../services/api.client';
 
 interface MasterPartModalProps {
   isOpen: boolean;
@@ -187,7 +188,7 @@ export const MasterPartModal: React.FC<MasterPartModalProps> = ({
         });
       }
     } catch (err: any) {
-      setError(err.message || 'Gagal menyimpan master part.');
+      setError(extractErrorMessage(err, 'Gagal menyimpan master part.'));
     } finally {
       setIsSubmitting(false);
     }
