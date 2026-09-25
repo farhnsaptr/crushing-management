@@ -3,7 +3,7 @@
 Fitur ini menyediakan sistem permohonan dan verifikasi pengiriman material reject (Part NG) antara Pengirim dan Operator Crushing dengan audit trail non-destructive dan draf langsung ke database MySQL.
 
 ## Alur Sistem
-1. **Pengirim (`pengirim`)**: Menginput pengajuan pengiriman Part NG melalui katalog visual part (dengan fitur 1-click add keranjang, stepper tambah/kurang kuantitas di katalog & rincian pengiriman, shift otomatis terkunci, serta auto-save draf ke database MySQL). Pengiriman dilakukan secara instan dengan toast notifikasi interaktif yang menyediakan tombol **Undo** untuk membatalkan pengiriman dan memulihkan draf jika terjadi kesalahan input.
+1. **Pengirim (`pengirim`)**: Menginput pengajuan pengiriman Part NG melalui katalog visual part (dengan fitur 1-click add keranjang, stepper tambah/kurang kuantitas di katalog & rincian pengiriman, shift otomatis terkunci dan tersinkronisasi otomatis saat submit/rollover hari, serta auto-save draf ke database MySQL). Pengiriman dilakukan secara instan dengan toast notifikasi interaktif yang menyediakan tombol **Undo** untuk membatalkan pengiriman dan memulihkan draf jika terjadi kesalahan input.
 2. **Operator Crushing (`operator`, `admin`, `super-admin`)**: Melakukan verifikasi fisik di halaman *Verifikasi Permintaan*. Operator hanya melihat pengiriman yang sudah di-submit (`is_submitted = TRUE`). Operator dapat menyesuaikan kuantitas fisik aktual yang diterima jika ada selisih (kurang/lebih) langsung di rincian modal sebelum menyetujui. Data kuantitas asli dari pengirim tetap tersimpan utuh di database sebagai audit trail.
 3. **Input Part Runner NG**: Diinput langsung oleh Operator Crushing di halaman *Input Part Runner NG*.
 

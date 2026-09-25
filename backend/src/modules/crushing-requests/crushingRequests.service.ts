@@ -92,27 +92,46 @@ export interface CrushingRequestItemRow extends RowDataPacket {
 }
 
 function getBackendAutoShiftAndDate(): { shift: 'Pagi' | 'Malam'; date: string } {
-  const now = new Date();
-  const hour = now.getHours();
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Jakarta',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
 
+  const now = new Date();
+  const parts = formatter.formatToParts(now);
+  const map: Record<string, string> = {};
+  for (const p of parts) {
+    map[p.type] = p.value;
+  }
+
+  const hour = parseInt(map.hour, 10);
   let shift: 'Pagi' | 'Malam';
-  const targetDate = new Date(now);
+  let dateStr = `${map.year}-${map.month}-${map.day}`;
 
   if (hour >= 20) {
+    // 20:00 - 23:59 WIB: Shift Malam hari ini
     shift = 'Malam';
   } else if (hour < 7) {
+    // 00:00 - 06:59 WIB: Shift Malam (lanjutan operasional shift malam kemarin)
     shift = 'Malam';
-    targetDate.setDate(targetDate.getDate() - 1);
+    const prevDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const prevParts = formatter.formatToParts(prevDate);
+    const prevMap: Record<string, string> = {};
+    for (const p of prevParts) {
+      prevMap[p.type] = p.value;
+    }
+    dateStr = `${prevMap.year}-${prevMap.month}-${prevMap.day}`;
   } else {
+    // 07:00 - 19:59 WIB: Shift Pagi hari ini
     shift = 'Pagi';
   }
 
-  const year = targetDate.getFullYear();
-  const month = String(targetDate.getMonth() + 1).padStart(2, '0');
-  const day = String(targetDate.getDate()).padStart(2, '0');
-  const date = `${year}-${month}-${day}`;
-
-  return { shift, date };
+  return { shift, date: dateStr };
 }
 
 export class CrushingRequestsService {
@@ -249,12 +268,11 @@ export class CrushingRequestsService {
       throw new Error('Departemen pengirim tidak ditemukan pada akun Anda');
     }
 
-    // Auto-calculate shift and date based on current operational server time
+    // Auto-calculate shift and date based on current operational server time (Asia/Jakarta)
+    // Always synchronize shift and request_date to the active operational shift at submission time
     const autoShiftDate = getBackendAutoShiftAndDate();
-    const finalShift: 'Pagi' | 'Malam' =
-      user.role === 'pengirim' ? autoShiftDate.shift : dto.shift === 'Malam' ? 'Malam' : 'Pagi';
-    const finalRequestDate: string =
-      user.role === 'pengirim' ? autoShiftDate.date : dto.request_date || autoShiftDate.date;
+    const finalShift: 'Pagi' | 'Malam' = autoShiftDate.shift;
+    const finalRequestDate: string = autoShiftDate.date;
 
     const { processedItems, totalWeightKg, totalPcs } = await this.processItemsPayload(
       dto.items,
@@ -738,9 +756,8 @@ export class CrushingRequestsService {
     }
 
     const autoShiftDate = getBackendAutoShiftAndDate();
-    const finalShift: 'Pagi' | 'Malam' =
-      draftData.shift === 'Malam' ? 'Malam' : 'Pagi';
-    const finalRequestDate: string = draftData.requestDate || autoShiftDate.date;
+    const finalShift: 'Pagi' | 'Malam' = autoShiftDate.shift;
+    const finalRequestDate: string = autoShiftDate.date;
 
     const items: CreateRequestItemDto[] = Array.isArray(draftData.items) ? draftData.items : [];
 
@@ -925,6 +942,17 @@ export class CrushingRequestsService {
     }
 
     const draft = rows[0];
+    const autoShiftDate = getBackendAutoShiftAndDate();
+
+    // Automatically synchronize draft header if the operational shift or date has rolled over
+    if (draft.shift !== autoShiftDate.shift || draft.request_date !== autoShiftDate.date) {
+      await pool.query(
+        `UPDATE crushing_requests
+         SET shift = ?, request_date = ?, updated_at = NOW()
+         WHERE id = ?`,
+        [autoShiftDate.shift, autoShiftDate.date, draft.id]
+      );
+    }
 
     const [items] = await pool.query<RowDataPacket[]>(
       `SELECT 
@@ -946,8 +974,8 @@ export class CrushingRequestsService {
 
     return {
       id: draft.id,
-      shift: draft.shift,
-      requestDate: draft.request_date,
+      shift: autoShiftDate.shift,
+      requestDate: autoShiftDate.date,
       notes: draft.notes || '',
       items: items.map((it) => ({
         id: it.id,

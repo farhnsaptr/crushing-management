@@ -89,6 +89,12 @@ export function useCrushingRequests() {
         if (Array.isArray(serverDraft.items) && serverDraft.items.length > 0) {
           setItems(serverDraft.items);
         }
+        if (serverDraft.shift) {
+          setShift(serverDraft.shift);
+        }
+        if (serverDraft.requestDate) {
+          setRequestDate(serverDraft.requestDate);
+        }
       }
     } catch (err) {
       console.warn('Failed to load draft from server database:', err);
@@ -448,6 +454,9 @@ export function useCrushingRequests() {
       setToast({ type: 'error', message: 'Tambahkan minimal 1 item part atau runner ke daftar rincian pengiriman sebelum mengirim.' });
       return;
     }
+    const current = getAutoShiftAndDate();
+    setShift(current.shift);
+    setRequestDate(current.date);
     setIsConfirmModalOpen(true);
   };
 
