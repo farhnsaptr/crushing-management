@@ -72,7 +72,7 @@ export const RunnerCsvUploadCard: React.FC<RunnerCsvUploadCardProps> = ({
             }}
           >
             <FileSpreadsheet size={14} />
-            <span>Format: .XLSX / .XLS / .CSV</span>
+            <span>Format: .XLSX</span>
           </span>
         </div>
       </div>
@@ -96,7 +96,7 @@ export const RunnerCsvUploadCard: React.FC<RunnerCsvUploadCardProps> = ({
         </span>
         <ul style={{ margin: 0, paddingLeft: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
           <li>
-            Mendukung file Excel Laporan Produksi (contoh: <code>08. LAPORAN AGUSTUS 2026.xlsx</code>) atau CSV dari sistem Shopfloor.
+            Mendukung file Excel Laporan Produksi dari sistem apps.sugity.co.id.
           </li>
           <li>
             Pastikan kolom utama tersedia: <strong>PRODUCTION DATE</strong>, <strong>SHIFT</strong> (DAY/NIGHT), <strong>SEBANGO</strong>, dan <strong>ACTUAL TOTAL (PCS)</strong>.

@@ -54,7 +54,7 @@ export const RequestDetailModal: React.FC<RequestDetailModalProps> = ({
   const [previewImage, setPreviewImage] = useState<{
     url: string;
     title: string;
-    partNumber?: string;
+    materialName?: string;
     model?: string;
     weightKg?: number;
     qtyPcs?: number;
@@ -208,7 +208,7 @@ export const RequestDetailModal: React.FC<RequestDetailModalProps> = ({
     setPreviewImage({
       url: item.image_url,
       title: item.part_name_snapshot || item.material_name_snapshot || 'Foto Part',
-      partNumber: item.part_number_snapshot || undefined,
+      materialName: item.material_name_snapshot || undefined,
       model: item.model_snapshot || undefined,
       weightKg: adj ? adj.verifiedWeight : Number(item.weight_kg || 0),
       qtyPcs: adj ? adj.verifiedQty : item.quantity_pcs,
@@ -557,11 +557,22 @@ export const RequestDetailModal: React.FC<RequestDetailModalProps> = ({
                           <h5 style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--text-main, #0f172a)', margin: 0, lineHeight: 1.35 }}>
                             {item.part_name_snapshot || item.material_name_snapshot || 'Material'}
                           </h5>
-                          {item.part_number_snapshot && (
+                          {item.material_name_snapshot && item.material_name_snapshot !== item.part_name_snapshot && (
                             <div style={{ marginTop: '0.25rem' }}>
-                              <code style={{ backgroundColor: '#f1f5f9', border: '1px solid #cbd5e1', padding: '0.15rem 0.4rem', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 700 }}>
-                                {item.part_number_snapshot}
-                              </code>
+                              <span
+                                style={{
+                                  backgroundColor: '#f1f5f9',
+                                  border: '1px solid #cbd5e1',
+                                  padding: '0.15rem 0.45rem',
+                                  borderRadius: '4px',
+                                  fontSize: '0.75rem',
+                                  fontWeight: 700,
+                                  color: 'var(--text-main, #0f172a)',
+                                  display: 'inline-block',
+                                }}
+                              >
+                                {item.material_name_snapshot}
+                              </span>
                             </div>
                           )}
                         </div>
@@ -791,7 +802,11 @@ export const RequestDetailModal: React.FC<RequestDetailModalProps> = ({
                               {item.part_name_snapshot || item.material_name_snapshot}
                             </div>
                             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted, #64748b)' }}>
-                              {item.part_number_snapshot && <code>{item.part_number_snapshot}</code>}
+                              {item.material_name_snapshot && item.material_name_snapshot !== item.part_name_snapshot && (
+                                <span style={{ fontWeight: 700, color: 'var(--text-main, #0f172a)' }}>
+                                  {item.material_name_snapshot}
+                                </span>
+                              )}
                               {item.model_snapshot && <span> ({item.model_snapshot})</span>}
                             </div>
                             {item.notes && <div style={{ fontSize: '0.725rem', color: '#64748b', fontStyle: 'italic' }}>{item.notes}</div>}
@@ -950,8 +965,8 @@ export const RequestDetailModal: React.FC<RequestDetailModalProps> = ({
                 {previewImage.title}
               </h3>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginTop: '0.25rem', fontSize: '0.85rem', color: '#cbd5e1' }}>
-                {previewImage.partNumber && (
-                  <span>Part No: <code style={{ color: '#38bdf8', fontWeight: 700 }}>{previewImage.partNumber}</code></span>
+                {previewImage.materialName && (
+                  <span>Material: <strong style={{ color: '#38bdf8' }}>{previewImage.materialName}</strong></span>
                 )}
                 {previewImage.model && <span>• Model: <strong style={{ color: '#facc15' }}>{previewImage.model}</strong></span>}
                 {previewImage.qtyPcs ? <span>• Qty: <strong>{previewImage.qtyPcs} pcs</strong></span> : null}

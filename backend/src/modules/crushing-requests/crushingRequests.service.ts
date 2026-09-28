@@ -527,7 +527,8 @@ export class CrushingRequestsService {
       `SELECT 
         i.id, i.request_id, i.item_type, i.master_part_id, i.material_id,
         i.part_number_snapshot, i.part_name_snapshot, i.model_snapshot,
-        i.material_name_snapshot, i.berat_part_gr_snapshot,
+        COALESCE(NULLIF(i.material_name_snapshot, ''), mm.material_name, mp.material, 'Material') AS material_name_snapshot,
+        i.berat_part_gr_snapshot,
         i.quantity_pcs, i.weight_kg,
         i.verified_quantity_pcs, i.verified_weight_kg, i.adjustment_notes,
         i.notes, i.created_at,
@@ -535,6 +536,7 @@ export class CrushingRequestsService {
         mc.factory_id AS part_factory_id
        FROM crushing_request_items i
        LEFT JOIN master_parts mp ON i.master_part_id = mp.id
+       LEFT JOIN master_materials mm ON (i.material_id = mm.id OR mp.material_id = mm.id)
        LEFT JOIN machines mc ON mp.machine_id = mc.id
        WHERE i.request_id = ?
        ORDER BY i.created_at ASC`,
