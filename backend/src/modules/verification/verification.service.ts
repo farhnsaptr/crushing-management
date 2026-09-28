@@ -56,7 +56,7 @@ export class VerificationService {
        JOIN master_parts mp ON t.master_part_id = mp.id
        LEFT JOIN master_materials mm ON mp.material_id = mm.id
        WHERE DATE(t.transaction_date) = ? AND t.shift = ?
-         AND (mm.recycle_type = 'reuse' OR (mm.recycle_type IS NULL AND LOWER(mp.material) NOT LIKE '%no reuse%'))
+         AND t.recycle_type_snapshot = 'reuse'
        GROUP BY mm.id, COALESCE(mm.material_name, mp.material, 'Unassigned Material')`,
       [cleanDate, cleanShift]
     );
@@ -368,11 +368,9 @@ export class VerificationService {
     // 1. Check if there are any input transactions (NG or Runner) for this date & shift
     const [txCountRows] = await pool.query<RowDataPacket[]>(
       `SELECT 
-        (SELECT COUNT(*) FROM ng_transactions t 
-         JOIN master_parts mp ON t.master_part_id = mp.id 
-         LEFT JOIN master_materials mm ON mp.material_id = mm.id 
-         WHERE DATE(t.transaction_date) = ? AND t.shift = ? 
-           AND (mm.recycle_type = 'reuse' OR (mm.recycle_type IS NULL AND LOWER(mp.material) NOT LIKE '%no reuse%')))
+        (SELECT COUNT(*) FROM ng_transactions t
+         WHERE DATE(t.transaction_date) = ? AND t.shift = ?
+           AND t.recycle_type_snapshot = 'reuse')
         +
         (SELECT COUNT(*) FROM runner_material_transactions rmt 
          LEFT JOIN master_materials mm ON (rmt.material_id = mm.id OR rmt.material_name_snapshot = mm.material_name) 

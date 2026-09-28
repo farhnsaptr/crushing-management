@@ -14,6 +14,7 @@ export interface CrushingRequestItem {
   verified_quantity_pcs?: number | null;
   verified_weight_kg?: number | null;
   adjustment_notes?: string | null;
+  waste_quantity_pcs?: number;
   notes?: string | null;
   image_url?: string | null;
   created_at: string;
@@ -55,6 +56,7 @@ export interface ApproveItemAdjustmentPayload {
   verified_quantity_pcs?: number;
   verified_weight_kg?: number;
   adjustment_notes?: string;
+  waste_quantity_pcs?: number;
 }
 
 export interface ApproveCrushingRequestPayload {

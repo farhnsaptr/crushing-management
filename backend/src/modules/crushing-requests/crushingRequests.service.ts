@@ -30,6 +30,7 @@ export interface ApproveItemAdjustmentDto {
   verified_quantity_pcs?: number;
   verified_weight_kg?: number;
   adjustment_notes?: string;
+  waste_quantity_pcs?: number;
 }
 
 export interface ApproveCrushingRequestDto {
@@ -85,6 +86,7 @@ export interface CrushingRequestItemRow extends RowDataPacket {
   verified_quantity_pcs: number | null;
   verified_weight_kg: number | null;
   adjustment_notes: string | null;
+  waste_quantity_pcs: number;
   notes: string | null;
   created_at: string;
   image_url?: string | null;
@@ -530,7 +532,7 @@ export class CrushingRequestsService {
         COALESCE(NULLIF(i.material_name_snapshot, ''), mm.material_name, mp.material, 'Material') AS material_name_snapshot,
         i.berat_part_gr_snapshot,
         i.quantity_pcs, i.weight_kg,
-        i.verified_quantity_pcs, i.verified_weight_kg, i.adjustment_notes,
+        i.verified_quantity_pcs, i.verified_weight_kg, i.adjustment_notes, i.waste_quantity_pcs,
         i.notes, i.created_at,
         mp.image_url,
         mc.factory_id AS part_factory_id
@@ -577,6 +579,7 @@ export class CrushingRequestsService {
       verifiedQty: number;
       verifiedWeight: number;
       adjustmentNotes: string | null;
+      wasteQty: number;
     }> = [];
 
     for (const item of request.items) {
@@ -611,15 +614,19 @@ export class CrushingRequestsService {
         adjNotes = adj?.adjustment_notes?.trim() || null;
       }
 
+      const wasteQty = item.item_type === 'part_ng'
+        ? Math.min(verifiedQty, Math.max(0, Math.floor(Number(adj?.waste_quantity_pcs) || 0)))
+        : 0;
+
       finalVerifiedTotalWeight += verifiedWeight;
       finalVerifiedTotalPcs += verifiedQty;
 
       // Update item in database
       await pool.query(
         `UPDATE crushing_request_items
-         SET verified_quantity_pcs = ?, verified_weight_kg = ?, adjustment_notes = ?
+         SET verified_quantity_pcs = ?, verified_weight_kg = ?, adjustment_notes = ?, waste_quantity_pcs = ?
          WHERE id = ?`,
-        [verifiedQty, verifiedWeight, adjNotes, item.id]
+        [verifiedQty, verifiedWeight, adjNotes, wasteQty, item.id]
       );
 
       verifiedItemsForTransaction.push({
@@ -627,6 +634,7 @@ export class CrushingRequestsService {
         verifiedQty,
         verifiedWeight,
         adjustmentNotes: adjNotes,
+        wasteQty,
       });
     }
 
@@ -650,36 +658,46 @@ export class CrushingRequestsService {
     );
 
     // 3. Automatically generate records in ng_transactions and runner_material_transactions using VERIFIED counts
-    for (const { item, verifiedQty, verifiedWeight, adjustmentNotes } of verifiedItemsForTransaction) {
+    for (const { item, verifiedQty, verifiedWeight, adjustmentNotes, wasteQty } of verifiedItemsForTransaction) {
       if (item.item_type === 'part_ng' && item.master_part_id && verifiedQty > 0) {
-        const transId = randomUUID();
         const noteText = adjustmentNotes
           ? `[Pengiriman ${request.request_number}] ${adjustmentNotes}`
           : item.notes
           ? `[Pengiriman ${request.request_number}] ${item.notes}`
           : `Pengiriman: ${request.request_number}`;
 
-        await pool.query(
-          `INSERT INTO ng_transactions
-           (id, master_part_id, request_id, department_id, factory_id, part_number_snapshot, part_name_snapshot, model_snapshot, berat_part_gr_snapshot, quantity_pcs, shift, transaction_date, input_by, notes)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [
-            transId,
-            item.master_part_id,
-            requestId,
-            request.department_id,
-            request.factory_id || item.part_factory_id || null,
-            item.part_number_snapshot,
-            item.part_name_snapshot,
-            item.model_snapshot,
-            item.berat_part_gr_snapshot,
-            verifiedQty,
-            request.shift,
-            request.request_date,
-            request.sender_id,
-            noteText,
-          ]
-        );
+        // Pecah quantity per keputusan operator: sebagian pcs bisa reuse, sebagian lagi (dari part yang sama) waste
+        // -- misal kiriman non-produksi yang sebagian part-nya terkontaminasi cat/material lain.
+        const buckets: Array<{ qty: number; recycleType: 'reuse' | 'no_reuse' }> = [
+          { qty: verifiedQty - wasteQty, recycleType: 'reuse' },
+          { qty: wasteQty, recycleType: 'no_reuse' },
+        ];
+
+        for (const bucket of buckets) {
+          if (bucket.qty <= 0) continue;
+          await pool.query(
+            `INSERT INTO ng_transactions
+             (id, master_part_id, request_id, department_id, factory_id, part_number_snapshot, part_name_snapshot, model_snapshot, berat_part_gr_snapshot, quantity_pcs, recycle_type_snapshot, shift, transaction_date, input_by, notes)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+              randomUUID(),
+              item.master_part_id,
+              requestId,
+              request.department_id,
+              request.factory_id || item.part_factory_id || null,
+              item.part_number_snapshot,
+              item.part_name_snapshot,
+              item.model_snapshot,
+              item.berat_part_gr_snapshot,
+              bucket.qty,
+              bucket.recycleType,
+              request.shift,
+              request.request_date,
+              request.sender_id,
+              bucket.recycleType === 'no_reuse' ? `${noteText} (Waste - tidak direcycle)` : noteText,
+            ]
+          );
+        }
       } else if (item.item_type === 'runner_ng' && verifiedWeight > 0) {
         const runnerId = randomUUID();
         await pool.query(
