@@ -5,6 +5,7 @@ import { Spinner } from '../../../components/common/Spinner';
 import type { CreateRequestItemPayload } from '../types/crushingRequests.types';
 import type { MasterPart } from '../../master-parts/types/masterParts.types';
 import type { Material } from '../../materials/types/materials.types';
+import type { Factory } from '../../factories/types/factories.types';
 import type { UserProfile } from '../../../context/AuthContext';
 import {
   PackagePlus,
@@ -56,6 +57,9 @@ interface CreateRequestFormProps {
   jenisOptions: string[];
   selectedJenis: string;
   onSelectJenis: (jenis: string) => void;
+  factoryOptions: Factory[];
+  selectedFactoryId: string;
+  onSelectFactory: (factoryId: string) => void;
   availableMaterials?: Material[];
   isLoadingParts: boolean;
   partSearchQuery: string;
@@ -85,6 +89,9 @@ export const CreateRequestForm: React.FC<CreateRequestFormProps> = ({
   jenisOptions,
   selectedJenis,
   onSelectJenis,
+  factoryOptions,
+  selectedFactoryId,
+  onSelectFactory,
   isLoadingParts,
   partSearchQuery,
   onPartSearchQueryChange,
@@ -227,7 +234,7 @@ export const CreateRequestForm: React.FC<CreateRequestFormProps> = ({
               borderRadius: 'var(--radius-lg, 12px)',
               border: '1px solid var(--border-color, #e2e8f0)',
               display: 'grid',
-              gridTemplateColumns: '1.2fr 1fr auto',
+              gridTemplateColumns: '1.2fr 1fr 1fr auto',
               gap: '0.75rem',
               alignItems: 'center',
               boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
@@ -261,6 +268,31 @@ export const CreateRequestForm: React.FC<CreateRequestFormProps> = ({
                 </button>
               )}
             </div>
+
+            {/* Factory Dropdown (opsi dari backend sesuai penugasan user) */}
+            <select
+              value={selectedFactoryId}
+              onChange={(e) => onSelectFactory(e.target.value)}
+              style={{
+                height: '40px',
+                padding: '0 0.75rem',
+                borderRadius: 'var(--radius-md, 8px)',
+                border: '1.5px solid var(--border-color, #cbd5e1)',
+                backgroundColor: 'var(--bg-card, #ffffff)',
+                color: 'var(--text-main, #0f172a)',
+                fontSize: '0.85rem',
+                fontWeight: 700,
+                outline: 'none',
+                cursor: 'pointer',
+              }}
+            >
+              {factoryOptions.length !== 1 && <option value="">-- Semua Pabrik --</option>}
+              {factoryOptions.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.name}
+                </option>
+              ))}
+            </select>
 
             {/* Category Dropdown */}
             <select

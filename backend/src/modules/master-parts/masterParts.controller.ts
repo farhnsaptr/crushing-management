@@ -2,7 +2,7 @@ import { Response } from 'express';
 import { MasterPartsService } from './masterParts.service';
 import { StorageService } from '../../services/storage.service';
 import { sendSuccess, sendError } from '../../utils/response.util';
-import { AuthenticatedRequest } from '../../middlewares/auth.middleware';
+import { AuthenticatedRequest, getLockedFactoryId } from '../../middlewares/auth.middleware';
 
 export class MasterPartsController {
   static async search(req: AuthenticatedRequest, res: Response): Promise<void> {
@@ -13,7 +13,7 @@ export class MasterPartsController {
         return;
       }
 
-      const factoryId = req.user?.role === 'pengirim' ? req.user.factory_id : ((req.query.factory_id as string) || undefined);
+      const factoryId = getLockedFactoryId(req.user) || (req.query.factory_id as string) || undefined;
       const results = await MasterPartsService.searchParts(q.trim(), factoryId || undefined);
       sendSuccess(res, results, 'Search completed successfully');
     } catch (error: any) {
@@ -29,7 +29,7 @@ export class MasterPartsController {
         return;
       }
 
-      const factoryId = req.user?.role === 'pengirim' ? req.user.factory_id : ((req.query.factory_id as string) || undefined);
+      const factoryId = getLockedFactoryId(req.user) || (req.query.factory_id as string) || undefined;
       const results = await MasterPartsService.getModelsForPartNumber(partNumber.trim(), factoryId || undefined);
       sendSuccess(res, results, 'Models retrieved successfully');
     } catch (error: any) {
@@ -45,7 +45,7 @@ export class MasterPartsController {
         return;
       }
 
-      const factoryId = req.user?.role === 'pengirim' ? req.user.factory_id : ((req.query.factory_id as string) || undefined);
+      const factoryId = getLockedFactoryId(req.user) || (req.query.factory_id as string) || undefined;
       const part = await MasterPartsService.getByQrCode(qr.trim(), factoryId || undefined);
       if (!part) {
         sendError(res, 'Part not found for given QR code', 404);
@@ -66,7 +66,7 @@ export class MasterPartsController {
         return;
       }
 
-      const factoryId = req.user?.role === 'pengirim' ? req.user.factory_id : ((req.query.factory_id as string) || undefined);
+      const factoryId = getLockedFactoryId(req.user) || (req.query.factory_id as string) || undefined;
       const results = await MasterPartsService.getPartsByJenis(jenis.trim(), factoryId || undefined);
       sendSuccess(res, results, 'Parts retrieved by jenis successfully');
     } catch (error: any) {
@@ -76,7 +76,7 @@ export class MasterPartsController {
 
   static async getJenisPartList(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
-      const factoryId = req.user?.role === 'pengirim' ? req.user.factory_id : ((req.query.factory_id as string) || undefined);
+      const factoryId = getLockedFactoryId(req.user) || (req.query.factory_id as string) || undefined;
       const results = await MasterPartsService.getJenisPartList(factoryId || undefined);
       sendSuccess(res, results, 'Jenis part list retrieved successfully');
     } catch (error: any) {
@@ -101,7 +101,7 @@ export class MasterPartsController {
       const jenis = (req.query.jenis as string) || '';
       const sortBy = (req.query.sortBy as string) || '';
       const sortOrder = (req.query.sortOrder as string) || 'asc';
-      const factoryId = req.user?.role === 'pengirim' ? req.user.factory_id : ((req.query.factory_id as string) || undefined);
+      const factoryId = getLockedFactoryId(req.user) || (req.query.factory_id as string) || undefined;
 
       const result = await MasterPartsService.listAllParts(page, limit, search, jenis, sortBy, sortOrder, factoryId || undefined);
       sendSuccess(res, result, 'Master parts list retrieved successfully');

@@ -3,9 +3,11 @@ import { useAuth } from '../../../context/AuthContext';
 import { CrushingRequestsService } from '../services/crushingRequests.service';
 import { MasterPartsService } from '../../master-parts/services/masterParts.service';
 import { MaterialsService } from '../../materials/services/materials.service';
+import { FactoriesService } from '../../factories/services/factories.service';
 import type { CrushingRequest, CreateRequestItemPayload } from '../types/crushingRequests.types';
 import type { MasterPart } from '../../master-parts/types/masterParts.types';
 import type { Material } from '../../materials/types/materials.types';
+import type { Factory } from '../../factories/types/factories.types';
 import type { ToastState } from '../../../components/common/Toast';
 import { getAutoShiftAndDate } from '../../../config/shift.config';
 import { extractErrorMessage } from '../../../services/api.client';
@@ -41,6 +43,9 @@ export function useCrushingRequests() {
   const [selectedJenis, setSelectedJenis] = useState<string>('ALL');
   const [isLoadingParts, setIsLoadingParts] = useState<boolean>(false);
   const [partSearchQuery, setPartSearchQuery] = useState<string>('');
+  // Factory yang boleh dilihat user (backend sudah memfilter sesuai penugasan); '' = Semua Pabrik
+  const [factoryOptions, setFactoryOptions] = useState<Factory[]>([]);
+  const [selectedFactoryId, setSelectedFactoryId] = useState<string>('');
 
   // History State
   const [historyRequests, setHistoryRequests] = useState<CrushingRequest[]>([]);
@@ -143,19 +148,28 @@ export function useCrushingRequests() {
     };
   }, [user?.id, isDraftLoaded, shift, requestDate, notes, items]);
 
-  // Fetch Parts locked to sender's assigned factory
+  // Fetch factories visible to this user; auto-select when only one is available
+  useEffect(() => {
+    FactoriesService.getFactories()
+      .then((list) => {
+        setFactoryOptions(list || []);
+        if (list?.length === 1) setSelectedFactoryId(list[0].id);
+      })
+      .catch((err) => console.error('Failed to load factories for sender:', err));
+  }, [user?.id]);
+
+  // Fetch Parts for the selected factory (backend still locks pengirim to assigned factory)
   const fetchParts = useCallback(async () => {
     setIsLoadingParts(true);
     try {
-      const factoryId = (user?.factory_id && user.factory_id !== 'ALL') ? user.factory_id : undefined;
-      const res = await MasterPartsService.getParts(1, 500, '', '', '', 'asc', factoryId);
+      const res = await MasterPartsService.getParts(1, 500, '', '', '', 'asc', selectedFactoryId || undefined);
       setAvailableParts(res.parts || []);
     } catch (err: any) {
       console.error('Failed to load parts for sender:', err);
     } finally {
       setIsLoadingParts(false);
     }
-  }, [user?.factory_id]);
+  }, [selectedFactoryId]);
 
   // Fetch Jenis Part List
   const fetchJenisList = useCallback(async () => {
@@ -486,6 +500,7 @@ export function useCrushingRequests() {
         shift: activeShift,
         request_date: activeDate,
         notes: notes.trim() || undefined,
+        factory_id: selectedFactoryId || undefined,
         items,
       });
 
@@ -601,6 +616,9 @@ export function useCrushingRequests() {
     jenisOptions,
     selectedJenis,
     setSelectedJenis,
+    factoryOptions,
+    selectedFactoryId,
+    setSelectedFactoryId,
     availableMaterials,
     isLoadingParts,
     partSearchQuery,

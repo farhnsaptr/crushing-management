@@ -10,7 +10,7 @@ router.use(verifyToken);
  * @openapi
  * /api/factories:
  *   get:
- *     summary: List all factories
+ *     summary: List factories visible to the user (pengirim terikat 1 factory hanya melihat factory-nya)
  *     tags: [Factories Management]
  *     security:
  *       - bearerAuth: []

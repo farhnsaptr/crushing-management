@@ -1,11 +1,12 @@
 import { Request, Response } from 'express';
 import { FactoriesService } from './factories.service';
 import { sendSuccess, sendError } from '../../utils/response.util';
+import { AuthenticatedRequest, getLockedFactoryId } from '../../middlewares/auth.middleware';
 
 export class FactoriesController {
-  static async list(req: Request, res: Response): Promise<void> {
+  static async list(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
-      const factories = await FactoriesService.listFactories();
+      const factories = await FactoriesService.listFactories(getLockedFactoryId(req.user));
       sendSuccess(res, factories, 'Factories retrieved successfully');
     } catch (error: any) {
       sendError(res, error.message || 'Failed to retrieve factories', 500);

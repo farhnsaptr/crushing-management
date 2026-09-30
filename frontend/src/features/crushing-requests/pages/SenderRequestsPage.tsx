@@ -40,6 +40,9 @@ export const SenderRequestsPage: React.FC = () => {
     jenisOptions,
     selectedJenis,
     setSelectedJenis,
+    factoryOptions,
+    selectedFactoryId,
+    setSelectedFactoryId,
     availableMaterials,
     isLoadingParts,
     partSearchQuery,
@@ -200,6 +203,9 @@ export const SenderRequestsPage: React.FC = () => {
           jenisOptions={jenisOptions}
           selectedJenis={selectedJenis}
           onSelectJenis={setSelectedJenis}
+          factoryOptions={factoryOptions}
+          selectedFactoryId={selectedFactoryId}
+          onSelectFactory={setSelectedFactoryId}
           availableMaterials={availableMaterials}
           isLoadingParts={isLoadingParts}
           partSearchQuery={partSearchQuery}

@@ -693,7 +693,10 @@ export class DashboardService {
       }
     }
 
-    const filterClause = departmentId ? '(r.department_id = ? OR r.sender_id = ?)' : 'r.sender_id = ?';
+    // Draft (is_submitted = FALSE) tidak dihitung/ditampilkan di dashboard pengirim
+    const filterClause = departmentId
+      ? '(r.department_id = ? OR r.sender_id = ?) AND r.is_submitted = TRUE'
+      : 'r.sender_id = ? AND r.is_submitted = TRUE';
     const queryParams = departmentId ? [departmentId, userId, qYear, qMonth] : [userId, qYear, qMonth];
     const recentQueryParams = departmentId ? [departmentId, userId] : [userId];
 
