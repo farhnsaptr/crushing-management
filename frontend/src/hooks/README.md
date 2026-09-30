@@ -4,6 +4,9 @@ Folder ini berisi kumpulan custom React hooks yang bersifat reusable dan dapat d
 
 ## Daftar Hooks
 
+### `useIsNarrow<T>(maxWidth: number): [ref, boolean]`
+Mengembalikan `ref` untuk dipasang ke elemen dan `true` saat lebar **elemen tsb** ≤ `maxWidth` (via `ResizeObserver`). Dipakai untuk layout responsif yang bergantung pada ruang konten sebenarnya (sidebar terbuka/tertutup), bukan lebar layar — misal rincian pengiriman berubah jadi bottom bar + sheet di form pengirim.
+
 ### `useDebounce<T>(value: T, delayMs?: number): T`
 Hook utilitas untuk menunda pembaruan nilai (`value`) selama durasi tertentu (`delayMs`, default `400ms`). Sangat ideal untuk:
 - Mengurangi pemanggilan API berlebih saat user mengetik pada input pencarian (search debounce).

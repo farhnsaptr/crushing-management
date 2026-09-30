@@ -402,3 +402,69 @@ textarea {
   border: 1px solid #cbd5e1 !important;
   color: #0f172a !important;
 }
+/* ===== Form Pengajuan Pengirim (CreateRequestForm) =====
+   Pakai container query (lebar area form), bukan media query (lebar layar),
+   karena sidebar bisa memakan ~300px. Samakan 820px dengan CRF_NARROW_WIDTH di CreateRequestForm.tsx. */
+.crf-container {
+  container: crf / inline-size;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.crf-filter-bar {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr 1fr auto;
+}
+
+.crf-filter-bar select {
+  min-width: 0;
+}
+
+.crf-main-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(380px, 1fr);
+}
+
+.crf-catalog-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+}
+
+@container crf (max-width: 820px) {
+  .crf-hide-mobile {
+    display: none !important;
+  }
+
+  .crf-filter-bar {
+    grid-template-columns: 1fr 1fr;
+    position: sticky;
+    top: 72px; /* tinggi .app-header */
+    z-index: 20;
+  }
+
+  .crf-filter-search {
+    grid-column: 1 / -1;
+  }
+
+  .crf-main-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .crf-catalog-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.6rem !important;
+  }
+
+  /* Tap target minimal untuk jari (tombol stepper aslinya 24px) */
+  .crf-tap {
+    min-width: 36px !important;
+    min-height: 36px !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .crf-filter-bar {
+    top: 64px; /* .app-header lebih pendek di layar kecil */
+  }
+}
