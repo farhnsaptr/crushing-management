@@ -215,6 +215,150 @@ export const CreateRequestForm: React.FC<CreateRequestFormProps> = ({
         </div>
       </div>
 
+      {/* Catalog Filter & Search Row */}
+      <div
+        style={{
+          padding: '0.75rem 1rem',
+          backgroundColor: 'var(--bg-card, #ffffff)',
+          borderRadius: 'var(--radius-lg, 12px)',
+          border: '1px solid var(--border-color, #e2e8f0)',
+          display: 'grid',
+          gridTemplateColumns: '1.2fr 1fr 1fr auto',
+          gap: '0.75rem',
+          alignItems: 'center',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
+        }}
+      >
+        {/* Search Input */}
+        <div style={{ position: 'relative' }}>
+          <Input
+            placeholder="Cari nama part, part number, model..."
+            value={partSearchQuery}
+            onChange={(e) => onPartSearchQueryChange(e.target.value)}
+            leftIcon={<Search size={16} />}
+          />
+          {partSearchQuery && (
+            <button
+              type="button"
+              onClick={() => onPartSearchQueryChange('')}
+              style={{
+                position: 'absolute',
+                right: '10px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                background: 'transparent',
+                border: 'none',
+                color: '#94a3b8',
+                cursor: 'pointer',
+                padding: '2px',
+              }}
+            >
+              <X size={16} />
+            </button>
+          )}
+        </div>
+
+        {/* Factory Dropdown (opsi dari backend sesuai penugasan user) */}
+        <select
+          value={selectedFactoryId}
+          onChange={(e) => onSelectFactory(e.target.value)}
+          style={{
+            height: '40px',
+            padding: '0 0.75rem',
+            borderRadius: 'var(--radius-md, 8px)',
+            border: '1.5px solid var(--border-color, #cbd5e1)',
+            backgroundColor: 'var(--bg-card, #ffffff)',
+            color: 'var(--text-main, #0f172a)',
+            fontSize: '0.85rem',
+            fontWeight: 700,
+            outline: 'none',
+            cursor: 'pointer',
+          }}
+        >
+          {factoryOptions.length !== 1 && <option value="">-- Semua Pabrik --</option>}
+          {factoryOptions.map((f) => (
+            <option key={f.id} value={f.id}>
+              {f.name}
+            </option>
+          ))}
+        </select>
+
+        {/* Category Dropdown */}
+        <select
+          value={selectedJenis}
+          onChange={(e) => onSelectJenis(e.target.value)}
+          style={{
+            height: '40px',
+            padding: '0 0.75rem',
+            borderRadius: 'var(--radius-md, 8px)',
+            border: '1.5px solid var(--border-color, #cbd5e1)',
+            backgroundColor: 'var(--bg-card, #ffffff)',
+            color: 'var(--text-main, #0f172a)',
+            fontSize: '0.85rem',
+            fontWeight: 700,
+            outline: 'none',
+            cursor: 'pointer',
+          }}
+        >
+          <option value="ALL">-- Semua Jenis ({filteredParts.length}) --</option>
+          {jenisOptions.map((j) => (
+            <option key={j} value={j}>
+              {j}
+            </option>
+          ))}
+        </select>
+
+        {/* View Mode Switcher (Grid vs List) */}
+        <div
+          style={{
+            display: 'flex',
+            backgroundColor: '#f1f5f9',
+            padding: '3px',
+            borderRadius: '8px',
+            border: '1px solid #cbd5e1',
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => setCatalogViewMode('grid')}
+            style={{
+              padding: '6px',
+              borderRadius: '6px',
+              border: 'none',
+              backgroundColor: catalogViewMode === 'grid' ? '#ffffff' : 'transparent',
+              color: catalogViewMode === 'grid' ? '#0f172a' : '#64748b',
+              boxShadow: catalogViewMode === 'grid' ? '0 1px 2px rgba(0,0,0,0.1)' : 'none',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+            title="Tampilan Grid Kartu"
+          >
+            <LayoutGrid size={16} />
+          </button>
+          <button
+            type="button"
+            onClick={() => setCatalogViewMode('list')}
+            style={{
+              padding: '6px',
+              borderRadius: '6px',
+              border: 'none',
+              backgroundColor: catalogViewMode === 'list' ? '#ffffff' : 'transparent',
+              color: catalogViewMode === 'list' ? '#0f172a' : '#64748b',
+              boxShadow: catalogViewMode === 'list' ? '0 1px 2px rgba(0,0,0,0.1)' : 'none',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+            title="Tampilan List Baris"
+          >
+            <List size={16} />
+          </button>
+        </div>
+      </div>
+
       {/* Main 2-Column Responsive Layout */}
       <div
         style={{
@@ -226,150 +370,6 @@ export const CreateRequestForm: React.FC<CreateRequestFormProps> = ({
       >
         {/* ================= COLUMN 1: KATALOG MASTER PART (LEFT) ================= */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-          {/* Catalog Filter & Search Row */}
-          <div
-            style={{
-              padding: '0.75rem 1rem',
-              backgroundColor: 'var(--bg-card, #ffffff)',
-              borderRadius: 'var(--radius-lg, 12px)',
-              border: '1px solid var(--border-color, #e2e8f0)',
-              display: 'grid',
-              gridTemplateColumns: '1.2fr 1fr 1fr auto',
-              gap: '0.75rem',
-              alignItems: 'center',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
-            }}
-          >
-            {/* Search Input */}
-            <div style={{ position: 'relative' }}>
-              <Input
-                placeholder="Cari nama part, part number, model..."
-                value={partSearchQuery}
-                onChange={(e) => onPartSearchQueryChange(e.target.value)}
-                leftIcon={<Search size={16} />}
-              />
-              {partSearchQuery && (
-                <button
-                  type="button"
-                  onClick={() => onPartSearchQueryChange('')}
-                  style={{
-                    position: 'absolute',
-                    right: '10px',
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    background: 'transparent',
-                    border: 'none',
-                    color: '#94a3b8',
-                    cursor: 'pointer',
-                    padding: '2px',
-                  }}
-                >
-                  <X size={16} />
-                </button>
-              )}
-            </div>
-
-            {/* Factory Dropdown (opsi dari backend sesuai penugasan user) */}
-            <select
-              value={selectedFactoryId}
-              onChange={(e) => onSelectFactory(e.target.value)}
-              style={{
-                height: '40px',
-                padding: '0 0.75rem',
-                borderRadius: 'var(--radius-md, 8px)',
-                border: '1.5px solid var(--border-color, #cbd5e1)',
-                backgroundColor: 'var(--bg-card, #ffffff)',
-                color: 'var(--text-main, #0f172a)',
-                fontSize: '0.85rem',
-                fontWeight: 700,
-                outline: 'none',
-                cursor: 'pointer',
-              }}
-            >
-              {factoryOptions.length !== 1 && <option value="">-- Semua Pabrik --</option>}
-              {factoryOptions.map((f) => (
-                <option key={f.id} value={f.id}>
-                  {f.name}
-                </option>
-              ))}
-            </select>
-
-            {/* Category Dropdown */}
-            <select
-              value={selectedJenis}
-              onChange={(e) => onSelectJenis(e.target.value)}
-              style={{
-                height: '40px',
-                padding: '0 0.75rem',
-                borderRadius: 'var(--radius-md, 8px)',
-                border: '1.5px solid var(--border-color, #cbd5e1)',
-                backgroundColor: 'var(--bg-card, #ffffff)',
-                color: 'var(--text-main, #0f172a)',
-                fontSize: '0.85rem',
-                fontWeight: 700,
-                outline: 'none',
-                cursor: 'pointer',
-              }}
-            >
-              <option value="ALL">-- Semua Jenis ({filteredParts.length}) --</option>
-              {jenisOptions.map((j) => (
-                <option key={j} value={j}>
-                  {j}
-                </option>
-              ))}
-            </select>
-
-            {/* View Mode Switcher (Grid vs List) */}
-            <div
-              style={{
-                display: 'flex',
-                backgroundColor: '#f1f5f9',
-                padding: '3px',
-                borderRadius: '8px',
-                border: '1px solid #cbd5e1',
-              }}
-            >
-              <button
-                type="button"
-                onClick={() => setCatalogViewMode('grid')}
-                style={{
-                  padding: '6px',
-                  borderRadius: '6px',
-                  border: 'none',
-                  backgroundColor: catalogViewMode === 'grid' ? '#ffffff' : 'transparent',
-                  color: catalogViewMode === 'grid' ? '#0f172a' : '#64748b',
-                  boxShadow: catalogViewMode === 'grid' ? '0 1px 2px rgba(0,0,0,0.1)' : 'none',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-                title="Tampilan Grid Kartu"
-              >
-                <LayoutGrid size={16} />
-              </button>
-              <button
-                type="button"
-                onClick={() => setCatalogViewMode('list')}
-                style={{
-                  padding: '6px',
-                  borderRadius: '6px',
-                  border: 'none',
-                  backgroundColor: catalogViewMode === 'list' ? '#ffffff' : 'transparent',
-                  color: catalogViewMode === 'list' ? '#0f172a' : '#64748b',
-                  boxShadow: catalogViewMode === 'list' ? '0 1px 2px rgba(0,0,0,0.1)' : 'none',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-                title="Tampilan List Baris"
-              >
-                <List size={16} />
-              </button>
-            </div>
-          </div>
-
           {/* Catalog Content */}
           <div
             style={{
