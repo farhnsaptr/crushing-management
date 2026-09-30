@@ -13,13 +13,12 @@ export class DashboardService {
       `SELECT 
         COALESCE(SUM(t.weight_kg), 0) AS total_input_kg,
         COALESCE(SUM(t.quantity_pcs), 0) AS total_input_pcs,
-        COALESCE(SUM(CASE WHEN mm.recycle_type = 'reuse' OR (mm.recycle_type IS NULL AND LOWER(mp.material) NOT LIKE '%no reuse%') THEN t.weight_kg ELSE 0 END), 0) AS total_output_kg,
-        COALESCE(SUM(CASE WHEN mm.recycle_type = 'no_reuse' OR LOWER(mp.material) LIKE '%no reuse%' THEN t.weight_kg ELSE 0 END), 0) AS total_waste_kg
+        COALESCE(SUM(CASE WHEN t.recycle_type_snapshot = 'reuse' THEN t.weight_kg ELSE 0 END), 0) AS total_output_kg,
+        COALESCE(SUM(CASE WHEN t.recycle_type_snapshot = 'no_reuse' THEN t.weight_kg ELSE 0 END), 0) AS total_waste_kg
        FROM ng_transactions t
        JOIN master_parts mp ON t.master_part_id = mp.id
        JOIN machines mc ON mp.machine_id = mc.id
        JOIN factories fc ON mc.factory_id = fc.id
-       LEFT JOIN master_materials mm ON mp.material_id = mm.id
        WHERE YEAR(t.transaction_date) = ? AND MONTH(t.transaction_date) = ? AND fc.location = ?`,
       [qYear, qMonth, location]
     );
@@ -106,13 +105,12 @@ export class DashboardService {
         t.shift,
         SUM(t.weight_kg) AS total_kg,
         SUM(t.quantity_pcs) AS total_pcs,
-        SUM(CASE WHEN mm.recycle_type = 'reuse' OR (mm.recycle_type IS NULL AND LOWER(mp.material) NOT LIKE '%no reuse%') THEN t.weight_kg ELSE 0 END) AS reuse_kg,
-        SUM(CASE WHEN mm.recycle_type = 'no_reuse' OR LOWER(mp.material) LIKE '%no reuse%' THEN t.weight_kg ELSE 0 END) AS no_reuse_waste_kg
+        SUM(CASE WHEN t.recycle_type_snapshot = 'reuse' THEN t.weight_kg ELSE 0 END) AS reuse_kg,
+        SUM(CASE WHEN t.recycle_type_snapshot = 'no_reuse' THEN t.weight_kg ELSE 0 END) AS no_reuse_waste_kg
        FROM ng_transactions t
        JOIN master_parts mp ON t.master_part_id = mp.id
        JOIN machines mc ON mp.machine_id = mc.id
        JOIN factories fc ON mc.factory_id = fc.id
-       LEFT JOIN master_materials mm ON mp.material_id = mm.id
        WHERE YEAR(t.transaction_date) = ? AND MONTH(t.transaction_date) = ? AND fc.location = ?
        GROUP BY DAY(t.transaction_date), t.shift
        ORDER BY day_num ASC`,
@@ -422,18 +420,18 @@ export class DashboardService {
         COALESCE(mp.allowance_kg, ROUND((COALESCE(mp.std_qty_ng, (mp.shikake * 2), 0) * t.berat_part_gr_snapshot) / 1000, 2), 0) AS allowance,
         t.weight_kg AS input_kg,
         CASE
-          WHEN mm.recycle_type = 'no_reuse' OR LOWER(mp.material) LIKE '%no reuse%' THEN 0.000
-          WHEN iv.status = 'validated' AND ivi.id IS NOT NULL AND ivi.system_total_weight_kg > 0 
+          WHEN t.recycle_type_snapshot = 'no_reuse' THEN 0.000
+          WHEN iv.status = 'validated' AND ivi.id IS NOT NULL AND ivi.system_total_weight_kg > 0
             THEN ROUND(t.weight_kg * (ivi.actual_output_kg / ivi.system_total_weight_kg), 2)
-          WHEN iv.status = 'validated' AND ivi.id IS NOT NULL AND ivi.system_total_weight_kg = 0 
+          WHEN iv.status = 'validated' AND ivi.id IS NOT NULL AND ivi.system_total_weight_kg = 0
             THEN 0.000
           ELSE t.weight_kg
         END AS output_kg,
         CASE
-          WHEN mm.recycle_type = 'no_reuse' OR LOWER(mp.material) LIKE '%no reuse%' THEN t.weight_kg
-          WHEN iv.status = 'validated' AND ivi.id IS NOT NULL AND ivi.system_total_weight_kg > 0 
+          WHEN t.recycle_type_snapshot = 'no_reuse' THEN t.weight_kg
+          WHEN iv.status = 'validated' AND ivi.id IS NOT NULL AND ivi.system_total_weight_kg > 0
             THEN ROUND(t.weight_kg * (ivi.crushing_waste_kg / ivi.system_total_weight_kg), 2)
-          WHEN iv.status = 'validated' AND ivi.id IS NOT NULL AND ivi.system_total_weight_kg = 0 
+          WHEN iv.status = 'validated' AND ivi.id IS NOT NULL AND ivi.system_total_weight_kg = 0
             THEN 0.000
           ELSE 0.000
         END AS waste_kg
@@ -695,7 +693,10 @@ export class DashboardService {
       }
     }
 
-    const filterClause = departmentId ? '(r.department_id = ? OR r.sender_id = ?)' : 'r.sender_id = ?';
+    // Draft (is_submitted = FALSE) tidak dihitung/ditampilkan di dashboard pengirim
+    const filterClause = departmentId
+      ? '(r.department_id = ? OR r.sender_id = ?) AND r.is_submitted = TRUE'
+      : 'r.sender_id = ? AND r.is_submitted = TRUE';
     const queryParams = departmentId ? [departmentId, userId, qYear, qMonth] : [userId, qYear, qMonth];
     const recentQueryParams = departmentId ? [departmentId, userId] : [userId];
 

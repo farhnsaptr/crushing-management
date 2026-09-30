@@ -20,6 +20,12 @@ export interface AuthenticatedRequest extends Request {
   user?: JwtPayloadUser;
 }
 
+export function getLockedFactoryId(user?: JwtPayloadUser): string | undefined {
+  return user?.role === 'pengirim' && user.factory_id && user.factory_id !== 'ALL'
+    ? user.factory_id
+    : undefined;
+}
+
 export function verifyToken(
   req: AuthenticatedRequest,
   res: Response,

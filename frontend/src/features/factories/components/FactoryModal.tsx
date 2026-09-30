@@ -4,6 +4,7 @@ import { Input } from '../../../components/common/Input';
 import { Button } from '../../../components/common/Button';
 import type { Factory, CreateFactoryPayload, UpdateFactoryPayload } from '../types/factories.types';
 import { Building2, Tag, MapPin } from 'lucide-react';
+import { extractErrorMessage } from '../../../services/api.client';
 
 interface FactoryModalProps {
   isOpen: boolean;
@@ -67,7 +68,7 @@ export const FactoryModal: React.FC<FactoryModalProps> = ({
         });
       }
     } catch (err: any) {
-      setError(err.message || 'Gagal menyimpan data pabrik.');
+      setError(extractErrorMessage(err, 'Gagal menyimpan data pabrik.'));
     } finally {
       setIsSubmitting(false);
     }

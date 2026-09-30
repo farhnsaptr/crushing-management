@@ -6,6 +6,7 @@ import type { User, UserRole, CreateUserPayload, UpdateUserPayload } from '../ty
 import type { Factory } from '../../factories/types/factories.types';
 import type { Department } from '../../departments/types/departments.types';
 import { User as UserIcon, Lock, UserCheck, Shield, Building2, Network } from 'lucide-react';
+import { extractErrorMessage } from '../../../services/api.client';
 
 interface UserModalProps {
   isOpen: boolean;
@@ -42,14 +43,14 @@ export const UserModal: React.FC<UserModalProps> = ({
       setUsername(editingUser.username);
       setFullName(editingUser.full_name);
       setRole(editingUser.role);
-      setFactoryId(editingUser.factory_id || '');
+      setFactoryId(editingUser.factory_id || (editingUser.role === 'pengirim' ? 'ALL' : ''));
       setDepartmentId(editingUser.department_id || '');
       setPassword('');
     } else {
       setUsername('');
       setFullName('');
       setRole('pengirim');
-      setFactoryId(factories.length > 0 ? factories[0].id : '');
+      setFactoryId('ALL');
       setDepartmentId(departments.length > 0 ? departments[0].id : '');
       setPassword('');
     }
@@ -60,10 +61,12 @@ export const UserModal: React.FC<UserModalProps> = ({
     e.preventDefault();
     setError(null);
 
-    if (role === 'pengirim' && (!factoryId || !departmentId)) {
-      setError('Role Pengirim wajib memilih Factory dan Departemen penugasan.');
+    if (role === 'pengirim' && !departmentId) {
+      setError('Role Pengirim wajib memilih Departemen penugasan.');
       return;
     }
+
+    const normalizedFactoryId = (factoryId === 'ALL' || !factoryId) ? null : factoryId;
 
     if (isEditMode) {
       if (!fullName.trim()) {
@@ -76,12 +79,12 @@ export const UserModal: React.FC<UserModalProps> = ({
         await onUpdateSubmit(editingUser.id, {
           full_name: fullName,
           role,
-          factory_id: role === 'pengirim' ? factoryId : factoryId || null,
+          factory_id: normalizedFactoryId,
           department_id: role === 'pengirim' ? departmentId : departmentId || null,
           password: password.trim() ? password : undefined,
         });
       } catch (err: any) {
-        setError(err.message || 'Gagal memperbarui data user.');
+        setError(extractErrorMessage(err, 'Gagal memperbarui data user.'));
       } finally {
         setIsSubmitting(false);
       }
@@ -98,11 +101,11 @@ export const UserModal: React.FC<UserModalProps> = ({
           password,
           full_name: fullName,
           role,
-          factory_id: factoryId || null,
+          factory_id: normalizedFactoryId,
           department_id: departmentId || null,
         });
       } catch (err: any) {
-        setError(err.message || 'Gagal menyimpan data user.');
+        setError(extractErrorMessage(err, 'Gagal menyimpan data user.'));
       } finally {
         setIsSubmitting(false);
       }
@@ -228,7 +231,6 @@ export const UserModal: React.FC<UserModalProps> = ({
             <select
               value={factoryId}
               onChange={(e) => setFactoryId(e.target.value)}
-              required={role === 'pengirim'}
               style={{
                 width: '100%',
                 paddingTop: '0.625rem',
@@ -243,7 +245,7 @@ export const UserModal: React.FC<UserModalProps> = ({
                 outline: 'none',
               }}
             >
-              <option value="">-- Pilih Factory --</option>
+              <option value="ALL">ALL (Semua Factory)</option>
               {factories.map((f) => (
                 <option key={f.id} value={f.id}>
                   {f.name} ({f.location || 'Cibitung'})
@@ -251,6 +253,11 @@ export const UserModal: React.FC<UserModalProps> = ({
               ))}
             </select>
           </div>
+          {factoryId === 'ALL' && (
+            <span style={{ fontSize: '0.75rem', color: '#16a34a', fontWeight: 500 }}>
+              ✓ Pengguna dengan opsi <strong>ALL</strong> dapat mengakses part dari seluruh pabrik.
+            </span>
+          )}
         </div>
 
         {/* Department Selector */}

@@ -6,6 +6,7 @@ import type {
   PartSummaryItem,
   PlantLocation,
 } from '../types/ngInput.types';
+import { extractErrorMessage } from '../../../services/api.client';
 
 export const MONTH_NAMES = [
   { value: 1, label: 'Januari' },
@@ -52,7 +53,7 @@ export function useNgDetail() {
       setExpandedMaterials({});
     } catch (err: any) {
       console.error('Failed to fetch material summary:', err);
-      setErrorMessage(err.message || 'Gagal memuat data ringkasan material');
+      setErrorMessage(extractErrorMessage(err, 'Gagal memuat data ringkasan material'));
     } finally {
       setIsLoadingSummary(false);
     }

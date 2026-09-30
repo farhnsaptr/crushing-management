@@ -26,6 +26,7 @@ interface ItemAdjustmentState {
   verifiedQty: number;
   verifiedWeight: number;
   adjustmentNotes: string;
+  wastePcs: number; // dari verifiedQty, berapa pcs part yang sama ditandai TIDAK bisa direcycle (waste)
 }
 
 interface RequestDetailModalProps {
@@ -54,7 +55,7 @@ export const RequestDetailModal: React.FC<RequestDetailModalProps> = ({
   const [previewImage, setPreviewImage] = useState<{
     url: string;
     title: string;
-    partNumber?: string;
+    materialName?: string;
     model?: string;
     weightKg?: number;
     qtyPcs?: number;
@@ -71,6 +72,7 @@ export const RequestDetailModal: React.FC<RequestDetailModalProps> = ({
           verifiedQty: item.verified_quantity_pcs !== null && item.verified_quantity_pcs !== undefined ? item.verified_quantity_pcs : item.quantity_pcs,
           verifiedWeight: item.verified_weight_kg !== null && item.verified_weight_kg !== undefined ? Number(item.verified_weight_kg) : Number(item.weight_kg || 0),
           adjustmentNotes: item.adjustment_notes || '',
+          wastePcs: item.waste_quantity_pcs || 0,
         };
       }
       setItemAdjustments(initial);
@@ -79,9 +81,11 @@ export const RequestDetailModal: React.FC<RequestDetailModalProps> = ({
   }, [request]);
 
   // Handlers for adjusting physical item quantities & weights
+  const emptyAdjustment: ItemAdjustmentState = { verifiedQty: 0, verifiedWeight: 0, adjustmentNotes: '', wastePcs: 0 };
+
   const handleStepQty = (itemId: string, beratGr: number, delta: number) => {
     setItemAdjustments((prev) => {
-      const current = prev[itemId] || { verifiedQty: 0, verifiedWeight: 0, adjustmentNotes: '' };
+      const current = prev[itemId] || emptyAdjustment;
       const nextQty = Math.max(0, current.verifiedQty + delta);
       const nextWeight = beratGr > 0 ? Number(((nextQty * beratGr) / 1000).toFixed(2)) : current.verifiedWeight;
       return {
@@ -90,6 +94,7 @@ export const RequestDetailModal: React.FC<RequestDetailModalProps> = ({
           ...current,
           verifiedQty: nextQty,
           verifiedWeight: nextWeight,
+          wastePcs: Math.min(current.wastePcs, nextQty),
         },
       };
     });
@@ -101,9 +106,10 @@ export const RequestDetailModal: React.FC<RequestDetailModalProps> = ({
     setItemAdjustments((prev) => ({
       ...prev,
       [itemId]: {
-        ...(prev[itemId] || { verifiedQty: 0, verifiedWeight: 0, adjustmentNotes: '' }),
+        ...(prev[itemId] || emptyAdjustment),
         verifiedQty: nextQty,
         verifiedWeight: nextWeight,
+        wastePcs: Math.min((prev[itemId] || emptyAdjustment).wastePcs, nextQty),
       },
     }));
   };
@@ -113,7 +119,7 @@ export const RequestDetailModal: React.FC<RequestDetailModalProps> = ({
     setItemAdjustments((prev) => ({
       ...prev,
       [itemId]: {
-        ...(prev[itemId] || { verifiedQty: 0, verifiedWeight: 0, adjustmentNotes: '' }),
+        ...(prev[itemId] || emptyAdjustment),
         verifiedWeight: nextWeight,
       },
     }));
@@ -123,10 +129,21 @@ export const RequestDetailModal: React.FC<RequestDetailModalProps> = ({
     setItemAdjustments((prev) => ({
       ...prev,
       [itemId]: {
-        ...(prev[itemId] || { verifiedQty: 0, verifiedWeight: 0, adjustmentNotes: '' }),
+        ...(prev[itemId] || emptyAdjustment),
         adjustmentNotes: notesVal,
       },
     }));
+  };
+
+  const handleSetWastePcs = (itemId: string, val: number) => {
+    setItemAdjustments((prev) => {
+      const current = prev[itemId] || emptyAdjustment;
+      const nextWaste = Math.min(current.verifiedQty, Math.max(0, isNaN(val) ? 0 : Math.floor(val)));
+      return {
+        ...prev,
+        [itemId]: { ...current, wastePcs: nextWaste },
+      };
+    });
   };
 
   // Live calculation of verified totals
@@ -168,6 +185,7 @@ export const RequestDetailModal: React.FC<RequestDetailModalProps> = ({
         verified_quantity_pcs: adj ? adj.verifiedQty : item.quantity_pcs,
         verified_weight_kg: adj ? adj.verifiedWeight : Number(item.weight_kg || 0),
         adjustment_notes: adj?.adjustmentNotes?.trim() || undefined,
+        waste_quantity_pcs: adj?.wastePcs || 0,
       };
     });
 
@@ -208,7 +226,7 @@ export const RequestDetailModal: React.FC<RequestDetailModalProps> = ({
     setPreviewImage({
       url: item.image_url,
       title: item.part_name_snapshot || item.material_name_snapshot || 'Foto Part',
-      partNumber: item.part_number_snapshot || undefined,
+      materialName: item.material_name_snapshot || undefined,
       model: item.model_snapshot || undefined,
       weightKg: adj ? adj.verifiedWeight : Number(item.weight_kg || 0),
       qtyPcs: adj ? adj.verifiedQty : item.quantity_pcs,
@@ -450,6 +468,7 @@ export const RequestDetailModal: React.FC<RequestDetailModalProps> = ({
                     verifiedQty: item.verified_quantity_pcs ?? item.quantity_pcs,
                     verifiedWeight: item.verified_weight_kg ?? Number(item.weight_kg || 0),
                     adjustmentNotes: item.adjustment_notes || '',
+                    wastePcs: item.waste_quantity_pcs || 0,
                   };
                   const beratGr = Number(item.berat_part_gr_snapshot) || 0;
                   const isPart = item.item_type === 'part_ng';
@@ -557,11 +576,22 @@ export const RequestDetailModal: React.FC<RequestDetailModalProps> = ({
                           <h5 style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--text-main, #0f172a)', margin: 0, lineHeight: 1.35 }}>
                             {item.part_name_snapshot || item.material_name_snapshot || 'Material'}
                           </h5>
-                          {item.part_number_snapshot && (
+                          {item.material_name_snapshot && item.material_name_snapshot !== item.part_name_snapshot && (
                             <div style={{ marginTop: '0.25rem' }}>
-                              <code style={{ backgroundColor: '#f1f5f9', border: '1px solid #cbd5e1', padding: '0.15rem 0.4rem', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 700 }}>
-                                {item.part_number_snapshot}
-                              </code>
+                              <span
+                                style={{
+                                  backgroundColor: '#f1f5f9',
+                                  border: '1px solid #cbd5e1',
+                                  padding: '0.15rem 0.45rem',
+                                  borderRadius: '4px',
+                                  fontSize: '0.75rem',
+                                  fontWeight: 700,
+                                  color: 'var(--text-main, #0f172a)',
+                                  display: 'inline-block',
+                                }}
+                              >
+                                {item.material_name_snapshot}
+                              </span>
                             </div>
                           )}
                         </div>
@@ -683,6 +713,77 @@ export const RequestDetailModal: React.FC<RequestDetailModalProps> = ({
                               />
                             )}
 
+                            {/* Split Reuse vs Waste per pcs (part yang sama bisa sebagian reuse, sebagian waste -- mis. kiriman non-produksi terkontaminasi) */}
+                            {isPart && (
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', marginTop: '0.25rem' }}>
+                                <span style={{ fontSize: '0.725rem', fontWeight: 700, color: '#dc2626' }}>
+                                  Jadi Waste (pcs):
+                                </span>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleSetWastePcs(item.id, adj.wastePcs - 1)}
+                                    disabled={adj.wastePcs <= 0}
+                                    style={{
+                                      width: '26px',
+                                      height: '26px',
+                                      borderRadius: '6px',
+                                      border: '1px solid #cbd5e1',
+                                      backgroundColor: '#ffffff',
+                                      color: '#0f172a',
+                                      cursor: adj.wastePcs <= 0 ? 'not-allowed' : 'pointer',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                    }}
+                                  >
+                                    <Minus size={12} />
+                                  </button>
+                                  <input
+                                    type="number"
+                                    min={0}
+                                    max={adj.verifiedQty}
+                                    value={adj.wastePcs}
+                                    onChange={(e) => handleSetWastePcs(item.id, parseInt(e.target.value, 10))}
+                                    style={{
+                                      width: '48px',
+                                      height: '28px',
+                                      textAlign: 'center',
+                                      fontWeight: 800,
+                                      fontSize: '0.85rem',
+                                      borderRadius: '6px',
+                                      border: `1.5px solid ${adj.wastePcs > 0 ? '#dc2626' : '#cbd5e1'}`,
+                                      outline: 'none',
+                                    }}
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => handleSetWastePcs(item.id, adj.wastePcs + 1)}
+                                    disabled={adj.wastePcs >= adj.verifiedQty}
+                                    style={{
+                                      width: '26px',
+                                      height: '26px',
+                                      borderRadius: '6px',
+                                      border: '1px solid #cbd5e1',
+                                      backgroundColor: '#ffffff',
+                                      color: '#0f172a',
+                                      cursor: adj.wastePcs >= adj.verifiedQty ? 'not-allowed' : 'pointer',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                    }}
+                                  >
+                                    <Plus size={12} />
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                            {isPart && adj.wastePcs > 0 && (
+                              <div style={{ fontSize: '0.7rem', color: '#dc2626', fontWeight: 700 }}>
+                                {adj.wastePcs} pcs waste, {adj.verifiedQty - adj.wastePcs} pcs reuse
+                              </div>
+                            )}
+
                             {/* Discrepancy Alert & Note Field */}
                             {isModified && (
                               <div style={{ marginTop: '0.25rem', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
@@ -734,6 +835,11 @@ export const RequestDetailModal: React.FC<RequestDetailModalProps> = ({
                                 Catatan: {item.adjustment_notes}
                               </div>
                             )}
+                            {!!item.waste_quantity_pcs && (
+                              <div style={{ fontSize: '0.725rem', color: '#dc2626', fontWeight: 800, marginTop: '0.25rem' }}>
+                                ⚠ {item.waste_quantity_pcs} pcs ditandai Waste (Tidak Direcycle)
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
@@ -764,6 +870,7 @@ export const RequestDetailModal: React.FC<RequestDetailModalProps> = ({
                         verifiedQty: item.verified_quantity_pcs ?? item.quantity_pcs,
                         verifiedWeight: item.verified_weight_kg ?? Number(item.weight_kg || 0),
                         adjustmentNotes: item.adjustment_notes || '',
+                        wastePcs: item.waste_quantity_pcs || 0,
                       };
                       const beratGr = Number(item.berat_part_gr_snapshot) || 0;
                       const isPart = item.item_type === 'part_ng';
@@ -791,7 +898,11 @@ export const RequestDetailModal: React.FC<RequestDetailModalProps> = ({
                               {item.part_name_snapshot || item.material_name_snapshot}
                             </div>
                             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted, #64748b)' }}>
-                              {item.part_number_snapshot && <code>{item.part_number_snapshot}</code>}
+                              {item.material_name_snapshot && item.material_name_snapshot !== item.part_name_snapshot && (
+                                <span style={{ fontWeight: 700, color: 'var(--text-main, #0f172a)' }}>
+                                  {item.material_name_snapshot}
+                                </span>
+                              )}
                               {item.model_snapshot && <span> ({item.model_snapshot})</span>}
                             </div>
                             {item.notes && <div style={{ fontSize: '0.725rem', color: '#64748b', fontStyle: 'italic' }}>{item.notes}</div>}
@@ -839,6 +950,43 @@ export const RequestDetailModal: React.FC<RequestDetailModalProps> = ({
                                     style={{ width: '80px', height: '28px', textAlign: 'center', fontWeight: 800 }}
                                   />
                                 )}
+                                {isPart && (
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                    <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#dc2626' }}>Waste:</span>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleSetWastePcs(item.id, adj.wastePcs - 1)}
+                                      disabled={adj.wastePcs <= 0}
+                                      style={{ width: '22px', height: '22px', borderRadius: '4px', border: '1px solid #cbd5e1', cursor: adj.wastePcs <= 0 ? 'not-allowed' : 'pointer' }}
+                                    >
+                                      -
+                                    </button>
+                                    <input
+                                      type="number"
+                                      min={0}
+                                      max={adj.verifiedQty}
+                                      value={adj.wastePcs}
+                                      onChange={(e) => handleSetWastePcs(item.id, parseInt(e.target.value, 10))}
+                                      style={{
+                                        width: '38px',
+                                        height: '26px',
+                                        textAlign: 'center',
+                                        fontWeight: 800,
+                                        fontSize: '0.75rem',
+                                        borderRadius: '4px',
+                                        border: `1px solid ${adj.wastePcs > 0 ? '#dc2626' : '#cbd5e1'}`,
+                                      }}
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() => handleSetWastePcs(item.id, adj.wastePcs + 1)}
+                                      disabled={adj.wastePcs >= adj.verifiedQty}
+                                      style={{ width: '22px', height: '22px', borderRadius: '4px', border: '1px solid #cbd5e1', cursor: adj.wastePcs >= adj.verifiedQty ? 'not-allowed' : 'pointer' }}
+                                    >
+                                      +
+                                    </button>
+                                  </div>
+                                )}
                                 {adj.verifiedQty !== item.quantity_pcs && (
                                   <input
                                     type="text"
@@ -856,6 +1004,9 @@ export const RequestDetailModal: React.FC<RequestDetailModalProps> = ({
                                 </strong>
                                 {item.adjustment_notes && (
                                   <div style={{ fontSize: '0.725rem', color: '#c2410c' }}>{item.adjustment_notes}</div>
+                                )}
+                                {!!item.waste_quantity_pcs && (
+                                  <div style={{ fontSize: '0.7rem', color: '#dc2626', fontWeight: 800 }}>⚠ {item.waste_quantity_pcs} pcs Waste</div>
                                 )}
                               </div>
                             )}
@@ -950,8 +1101,8 @@ export const RequestDetailModal: React.FC<RequestDetailModalProps> = ({
                 {previewImage.title}
               </h3>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginTop: '0.25rem', fontSize: '0.85rem', color: '#cbd5e1' }}>
-                {previewImage.partNumber && (
-                  <span>Part No: <code style={{ color: '#38bdf8', fontWeight: 700 }}>{previewImage.partNumber}</code></span>
+                {previewImage.materialName && (
+                  <span>Material: <strong style={{ color: '#38bdf8' }}>{previewImage.materialName}</strong></span>
                 )}
                 {previewImage.model && <span>• Model: <strong style={{ color: '#facc15' }}>{previewImage.model}</strong></span>}
                 {previewImage.qtyPcs ? <span>• Qty: <strong>{previewImage.qtyPcs} pcs</strong></span> : null}

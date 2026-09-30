@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { DashboardService } from '../services/dashboard.service';
 import { VerificationService } from '../../verification/services/verification.service';
 import { useAuth } from '../../../context/AuthContext';
+import { extractErrorMessage } from '../../../services/api.client';
 import type { VerificationDashboardStatusResponse } from '../../verification/types/verification.types';
 import type {
   DashboardSummaryStats,
@@ -78,7 +79,7 @@ export function useDashboard() {
       }
     } catch (err: any) {
       console.error('Failed to fetch dashboard dataset:', err);
-      setErrorMessage(err.message || 'Gagal memuat data analitik dashboard');
+      setErrorMessage(extractErrorMessage(err, 'Gagal memuat data analitik dashboard'));
     } finally {
       setIsLoading(false);
     }
@@ -94,7 +95,7 @@ export function useDashboard() {
       await DashboardService.downloadExcelReport(startDate, endDate, location || selectedLocation);
     } catch (err: any) {
       console.error('Failed to export dashboard excel:', err);
-      alert('Gagal mendownload laporan Excel. Silakan coba lagi.');
+      alert(extractErrorMessage(err, 'Gagal mendownload laporan Excel. Silakan coba lagi.'));
     } finally {
       setIsExporting(false);
     }

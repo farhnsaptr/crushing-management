@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { env } from '../../../config/env.config';
 import { GlobalLogsService } from '../services/globalLogs.service';
 import type { AuditLogItem } from '../types/globalLogs.types';
+import { extractErrorMessage } from '../../../services/api.client';
 
 export const useGlobalLogs = () => {
   const [logs, setLogs] = useState<AuditLogItem[]>([]);
@@ -136,7 +137,7 @@ export const useGlobalLogs = () => {
       setNewlyAddedIds(new Set());
       setCurrentPage(1);
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Gagal menghapus audit logs.');
+      alert(extractErrorMessage(err, 'Gagal menghapus audit logs.'));
     }
   };
 

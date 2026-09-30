@@ -5,6 +5,7 @@ import { Spinner } from '../../../components/common/Spinner';
 import type { CreateRequestItemPayload } from '../types/crushingRequests.types';
 import type { MasterPart } from '../../master-parts/types/masterParts.types';
 import type { Material } from '../../materials/types/materials.types';
+import type { Factory } from '../../factories/types/factories.types';
 import type { UserProfile } from '../../../context/AuthContext';
 import {
   PackagePlus,
@@ -56,6 +57,9 @@ interface CreateRequestFormProps {
   jenisOptions: string[];
   selectedJenis: string;
   onSelectJenis: (jenis: string) => void;
+  factoryOptions: Factory[];
+  selectedFactoryId: string;
+  onSelectFactory: (factoryId: string) => void;
   availableMaterials?: Material[];
   isLoadingParts: boolean;
   partSearchQuery: string;
@@ -85,6 +89,9 @@ export const CreateRequestForm: React.FC<CreateRequestFormProps> = ({
   jenisOptions,
   selectedJenis,
   onSelectJenis,
+  factoryOptions,
+  selectedFactoryId,
+  onSelectFactory,
   isLoadingParts,
   partSearchQuery,
   onPartSearchQueryChange,
@@ -227,7 +234,7 @@ export const CreateRequestForm: React.FC<CreateRequestFormProps> = ({
               borderRadius: 'var(--radius-lg, 12px)',
               border: '1px solid var(--border-color, #e2e8f0)',
               display: 'grid',
-              gridTemplateColumns: '1.2fr 1fr auto',
+              gridTemplateColumns: '1.2fr 1fr 1fr auto',
               gap: '0.75rem',
               alignItems: 'center',
               boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
@@ -261,6 +268,31 @@ export const CreateRequestForm: React.FC<CreateRequestFormProps> = ({
                 </button>
               )}
             </div>
+
+            {/* Factory Dropdown (opsi dari backend sesuai penugasan user) */}
+            <select
+              value={selectedFactoryId}
+              onChange={(e) => onSelectFactory(e.target.value)}
+              style={{
+                height: '40px',
+                padding: '0 0.75rem',
+                borderRadius: 'var(--radius-md, 8px)',
+                border: '1.5px solid var(--border-color, #cbd5e1)',
+                backgroundColor: 'var(--bg-card, #ffffff)',
+                color: 'var(--text-main, #0f172a)',
+                fontSize: '0.85rem',
+                fontWeight: 700,
+                outline: 'none',
+                cursor: 'pointer',
+              }}
+            >
+              {factoryOptions.length !== 1 && <option value="">-- Semua Pabrik --</option>}
+              {factoryOptions.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.name}
+                </option>
+              ))}
+            </select>
 
             {/* Category Dropdown */}
             <select
@@ -523,8 +555,8 @@ export const CreateRequestForm: React.FC<CreateRequestFormProps> = ({
                           {part.part_name}
                         </div>
 
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 'auto', paddingTop: '0.35rem' }}>
-                          <code
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', marginTop: 'auto', paddingTop: '0.35rem' }}>
+                          <span
                             style={{
                               fontSize: '0.725rem',
                               fontWeight: 700,
@@ -535,11 +567,7 @@ export const CreateRequestForm: React.FC<CreateRequestFormProps> = ({
                               border: '1px solid #e2e8f0',
                             }}
                           >
-                            {part.part_number}
-                          </code>
-
-                          <span style={{ fontSize: '0.775rem', color: 'var(--secondary-color, #e76114)', fontWeight: 900 }}>
-                            {Number(part.berat_part_gr)} gr
+                            {part.material || '-'}
                           </span>
                         </div>
 
@@ -699,13 +727,23 @@ export const CreateRequestForm: React.FC<CreateRequestFormProps> = ({
                             {part.part_name}
                           </div>
                           <div style={{ fontSize: '0.725rem', color: 'var(--text-muted, #64748b)', display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.1rem' }}>
-                            <code>{part.part_number}</code>
+                            <span
+                              style={{
+                                backgroundColor: '#f1f5f9',
+                                border: '1px solid #e2e8f0',
+                                padding: '0.05rem 0.35rem',
+                                borderRadius: '4px',
+                                fontWeight: 700,
+                                color: 'var(--text-main, #0f172a)',
+                              }}
+                            >
+                              {part.material || '-'}
+                            </span>
                             {part.model_code && (
                               <span style={{ backgroundColor: '#f1f5f9', padding: '0.05rem 0.35rem', borderRadius: '4px', fontWeight: 700, color: '#334155' }}>
                                 {part.model_code}
                               </span>
                             )}
-                            <span>• {Number(part.berat_part_gr)} gr</span>
                           </div>
                         </div>
                       </div>

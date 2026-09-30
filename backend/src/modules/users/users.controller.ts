@@ -28,17 +28,19 @@ export class UsersController {
         return;
       }
 
-      if (role === 'pengirim' && (!factory_id || !department_id)) {
-        sendError(res, 'Role pengirim wajib memiliki factory_id dan department_id', 400);
+      if (role === 'pengirim' && !department_id) {
+        sendError(res, 'Role pengirim wajib memiliki department_id', 400);
         return;
       }
+
+      const normalizedFactoryId = (factory_id === 'ALL' || !factory_id) ? null : factory_id;
 
       const user = await UsersService.createUser({
         username,
         password,
         full_name,
         role,
-        factory_id: factory_id || null,
+        factory_id: normalizedFactoryId,
         department_id: department_id || null,
       });
       sendSuccess(res, user, 'User created successfully', 201);
@@ -62,10 +64,12 @@ export class UsersController {
         return;
       }
 
+      const normalizedFactoryId = factory_id === 'ALL' ? null : factory_id;
+
       const user = await UsersService.updateUser(userId, {
         full_name,
         role,
-        factory_id,
+        factory_id: normalizedFactoryId,
         department_id,
         password,
       });

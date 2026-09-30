@@ -6,6 +6,7 @@ import type {
   UpdateRunnerMaterialPayload,
   RunnerBatchItem,
 } from '../types/runnerMaterial.types';
+import { extractErrorMessage } from '../../../services/api.client';
 
 export const useRunnerImport = () => {
   const [entryMode, setEntryMode] = useState<'csv' | 'manual'>('csv');
@@ -107,7 +108,7 @@ export const useRunnerImport = () => {
       setPreviewModalOpen(true);
     } catch (err: any) {
       console.error('Error processing production file:', err);
-      setParseError(err.response?.data?.error || err.message || 'Gagal memproses file Laporan Produksi.');
+      setParseError(extractErrorMessage(err, 'Gagal memproses file Laporan Produksi.'));
     } finally {
       setIsLoading(false);
     }
@@ -153,7 +154,7 @@ export const useRunnerImport = () => {
     } catch (err: any) {
       console.error('Error saving runner material records:', err);
       setToast({
-        message: err.message || 'Gagal menyimpan data runner material.',
+        message: extractErrorMessage(err, 'Gagal menyimpan data runner material.'),
         type: 'error',
       });
     } finally {
@@ -193,7 +194,7 @@ export const useRunnerImport = () => {
     } catch (err: any) {
       console.error('Error saving manual runner material batch:', err);
       setToast({
-        message: err.response?.data?.error || err.message || 'Gagal menyimpan data manual runner.',
+        message: extractErrorMessage(err, 'Gagal menyimpan data manual runner.'),
         type: 'error',
       });
     } finally {
@@ -216,7 +217,7 @@ export const useRunnerImport = () => {
     } catch (err: any) {
       console.error('Error updating runner material record:', err);
       setToast({
-        message: err.response?.data?.error || err.message || 'Gagal memperbarui data.',
+        message: extractErrorMessage(err, 'Gagal memperbarui data.'),
         type: 'error',
       });
     } finally {
@@ -239,7 +240,7 @@ export const useRunnerImport = () => {
     } catch (err: any) {
       console.error('Error deleting runner material record:', err);
       setToast({
-        message: err.response?.data?.error || err.message || 'Gagal menghapus data.',
+        message: extractErrorMessage(err, 'Gagal menghapus data.'),
         type: 'error',
       });
     } finally {
@@ -278,7 +279,7 @@ export const useRunnerImport = () => {
     } catch (err: any) {
       console.error('Error rolling back batch:', err);
       setToast({
-        message: err.response?.data?.error || err.message || 'Gagal melakukan rollback batch.',
+        message: extractErrorMessage(err, 'Gagal melakukan rollback batch.'),
         type: 'error',
       });
     } finally {
@@ -301,7 +302,7 @@ export const useRunnerImport = () => {
     } catch (err: any) {
       console.error('Error deleting all runner material records:', err);
       setToast({
-        message: err.response?.data?.error || err.message || 'Gagal menghapus seluruh data.',
+        message: extractErrorMessage(err, 'Gagal menghapus seluruh data.'),
         type: 'error',
       });
     } finally {

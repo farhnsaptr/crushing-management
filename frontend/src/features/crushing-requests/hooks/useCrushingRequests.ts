@@ -3,11 +3,14 @@ import { useAuth } from '../../../context/AuthContext';
 import { CrushingRequestsService } from '../services/crushingRequests.service';
 import { MasterPartsService } from '../../master-parts/services/masterParts.service';
 import { MaterialsService } from '../../materials/services/materials.service';
+import { FactoriesService } from '../../factories/services/factories.service';
 import type { CrushingRequest, CreateRequestItemPayload } from '../types/crushingRequests.types';
 import type { MasterPart } from '../../master-parts/types/masterParts.types';
 import type { Material } from '../../materials/types/materials.types';
+import type { Factory } from '../../factories/types/factories.types';
 import type { ToastState } from '../../../components/common/Toast';
 import { getAutoShiftAndDate } from '../../../config/shift.config';
+import { extractErrorMessage } from '../../../services/api.client';
 
 export function useCrushingRequests() {
   const { user } = useAuth();
@@ -40,6 +43,9 @@ export function useCrushingRequests() {
   const [selectedJenis, setSelectedJenis] = useState<string>('ALL');
   const [isLoadingParts, setIsLoadingParts] = useState<boolean>(false);
   const [partSearchQuery, setPartSearchQuery] = useState<string>('');
+  // Factory yang boleh dilihat user (backend sudah memfilter sesuai penugasan); '' = Semua Pabrik
+  const [factoryOptions, setFactoryOptions] = useState<Factory[]>([]);
+  const [selectedFactoryId, setSelectedFactoryId] = useState<string>('');
 
   // History State
   const [historyRequests, setHistoryRequests] = useState<CrushingRequest[]>([]);
@@ -53,6 +59,9 @@ export function useCrushingRequests() {
   const [selectedRequestDetail, setSelectedRequestDetail] = useState<CrushingRequest | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState<boolean>(false);
   const [isLoadingDetail, setIsLoadingDetail] = useState<boolean>(false);
+
+  // Submit Confirmation Modal State
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState<boolean>(false);
 
   // Toast
   const [toast, setToast] = useState<ToastState | null>(null);
@@ -84,6 +93,12 @@ export function useCrushingRequests() {
         }
         if (Array.isArray(serverDraft.items) && serverDraft.items.length > 0) {
           setItems(serverDraft.items);
+        }
+        if (serverDraft.shift) {
+          setShift(serverDraft.shift);
+        }
+        if (serverDraft.requestDate) {
+          setRequestDate(serverDraft.requestDate);
         }
       }
     } catch (err) {
@@ -133,19 +148,28 @@ export function useCrushingRequests() {
     };
   }, [user?.id, isDraftLoaded, shift, requestDate, notes, items]);
 
-  // Fetch Parts locked to sender's assigned factory
+  // Fetch factories visible to this user; auto-select when only one is available
+  useEffect(() => {
+    FactoriesService.getFactories()
+      .then((list) => {
+        setFactoryOptions(list || []);
+        if (list?.length === 1) setSelectedFactoryId(list[0].id);
+      })
+      .catch((err) => console.error('Failed to load factories for sender:', err));
+  }, [user?.id]);
+
+  // Fetch Parts for the selected factory (backend still locks pengirim to assigned factory)
   const fetchParts = useCallback(async () => {
     setIsLoadingParts(true);
     try {
-      const factoryId = user?.factory_id || undefined;
-      const res = await MasterPartsService.getParts(1, 300, '', '', '', 'asc', factoryId);
+      const res = await MasterPartsService.getParts(1, 500, '', '', '', 'asc', selectedFactoryId || undefined);
       setAvailableParts(res.parts || []);
     } catch (err: any) {
       console.error('Failed to load parts for sender:', err);
     } finally {
       setIsLoadingParts(false);
     }
-  }, [user?.factory_id]);
+  }, [selectedFactoryId]);
 
   // Fetch Jenis Part List
   const fetchJenisList = useCallback(async () => {
@@ -187,7 +211,7 @@ export function useCrushingRequests() {
     } catch (err: any) {
       setToast({
         type: 'error',
-        message: err.response?.data?.message || err.message || 'Gagal memuat riwayat permintaan',
+        message: extractErrorMessage(err, 'Gagal memuat riwayat permintaan'),
       });
     } finally {
       setIsLoadingHistory(false);
@@ -438,6 +462,22 @@ export function useCrushingRequests() {
     setToast({ type: 'info', message: 'Draf pengiriman telah dikosongkan.' });
   };
 
+  // Open / Close Confirm Modal
+  const handleOpenConfirmModal = () => {
+    if (items.length === 0) {
+      setToast({ type: 'error', message: 'Tambahkan minimal 1 item part atau runner ke daftar rincian pengiriman sebelum mengirim.' });
+      return;
+    }
+    const current = getAutoShiftAndDate();
+    setShift(current.shift);
+    setRequestDate(current.date);
+    setIsConfirmModalOpen(true);
+  };
+
+  const handleCloseConfirmModal = () => {
+    setIsConfirmModalOpen(false);
+  };
+
   // Submit Request with Undo Capability
   const handleSubmitRequest = async () => {
     if (items.length === 0) {
@@ -460,8 +500,12 @@ export function useCrushingRequests() {
         shift: activeShift,
         request_date: activeDate,
         notes: notes.trim() || undefined,
+        factory_id: selectedFactoryId || undefined,
         items,
       });
+
+      // Close confirmation modal
+      setIsConfirmModalOpen(false);
 
       // Clear form
       setItems([]);
@@ -471,11 +515,11 @@ export function useCrushingRequests() {
       // Refresh history list in background
       fetchHistory();
 
-      // Show Success Toast with Interactive Undo Action
+      // Show Success Toast with Interactive Undo Action (durationMs: 0 means stays until manually closed)
       setToast({
         type: 'success',
         message: `Pengiriman '${newReq.request_number}' (${backupItems.length} item) berhasil dikirim!`,
-        durationMs: 7000,
+        durationMs: 0,
         action: {
           label: 'Undo',
           onClick: async () => {
@@ -491,11 +535,13 @@ export function useCrushingRequests() {
               setToast({
                 type: 'info',
                 message: `Pengiriman '${newReq.request_number}' dibatalkan. Draf item telah dipulihkan.`,
+                durationMs: 5000,
               });
             } catch (err: any) {
               setToast({
                 type: 'error',
-                message: err.response?.data?.message || err.message || 'Gagal membatalkan pengiriman',
+                message: extractErrorMessage(err, 'Gagal membatalkan pengiriman'),
+                durationMs: 5000,
               });
             }
           },
@@ -504,7 +550,7 @@ export function useCrushingRequests() {
     } catch (err: any) {
       setToast({
         type: 'error',
-        message: err.response?.data?.message || err.message || 'Gagal membuat pengiriman',
+        message: extractErrorMessage(err, 'Gagal membuat pengiriman'),
       });
     } finally {
       setIsSubmitting(false);
@@ -521,7 +567,7 @@ export function useCrushingRequests() {
     } catch (err: any) {
       setToast({
         type: 'error',
-        message: err.response?.data?.message || err.message || 'Gagal memuat detail pengiriman',
+        message: extractErrorMessage(err, 'Gagal memuat detail pengiriman'),
       });
     } finally {
       setIsLoadingDetail(false);
@@ -570,6 +616,9 @@ export function useCrushingRequests() {
     jenisOptions,
     selectedJenis,
     setSelectedJenis,
+    factoryOptions,
+    selectedFactoryId,
+    setSelectedFactoryId,
     availableMaterials,
     isLoadingParts,
     partSearchQuery,
@@ -580,6 +629,10 @@ export function useCrushingRequests() {
     handleClearDraft,
     isSubmitting,
     isSavingDraft,
+    isConfirmModalOpen,
+    setIsConfirmModalOpen,
+    handleOpenConfirmModal,
+    handleCloseConfirmModal,
     handleSubmitRequest,
     estimatedTotalWeightKg,
     estimatedTotalPcs,

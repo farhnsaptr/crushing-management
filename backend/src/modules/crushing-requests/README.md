@@ -9,7 +9,7 @@ Modul ini mengelola siklus pengajuan pengiriman part NG dan runner NG dari depar
    - Operator **tidak akan melihat** baris yang berstatus `is_submitted = FALSE`.
 2. **Submit Pengiriman Resmi (`POST /api/crushing-requests` atau `is_submitted = TRUE`)**:
    - Saat pengirim menekan tombol submit, status draf diubah menjadi `is_submitted = TRUE` dan `submitted_at = NOW()`.
-   - Shift dan tanggal operasional server otomatis dikunci.
+   - **Sinkronisasi Shift & Tanggal Otomatis**: Jika draf berasal dari shift/hari sebelumnya (misal pengerjaan malam yang tertinggal dan baru dikirim pagi harinya), sistem secara otomatis menyinkronkan `shift`, `request_date`, dan nomor request (`request_number`) ke waktu operasional aktual saat submit (Asia/Jakarta).
    - Perhitungan estimasi berat dilakukan di backend (`weight_kg = quantity_pcs * berat_part_gr / 1000`).
    - Notifikasi real-time disiarkan ke operator lewat SSE (`crushing_request_created`).
    - Pengirim dapat membatalkan pengiriman instan jika salah kirim (`DELETE /api/crushing-requests/:id`).
@@ -17,6 +17,7 @@ Modul ini mengelola siklus pengajuan pengiriman part NG dan runner NG dari depar
    - **Verifikasi & Setujui (`PATCH /:id/approve`)**:
      - Operator memeriksa kecocokan fisik setiap item.
      - Jika ada selisih (kurang/lebih fisik), operator memasukkan kuantitas terverifikasi (`verified_quantity_pcs`, `verified_weight_kg`) dan catatan penyesuaian (`adjustment_notes`).
+     - **Split Reuse/Waste per Pcs (`waste_quantity_pcs`)**: Khusus untuk part `part_ng`, operator juga menentukan berapa pcs (dari total pcs terverifikasi pada item yang sama) yang TIDAK bisa didaur ulang (waste) — dipakai terutama untuk kiriman dari divisi non-produksi yang berisiko terkontaminasi cat/material lain, di mana dari beberapa pcs part yang sama, sebagian bisa reuse dan sebagian jadi waste. Saat approve, item ini otomatis dipecah menjadi hingga 2 baris `ng_transactions` (satu `recycle_type_snapshot='reuse'` untuk sisa pcs yang reusable, satu `recycle_type_snapshot='no_reuse'` untuk pcs yang waste), dan hanya bagian reuse yang dihitung sebagai input material di modul Verifikasi.
      - Data asli pengajuan pengirim (`quantity_pcs`, `weight_kg`) **tetap tersimpan utuh di database** sebagai audit trail.
      - Mengubah status menjadi `approved`, mencatat validator, dan secara otomatis menyinkronkan data fisik terverifikasi ke `ng_transactions` / `runner_material_transactions`.
 

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { DepartmentsService } from '../services/departments.service';
 import type { Department, CreateDepartmentPayload, UpdateDepartmentPayload } from '../types/departments.types';
 import type { ToastState } from '../../../components/common/Toast';
+import { extractErrorMessage } from '../../../services/api.client';
 
 export function useDepartments() {
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -19,7 +20,7 @@ export function useDepartments() {
     } catch (err: any) {
       setToast({
         type: 'error',
-        message: err.response?.data?.message || err.message || 'Gagal memuat data departemen',
+        message: extractErrorMessage(err, 'Gagal memuat data departemen'),
       });
     } finally {
       setIsLoading(false);
@@ -50,7 +51,7 @@ export function useDepartments() {
       setIsModalOpen(false);
       fetchDepartments();
     } catch (err: any) {
-      throw new Error(err.response?.data?.message || err.message || 'Gagal menambahkan departemen');
+      throw new Error(extractErrorMessage(err, 'Gagal menambahkan departemen'));
     }
   };
 
@@ -64,7 +65,7 @@ export function useDepartments() {
       setIsModalOpen(false);
       fetchDepartments();
     } catch (err: any) {
-      throw new Error(err.response?.data?.message || err.message || 'Gagal memperbarui departemen');
+      throw new Error(extractErrorMessage(err, 'Gagal memperbarui departemen'));
     }
   };
 
@@ -83,7 +84,7 @@ export function useDepartments() {
     } catch (err: any) {
       setToast({
         type: 'error',
-        message: err.response?.data?.message || err.message || 'Gagal menghapus departemen',
+        message: extractErrorMessage(err, 'Gagal menghapus departemen'),
       });
     }
   };

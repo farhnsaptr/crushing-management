@@ -6,30 +6,46 @@
  * - Shift Pagi: Mulai dari jam 07:00 (7 pagi) hingga jam 19:59 (8 malam) pada tanggal hari ini.
  */
 export function getAutoShiftAndDate(): { shift: 'Pagi' | 'Malam'; date: string } {
-  const now = new Date();
-  const hour = now.getHours();
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Jakarta',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
 
+  const now = new Date();
+  const parts = formatter.formatToParts(now);
+  const map: Record<string, string> = {};
+  for (const p of parts) {
+    map[p.type] = p.value;
+  }
+
+  const hour = parseInt(map.hour, 10);
   let shift: 'Pagi' | 'Malam';
-  const targetDate = new Date(now);
+  let dateStr = `${map.year}-${map.month}-${map.day}`;
 
   if (hour >= 20) {
     // 20:00 - 23:59 -> Shift Malam hari ini
     shift = 'Malam';
   } else if (hour < 7) {
-    // 00:00 - 06:59 -> Shift Malam (lanjutan shift malam kemarin)
+    // 00:00 - 06:59 -> Shift Malam (lanjutan operasional shift malam kemarin)
     shift = 'Malam';
-    targetDate.setDate(targetDate.getDate() - 1);
+    const prevDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const prevParts = formatter.formatToParts(prevDate);
+    const prevMap: Record<string, string> = {};
+    for (const p of prevParts) {
+      prevMap[p.type] = p.value;
+    }
+    dateStr = `${prevMap.year}-${prevMap.month}-${prevMap.day}`;
   } else {
     // 07:00 - 19:59 -> Shift Pagi hari ini
     shift = 'Pagi';
   }
 
-  const year = targetDate.getFullYear();
-  const month = String(targetDate.getMonth() + 1).padStart(2, '0');
-  const day = String(targetDate.getDate()).padStart(2, '0');
-  const date = `${year}-${month}-${day}`;
-
-  return { shift, date };
+  return { shift, date: dateStr };
 }
 
 export function getDefaultShift(): 'Pagi' | 'Malam' {

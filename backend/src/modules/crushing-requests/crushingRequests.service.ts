@@ -30,6 +30,7 @@ export interface ApproveItemAdjustmentDto {
   verified_quantity_pcs?: number;
   verified_weight_kg?: number;
   adjustment_notes?: string;
+  waste_quantity_pcs?: number;
 }
 
 export interface ApproveCrushingRequestDto {
@@ -43,8 +44,8 @@ export interface CrushingRequestRow extends RowDataPacket {
   sender_id: string;
   sender_name?: string;
   sender_username?: string;
-  factory_id: string;
-  factory_name?: string;
+  factory_id?: string | null;
+  factory_name?: string | null;
   factory_code?: string;
   department_id: string;
   department_name?: string;
@@ -85,33 +86,54 @@ export interface CrushingRequestItemRow extends RowDataPacket {
   verified_quantity_pcs: number | null;
   verified_weight_kg: number | null;
   adjustment_notes: string | null;
+  waste_quantity_pcs: number;
   notes: string | null;
   created_at: string;
   image_url?: string | null;
+  part_factory_id?: string | null;
 }
 
 function getBackendAutoShiftAndDate(): { shift: 'Pagi' | 'Malam'; date: string } {
-  const now = new Date();
-  const hour = now.getHours();
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Jakarta',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
 
+  const now = new Date();
+  const parts = formatter.formatToParts(now);
+  const map: Record<string, string> = {};
+  for (const p of parts) {
+    map[p.type] = p.value;
+  }
+
+  const hour = parseInt(map.hour, 10);
   let shift: 'Pagi' | 'Malam';
-  const targetDate = new Date(now);
+  let dateStr = `${map.year}-${map.month}-${map.day}`;
 
   if (hour >= 20) {
+    // 20:00 - 23:59 WIB: Shift Malam hari ini
     shift = 'Malam';
   } else if (hour < 7) {
+    // 00:00 - 06:59 WIB: Shift Malam (lanjutan operasional shift malam kemarin)
     shift = 'Malam';
-    targetDate.setDate(targetDate.getDate() - 1);
+    const prevDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const prevParts = formatter.formatToParts(prevDate);
+    const prevMap: Record<string, string> = {};
+    for (const p of prevParts) {
+      prevMap[p.type] = p.value;
+    }
+    dateStr = `${prevMap.year}-${prevMap.month}-${prevMap.day}`;
   } else {
+    // 07:00 - 19:59 WIB: Shift Pagi hari ini
     shift = 'Pagi';
   }
 
-  const year = targetDate.getFullYear();
-  const month = String(targetDate.getMonth() + 1).padStart(2, '0');
-  const day = String(targetDate.getDate()).padStart(2, '0');
-  const date = `${year}-${month}-${day}`;
-
-  return { shift, date };
+  return { shift, date: dateStr };
 }
 
 export class CrushingRequestsService {
@@ -126,7 +148,7 @@ export class CrushingRequestsService {
    */
   private static async processItemsPayload(
     items: CreateRequestItemDto[],
-    factoryId: string,
+    factoryId?: string | null,
     userRole?: string
   ) {
     let totalWeightKg = 0;
@@ -144,6 +166,7 @@ export class CrushingRequestsService {
       quantity_pcs: number;
       weight_kg: number;
       notes: string | null;
+      part_factory_id?: string | null;
     }> = [];
 
     for (const item of items) {
@@ -167,8 +190,8 @@ export class CrushingRequestsService {
 
         const part = partRows[0];
 
-        // Security validation: verify part belongs to user's assigned factory
-        if (userRole === 'pengirim' && part.factory_id !== factoryId) {
+        // Security validation: verify part belongs to user's assigned factory (skip if ALL / null)
+        if (userRole === 'pengirim' && factoryId && factoryId !== 'ALL' && part.factory_id !== factoryId) {
           throw new Error(`Part '${part.part_name}' bukan berasal dari pabrik yang ditugaskan ke Anda`);
         }
 
@@ -192,6 +215,7 @@ export class CrushingRequestsService {
           quantity_pcs: qtyPcs,
           weight_kg: itemWeightKg,
           notes: item.notes || null,
+          part_factory_id: part.factory_id || null,
         });
       } else if (item.item_type === 'runner_ng') {
         let materialName = item.material_name || 'Material Runner';
@@ -238,22 +262,19 @@ export class CrushingRequestsService {
       throw new Error('Permintaan wajib memiliki minimal 1 item part atau runner');
     }
 
-    const factoryId = user.factory_id || dto.factory_id;
+    const rawFactoryId = user.factory_id || dto.factory_id;
+    const factoryId = (rawFactoryId && rawFactoryId !== 'ALL') ? rawFactoryId : null;
     const departmentId = user.department_id || dto.department_id;
 
-    if (!factoryId) {
-      throw new Error('Factory penugasan tidak ditemukan pada akun Anda');
-    }
     if (!departmentId) {
       throw new Error('Departemen pengirim tidak ditemukan pada akun Anda');
     }
 
-    // Auto-calculate shift and date based on current operational server time
+    // Auto-calculate shift and date based on current operational server time (Asia/Jakarta)
+    // Always synchronize shift and request_date to the active operational shift at submission time
     const autoShiftDate = getBackendAutoShiftAndDate();
-    const finalShift: 'Pagi' | 'Malam' =
-      user.role === 'pengirim' ? autoShiftDate.shift : dto.shift === 'Malam' ? 'Malam' : 'Pagi';
-    const finalRequestDate: string =
-      user.role === 'pengirim' ? autoShiftDate.date : dto.request_date || autoShiftDate.date;
+    const finalShift: 'Pagi' | 'Malam' = autoShiftDate.shift;
+    const finalRequestDate: string = autoShiftDate.date;
 
     const { processedItems, totalWeightKg, totalPcs } = await this.processItemsPayload(
       dto.items,
@@ -268,6 +289,8 @@ export class CrushingRequestsService {
         : processedItems.every((i) => i.item_type === 'runner_ng')
         ? 'runner_ng'
         : 'mixed');
+
+    const targetFactoryId = factoryId || (processedItems.find((i) => i.part_factory_id)?.part_factory_id) || null;
 
     // Check if an existing unsubmitted draft exists for this sender
     const [existingDrafts] = await pool.query<RowDataPacket[]>(
@@ -291,7 +314,7 @@ export class CrushingRequestsService {
          WHERE id = ?`,
         [
           finalRequestNumber,
-          factoryId,
+          targetFactoryId,
           departmentId,
           inferredType,
           finalShift,
@@ -318,7 +341,7 @@ export class CrushingRequestsService {
           requestId,
           finalRequestNumber,
           user.id,
-          factoryId,
+          targetFactoryId,
           departmentId,
           inferredType,
           finalShift,
@@ -443,7 +466,7 @@ export class CrushingRequestsService {
     const [rows] = await pool.query<CrushingRequestRow[]>(
       `SELECT 
         r.id, r.request_number, r.sender_id, u.full_name AS sender_name, u.username AS sender_username,
-        r.factory_id, f.name AS factory_name, f.code AS factory_code,
+        r.factory_id, COALESCE(f.name, 'Semua Factory (ALL)') AS factory_name, f.code AS factory_code,
         r.department_id, d.name AS department_name, d.code AS department_code,
         r.request_type, r.shift, r.request_date, r.status, r.is_submitted, r.submitted_at,
         r.validated_by, v.full_name AS validator_name, r.validated_at,
@@ -452,7 +475,7 @@ export class CrushingRequestsService {
         (SELECT COUNT(*) FROM crushing_request_items WHERE request_id = r.id) AS item_count
        FROM crushing_requests r
        JOIN users u ON r.sender_id = u.id
-       JOIN factories f ON r.factory_id = f.id
+       LEFT JOIN factories f ON r.factory_id = f.id
        JOIN departments d ON r.department_id = d.id
        LEFT JOIN users v ON r.validated_by = v.id
        ${whereClause}
@@ -476,7 +499,7 @@ export class CrushingRequestsService {
     const [rows] = await pool.query<CrushingRequestRow[]>(
       `SELECT 
         r.id, r.request_number, r.sender_id, u.full_name AS sender_name, u.username AS sender_username,
-        r.factory_id, f.name AS factory_name, f.code AS factory_code,
+        r.factory_id, COALESCE(f.name, 'Semua Factory (ALL)') AS factory_name, f.code AS factory_code,
         r.department_id, d.name AS department_name, d.code AS department_code,
         r.request_type, r.shift, r.request_date, r.status, r.is_submitted, r.submitted_at,
         r.validated_by, v.full_name AS validator_name, r.validated_at,
@@ -484,7 +507,7 @@ export class CrushingRequestsService {
         r.total_weight_kg, r.total_pcs, r.notes, r.created_at, r.updated_at
        FROM crushing_requests r
        JOIN users u ON r.sender_id = u.id
-       JOIN factories f ON r.factory_id = f.id
+       LEFT JOIN factories f ON r.factory_id = f.id
        JOIN departments d ON r.department_id = d.id
        LEFT JOIN users v ON r.validated_by = v.id
        WHERE r.id = ?`,
@@ -506,13 +529,17 @@ export class CrushingRequestsService {
       `SELECT 
         i.id, i.request_id, i.item_type, i.master_part_id, i.material_id,
         i.part_number_snapshot, i.part_name_snapshot, i.model_snapshot,
-        i.material_name_snapshot, i.berat_part_gr_snapshot,
+        COALESCE(NULLIF(i.material_name_snapshot, ''), mm.material_name, mp.material, 'Material') AS material_name_snapshot,
+        i.berat_part_gr_snapshot,
         i.quantity_pcs, i.weight_kg,
-        i.verified_quantity_pcs, i.verified_weight_kg, i.adjustment_notes,
+        i.verified_quantity_pcs, i.verified_weight_kg, i.adjustment_notes, i.waste_quantity_pcs,
         i.notes, i.created_at,
-        mp.image_url
+        mp.image_url,
+        mc.factory_id AS part_factory_id
        FROM crushing_request_items i
        LEFT JOIN master_parts mp ON i.master_part_id = mp.id
+       LEFT JOIN master_materials mm ON (i.material_id = mm.id OR mp.material_id = mm.id)
+       LEFT JOIN machines mc ON mp.machine_id = mc.id
        WHERE i.request_id = ?
        ORDER BY i.created_at ASC`,
       [id]
@@ -552,6 +579,7 @@ export class CrushingRequestsService {
       verifiedQty: number;
       verifiedWeight: number;
       adjustmentNotes: string | null;
+      wasteQty: number;
     }> = [];
 
     for (const item of request.items) {
@@ -586,15 +614,19 @@ export class CrushingRequestsService {
         adjNotes = adj?.adjustment_notes?.trim() || null;
       }
 
+      const wasteQty = item.item_type === 'part_ng'
+        ? Math.min(verifiedQty, Math.max(0, Math.floor(Number(adj?.waste_quantity_pcs) || 0)))
+        : 0;
+
       finalVerifiedTotalWeight += verifiedWeight;
       finalVerifiedTotalPcs += verifiedQty;
 
       // Update item in database
       await pool.query(
         `UPDATE crushing_request_items
-         SET verified_quantity_pcs = ?, verified_weight_kg = ?, adjustment_notes = ?
+         SET verified_quantity_pcs = ?, verified_weight_kg = ?, adjustment_notes = ?, waste_quantity_pcs = ?
          WHERE id = ?`,
-        [verifiedQty, verifiedWeight, adjNotes, item.id]
+        [verifiedQty, verifiedWeight, adjNotes, wasteQty, item.id]
       );
 
       verifiedItemsForTransaction.push({
@@ -602,6 +634,7 @@ export class CrushingRequestsService {
         verifiedQty,
         verifiedWeight,
         adjustmentNotes: adjNotes,
+        wasteQty,
       });
     }
 
@@ -625,36 +658,46 @@ export class CrushingRequestsService {
     );
 
     // 3. Automatically generate records in ng_transactions and runner_material_transactions using VERIFIED counts
-    for (const { item, verifiedQty, verifiedWeight, adjustmentNotes } of verifiedItemsForTransaction) {
+    for (const { item, verifiedQty, verifiedWeight, adjustmentNotes, wasteQty } of verifiedItemsForTransaction) {
       if (item.item_type === 'part_ng' && item.master_part_id && verifiedQty > 0) {
-        const transId = randomUUID();
         const noteText = adjustmentNotes
           ? `[Pengiriman ${request.request_number}] ${adjustmentNotes}`
           : item.notes
           ? `[Pengiriman ${request.request_number}] ${item.notes}`
           : `Pengiriman: ${request.request_number}`;
 
-        await pool.query(
-          `INSERT INTO ng_transactions
-           (id, master_part_id, request_id, department_id, factory_id, part_number_snapshot, part_name_snapshot, model_snapshot, berat_part_gr_snapshot, quantity_pcs, shift, transaction_date, input_by, notes)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [
-            transId,
-            item.master_part_id,
-            requestId,
-            request.department_id,
-            request.factory_id,
-            item.part_number_snapshot,
-            item.part_name_snapshot,
-            item.model_snapshot,
-            item.berat_part_gr_snapshot,
-            verifiedQty,
-            request.shift,
-            request.request_date,
-            request.sender_id,
-            noteText,
-          ]
-        );
+        // Pecah quantity per keputusan operator: sebagian pcs bisa reuse, sebagian lagi (dari part yang sama) waste
+        // -- misal kiriman non-produksi yang sebagian part-nya terkontaminasi cat/material lain.
+        const buckets: Array<{ qty: number; recycleType: 'reuse' | 'no_reuse' }> = [
+          { qty: verifiedQty - wasteQty, recycleType: 'reuse' },
+          { qty: wasteQty, recycleType: 'no_reuse' },
+        ];
+
+        for (const bucket of buckets) {
+          if (bucket.qty <= 0) continue;
+          await pool.query(
+            `INSERT INTO ng_transactions
+             (id, master_part_id, request_id, department_id, factory_id, part_number_snapshot, part_name_snapshot, model_snapshot, berat_part_gr_snapshot, quantity_pcs, recycle_type_snapshot, shift, transaction_date, input_by, notes)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+              randomUUID(),
+              item.master_part_id,
+              requestId,
+              request.department_id,
+              request.factory_id || item.part_factory_id || null,
+              item.part_number_snapshot,
+              item.part_name_snapshot,
+              item.model_snapshot,
+              item.berat_part_gr_snapshot,
+              bucket.qty,
+              bucket.recycleType,
+              request.shift,
+              request.request_date,
+              request.sender_id,
+              bucket.recycleType === 'no_reuse' ? `${noteText} (Waste - tidak direcycle)` : noteText,
+            ]
+          );
+        }
       } else if (item.item_type === 'runner_ng' && verifiedWeight > 0) {
         const runnerId = randomUUID();
         await pool.query(
@@ -724,17 +767,17 @@ export class CrushingRequestsService {
    * Save temporary ticket draft to MySQL crushing_requests & crushing_request_items (is_submitted = FALSE)
    */
   static async saveDraft(user: JwtPayloadUser, draftData: any) {
-    const factoryId = user.factory_id || draftData.factory_id;
+    const rawFactoryId = user.factory_id || draftData.factory_id;
+    const factoryId = (rawFactoryId && rawFactoryId !== 'ALL') ? rawFactoryId : null;
     const departmentId = user.department_id || draftData.department_id;
 
-    if (!factoryId || !departmentId) {
+    if (!departmentId) {
       return null;
     }
 
     const autoShiftDate = getBackendAutoShiftAndDate();
-    const finalShift: 'Pagi' | 'Malam' =
-      draftData.shift === 'Malam' ? 'Malam' : 'Pagi';
-    const finalRequestDate: string = draftData.requestDate || autoShiftDate.date;
+    const finalShift: 'Pagi' | 'Malam' = autoShiftDate.shift;
+    const finalRequestDate: string = autoShiftDate.date;
 
     const items: CreateRequestItemDto[] = Array.isArray(draftData.items) ? draftData.items : [];
 
@@ -814,6 +857,8 @@ export class CrushingRequestsService {
 
     let draftRequestId: string;
 
+    const targetFactoryId = factoryId || (processedItems.find((i) => i.part_factory_id)?.part_factory_id) || null;
+
     if (existingDraftRows.length > 0) {
       draftRequestId = existingDraftRows[0].id;
       // Update existing draft header
@@ -824,7 +869,7 @@ export class CrushingRequestsService {
              notes = ?, updated_at = NOW()
          WHERE id = ?`,
         [
-          factoryId,
+          targetFactoryId,
           departmentId,
           inferredType,
           finalShift,
@@ -852,7 +897,7 @@ export class CrushingRequestsService {
           draftRequestId,
           draftNumber,
           user.id,
-          factoryId,
+          targetFactoryId,
           departmentId,
           inferredType,
           finalShift,
@@ -917,6 +962,17 @@ export class CrushingRequestsService {
     }
 
     const draft = rows[0];
+    const autoShiftDate = getBackendAutoShiftAndDate();
+
+    // Automatically synchronize draft header if the operational shift or date has rolled over
+    if (draft.shift !== autoShiftDate.shift || draft.request_date !== autoShiftDate.date) {
+      await pool.query(
+        `UPDATE crushing_requests
+         SET shift = ?, request_date = ?, updated_at = NOW()
+         WHERE id = ?`,
+        [autoShiftDate.shift, autoShiftDate.date, draft.id]
+      );
+    }
 
     const [items] = await pool.query<RowDataPacket[]>(
       `SELECT 
@@ -938,8 +994,8 @@ export class CrushingRequestsService {
 
     return {
       id: draft.id,
-      shift: draft.shift,
-      requestDate: draft.request_date,
+      shift: autoShiftDate.shift,
+      requestDate: autoShiftDate.date,
       notes: draft.notes || '',
       items: items.map((it) => ({
         id: it.id,

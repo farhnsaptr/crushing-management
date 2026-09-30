@@ -3,9 +3,11 @@ import { pool } from '../../config/database';
 import { RowDataPacket, ResultSetHeader } from 'mysql2';
 
 export class FactoriesService {
-  static async listFactories() {
+  static async listFactories(onlyFactoryId?: string) {
     const [rows] = await pool.query<RowDataPacket[]>(
-      'SELECT id, code, name, location, created_at FROM factories ORDER BY created_at ASC'
+      `SELECT id, code, name, location, created_at FROM factories
+       ${onlyFactoryId ? 'WHERE id = ?' : ''} ORDER BY created_at ASC`,
+      onlyFactoryId ? [onlyFactoryId] : []
     );
     return rows;
   }

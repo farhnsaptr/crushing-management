@@ -61,7 +61,14 @@ export const UserTable: React.FC<UserTableProps> = ({
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', fontSize: '0.8rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'var(--text-main, #0f172a)' }}>
             <Building2 size={13} color="var(--secondary-color, #e76114)" />
-            <span>{user.factory_name || '-'}</span>
+            <span
+              style={{
+                fontWeight: user.factory_name?.includes('ALL') || (!user.factory_id && user.role === 'pengirim') ? 700 : 500,
+                color: user.factory_name?.includes('ALL') || (!user.factory_id && user.role === 'pengirim') ? 'var(--primary-color, #008d51)' : 'var(--text-main, #0f172a)',
+              }}
+            >
+              {user.factory_name || (user.role === 'pengirim' ? 'Semua Factory (ALL)' : '-')}
+            </span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'var(--text-muted, #64748b)' }}>
             <Network size={13} color="var(--primary-color, #008d51)" />

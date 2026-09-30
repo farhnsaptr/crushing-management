@@ -16,9 +16,10 @@ export class NgTransactionsService {
   static async createTransaction(dto: CreateNgTransactionDto) {
     // 1. Fetch master part details for snapshot
     const [partRows] = await pool.query<RowDataPacket[]>(
-      `SELECT mp.part_number, mp.part_name, mp.berat_part_gr, m.model_code
+      `SELECT mp.part_number, mp.part_name, mp.berat_part_gr, m.model_code, mm.recycle_type
        FROM master_parts mp
        JOIN master_models m ON mp.model_id = m.id
+       LEFT JOIN master_materials mm ON mp.material_id = mm.id
        WHERE mp.id = ? AND mp.is_active = TRUE`,
       [dto.master_part_id]
     );
@@ -33,8 +34,8 @@ export class NgTransactionsService {
     // 2. Insert into ng_transactions with UUID
     await pool.query(
       `INSERT INTO ng_transactions
-       (id, master_part_id, part_number_snapshot, part_name_snapshot, model_snapshot, berat_part_gr_snapshot, quantity_pcs, shift, transaction_date, input_by, notes)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       (id, master_part_id, part_number_snapshot, part_name_snapshot, model_snapshot, berat_part_gr_snapshot, quantity_pcs, recycle_type_snapshot, shift, transaction_date, input_by, notes)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
         dto.master_part_id,
@@ -43,6 +44,7 @@ export class NgTransactionsService {
         masterPart.model_code,
         masterPart.berat_part_gr,
         dto.quantity_pcs,
+        masterPart.recycle_type || 'reuse',
         dto.shift,
         dto.transaction_date,
         dto.input_by,

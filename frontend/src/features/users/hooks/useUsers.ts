@@ -6,6 +6,7 @@ import type { User, CreateUserPayload, UpdateUserPayload } from '../types/users.
 import type { Factory } from '../../factories/types/factories.types';
 import type { Department } from '../../departments/types/departments.types';
 import type { ToastMessage } from '../../../components/common/Toast';
+import { extractErrorMessage } from '../../../services/api.client';
 
 export const useUsers = () => {
   const [users, setUsers] = useState<User[]>([]);
@@ -32,7 +33,7 @@ export const useUsers = () => {
       setToast({
         id: Date.now().toString(),
         type: 'error',
-        message: err.response?.data?.message || 'Gagal memuat daftar pengguna.',
+        message: extractErrorMessage(err, 'Gagal memuat daftar pengguna.'),
       });
     } finally {
       setIsLoading(false);
@@ -64,11 +65,13 @@ export const useUsers = () => {
       setIsModalOpen(false);
       fetchUsers();
     } catch (err: any) {
+      const msg = extractErrorMessage(err, 'Gagal menambahkan pengguna.');
       setToast({
         id: Date.now().toString(),
         type: 'error',
-        message: err.response?.data?.message || err.message || 'Gagal menambahkan pengguna.',
+        message: msg,
       });
+      throw err;
     }
   };
 
@@ -84,11 +87,13 @@ export const useUsers = () => {
       setEditingUser(null);
       fetchUsers();
     } catch (err: any) {
+      const msg = extractErrorMessage(err, 'Gagal memperbarui pengguna.');
       setToast({
         id: Date.now().toString(),
         type: 'error',
-        message: err.response?.data?.message || err.message || 'Gagal memperbarui pengguna.',
+        message: msg,
       });
+      throw err;
     }
   };
 
@@ -105,7 +110,7 @@ export const useUsers = () => {
       setToast({
         id: Date.now().toString(),
         type: 'error',
-        message: err.response?.data?.message || 'Gagal mengubah status pengguna.',
+        message: extractErrorMessage(err, 'Gagal mengubah status pengguna.'),
       });
     }
   };
@@ -124,7 +129,7 @@ export const useUsers = () => {
       setToast({
         id: Date.now().toString(),
         type: 'error',
-        message: err.response?.data?.message || 'Gagal menghapus pengguna.',
+        message: extractErrorMessage(err, 'Gagal menghapus pengguna.'),
       });
     }
   };

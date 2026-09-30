@@ -10,6 +10,7 @@ import type {
 } from '../types/masterParts.types';
 import type { Machine } from '../../machines/types/machines.types';
 import type { ToastMessage } from '../../../components/common/Toast';
+import { extractErrorMessage } from '../../../services/api.client';
 
 export const useMasterParts = () => {
   const [parts, setParts] = useState<MasterPart[]>([]);
@@ -75,7 +76,7 @@ export const useMasterParts = () => {
       setToast({
         id: Date.now().toString(),
         type: 'error',
-        message: err.response?.data?.message || 'Gagal memuat data master parts.',
+        message: extractErrorMessage(err, 'Gagal memuat data master parts.'),
       });
     } finally {
       setIsLoading(false);
@@ -143,7 +144,7 @@ export const useMasterParts = () => {
       setToast({
         id: Date.now().toString(),
         type: 'error',
-        message: err.response?.data?.message || 'Gagal mengompresi dan mengunggah foto.',
+        message: extractErrorMessage(err, 'Gagal mengompresi dan mengunggah foto.'),
       });
     } finally {
       setIsSubmittingImage(false);
@@ -184,7 +185,7 @@ export const useMasterParts = () => {
       setToast({
         id: Date.now().toString(),
         type: 'error',
-        message: err.response?.data?.message || 'Gagal menghapus foto master part.',
+        message: extractErrorMessage(err, 'Gagal menghapus foto master part.'),
       });
     } finally {
       setIsDeletingImage(false);
@@ -257,8 +258,9 @@ export const useMasterParts = () => {
       setToast({
         id: Date.now().toString(),
         type: 'error',
-        message: err.response?.data?.message || 'Gagal menambahkan master part.',
+        message: extractErrorMessage(err, 'Gagal menambahkan master part.'),
       });
+      throw err;
     }
   };
 
@@ -277,8 +279,9 @@ export const useMasterParts = () => {
       setToast({
         id: Date.now().toString(),
         type: 'error',
-        message: err.response?.data?.message || 'Gagal memperbarui master part.',
+        message: extractErrorMessage(err, 'Gagal memperbarui master part.'),
       });
+      throw err;
     }
   };
 
@@ -299,7 +302,7 @@ export const useMasterParts = () => {
       setToast({
         id: Date.now().toString(),
         type: 'error',
-        message: err.response?.data?.message || 'Gagal menghapus master part.',
+        message: extractErrorMessage(err, 'Gagal menghapus master part.'),
       });
     }
   };
@@ -321,7 +324,7 @@ export const useMasterParts = () => {
       setToast({
         id: Date.now().toString(),
         type: 'error',
-        message: err.response?.data?.message || 'Gagal menghapus seluruh data master parts.',
+        message: extractErrorMessage(err, 'Gagal menghapus seluruh data master parts.'),
       });
     }
   };
@@ -338,7 +341,7 @@ export const useMasterParts = () => {
       setToast({
         id: Date.now().toString(),
         type: 'error',
-        message: err.response?.data?.message || 'Gagal membaca file Excel.',
+        message: extractErrorMessage(err, 'Gagal membaca file Excel.'),
       });
     } finally {
       setIsUploading(false);
@@ -362,7 +365,7 @@ export const useMasterParts = () => {
       setToast({
         id: Date.now().toString(),
         type: 'error',
-        message: err.response?.data?.message || 'Gagal menyimpan data impor.',
+        message: extractErrorMessage(err, 'Gagal menyimpan data impor.'),
       });
     } finally {
       setIsCommitting(false);

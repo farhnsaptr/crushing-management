@@ -5,6 +5,7 @@ import type {
   VerificationDetailResponse,
   VerificationItem,
 } from '../types/verification.types';
+import { extractErrorMessage } from '../../../services/api.client';
 
 export const useVerification = (initialDate?: string, initialShift?: 'Pagi' | 'Malam') => {
   const autoShiftDate = getAutoShiftAndDate();
@@ -35,7 +36,7 @@ export const useVerification = (initialDate?: string, initialShift?: 'Pagi' | 'M
       setData(null);
       setItems([]);
       setToast({
-        message: err?.response?.data?.message || 'Gagal memuat detail verifikasi input.',
+        message: extractErrorMessage(err, 'Gagal memuat detail verifikasi input.'),
         type: 'error',
       });
     } finally {
@@ -98,7 +99,7 @@ export const useVerification = (initialDate?: string, initialShift?: 'Pagi' | 'M
     } catch (err: any) {
       console.error('Failed to save verification:', err);
       setToast({
-        message: err?.response?.data?.message || 'Gagal menyimpan validasi verifikasi input.',
+        message: extractErrorMessage(err, 'Gagal menyimpan validasi verifikasi input.'),
         type: 'error',
       });
     } finally {

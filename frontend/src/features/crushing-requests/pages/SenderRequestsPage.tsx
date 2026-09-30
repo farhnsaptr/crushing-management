@@ -3,6 +3,7 @@ import { useCrushingRequests } from '../hooks/useCrushingRequests';
 import { CreateRequestForm } from '../components/CreateRequestForm';
 import { MyRequestsTable } from '../components/MyRequestsTable';
 import { RequestDetailModal } from '../components/RequestDetailModal';
+import { SubmitConfirmModal } from '../components/SubmitConfirmModal';
 import { Toast } from '../../../components/common/Toast';
 import { Send, History, PlusCircle } from 'lucide-react';
 
@@ -39,6 +40,9 @@ export const SenderRequestsPage: React.FC = () => {
     jenisOptions,
     selectedJenis,
     setSelectedJenis,
+    factoryOptions,
+    selectedFactoryId,
+    setSelectedFactoryId,
     availableMaterials,
     isLoadingParts,
     partSearchQuery,
@@ -48,6 +52,9 @@ export const SenderRequestsPage: React.FC = () => {
     handleRemoveItem,
     handleClearDraft,
     isSubmitting,
+    isConfirmModalOpen,
+    handleOpenConfirmModal,
+    handleCloseConfirmModal,
     handleSubmitRequest,
     estimatedTotalWeightKg,
     estimatedTotalPcs,
@@ -196,6 +203,9 @@ export const SenderRequestsPage: React.FC = () => {
           jenisOptions={jenisOptions}
           selectedJenis={selectedJenis}
           onSelectJenis={setSelectedJenis}
+          factoryOptions={factoryOptions}
+          selectedFactoryId={selectedFactoryId}
+          onSelectFactory={setSelectedFactoryId}
           availableMaterials={availableMaterials}
           isLoadingParts={isLoadingParts}
           partSearchQuery={partSearchQuery}
@@ -205,7 +215,7 @@ export const SenderRequestsPage: React.FC = () => {
           onRemoveItem={handleRemoveItem}
           onClearDraft={handleClearDraft}
           isSubmitting={isSubmitting}
-          onSubmitRequest={handleSubmitRequest}
+          onSubmitRequest={handleOpenConfirmModal}
           estimatedTotalWeightKg={estimatedTotalWeightKg}
           estimatedTotalPcs={estimatedTotalPcs}
         />
@@ -233,6 +243,21 @@ export const SenderRequestsPage: React.FC = () => {
         request={selectedRequestDetail}
         isLoading={isLoadingDetail}
         isOperatorOrAdmin={false}
+      />
+
+      {/* Submit Confirmation & Physical Validation Modal */}
+      <SubmitConfirmModal
+        isOpen={isConfirmModalOpen}
+        onClose={handleCloseConfirmModal}
+        onConfirm={handleSubmitRequest}
+        isLoading={isSubmitting}
+        user={user}
+        shift={shift}
+        requestDate={requestDate}
+        notes={notes}
+        items={items}
+        totalWeightKg={estimatedTotalWeightKg}
+        totalPcs={estimatedTotalPcs}
       />
     </div>
   );

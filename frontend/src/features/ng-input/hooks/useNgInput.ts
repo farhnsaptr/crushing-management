@@ -3,6 +3,7 @@ import { NgInputService } from '../services/ngInput.service';
 import type { FilterMode, MasterPart, Factory } from '../types/ngInput.types';
 import type { ToastMessage } from '../../../components/common/Toast';
 import { getAutoShiftAndDate } from '../../../config/shift.config';
+import { extractErrorMessage } from '../../../services/api.client';
 
 export const JENIS_PART_OPTIONS = [
   'BUMPER',
@@ -65,7 +66,7 @@ export const useNgInput = () => {
       setToast({
         id: Date.now().toString(),
         type: 'error',
-        message: err.response?.data?.message || 'Gagal memuat data master parts.',
+        message: extractErrorMessage(err, 'Gagal memuat data master parts.'),
       });
     } finally {
       setIsLoadingParts(false);
@@ -132,6 +133,7 @@ export const useNgInput = () => {
         (p) =>
           (p.part_name || '').toLowerCase().includes(q) ||
           (p.part_number || '').toLowerCase().includes(q) ||
+          (p.material || '').toLowerCase().includes(q) ||
           (p.model_code || '').toLowerCase().includes(q) ||
           (p.sebango_code || '').toLowerCase().includes(q)
       );
@@ -213,7 +215,7 @@ export const useNgInput = () => {
       setToast({
         id: Date.now().toString(),
         type: 'error',
-        message: err.response?.data?.message || 'Gagal menyimpan transaksi NG.',
+        message: extractErrorMessage(err, 'Gagal menyimpan transaksi NG.'),
       });
     } finally {
       setIsSubmitting(false);

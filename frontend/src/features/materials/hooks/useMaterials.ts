@@ -3,6 +3,7 @@ import { MaterialsService } from '../services/materials.service';
 import { useDebounce } from '../../../hooks';
 import type { Material, CreateMaterialPayload } from '../types/materials.types';
 import type { ToastMessage } from '../../../components/common/Toast';
+import { extractErrorMessage } from '../../../services/api.client';
 
 export const useMaterials = () => {
   const [materials, setMaterials] = useState<Material[]>([]);
@@ -32,7 +33,7 @@ export const useMaterials = () => {
       setToast({
         id: Date.now().toString(),
         type: 'error',
-        message: err.response?.data?.message || 'Gagal memuat data master material.',
+        message: extractErrorMessage(err, 'Gagal memuat data master material.'),
       });
     } finally {
       setIsLoading(false);
@@ -67,8 +68,9 @@ export const useMaterials = () => {
       setToast({
         id: Date.now().toString(),
         type: 'error',
-        message: err.response?.data?.message || 'Gagal menambahkan master material.',
+        message: extractErrorMessage(err, 'Gagal menambahkan master material.'),
       });
+      throw err;
     }
   };
 
@@ -87,8 +89,9 @@ export const useMaterials = () => {
       setToast({
         id: Date.now().toString(),
         type: 'error',
-        message: err.response?.data?.message || 'Gagal memperbarui master material.',
+        message: extractErrorMessage(err, 'Gagal memperbarui master material.'),
       });
+      throw err;
     }
   };
 
@@ -109,7 +112,7 @@ export const useMaterials = () => {
       setToast({
         id: Date.now().toString(),
         type: 'error',
-        message: err.response?.data?.message || 'Gagal menghapus master material.',
+        message: extractErrorMessage(err, 'Gagal menghapus master material.'),
       });
     }
   };
@@ -135,7 +138,7 @@ export const useMaterials = () => {
       setToast({
         id: Date.now().toString(),
         type: 'error',
-        message: err.response?.data?.message || 'Gagal menghapus seluruh data material.',
+        message: extractErrorMessage(err, 'Gagal menghapus seluruh data material.'),
       });
     }
   };
