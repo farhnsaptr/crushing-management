@@ -11,13 +11,18 @@ import {
 } from 'recharts';
 import type { ShiftChartPoint } from '../types/dashboard.types';
 
+const PLANNING_COLOR = '#2563eb';
+
 interface ShiftLineChartProps {
   data: ShiftChartPoint[];
   height: number;
   tooltip: React.ReactElement;
 }
 
-/** Grafik garis harian (dengan shading gradasi): 2 garis (Shift Pagi = primary, Shift Malam = secondary). */
+/**
+ * Grafik garis harian (dengan shading gradasi): 2 garis (Shift Pagi = primary, Shift Malam = secondary).
+ * Garis putus-putus "Planning Harian" hanya muncul jika data punya `planning_kg` (hari tanpa upload = null → garis terputus).
+ */
 export const ShiftLineChart: React.FC<ShiftLineChartProps> = ({ data, height, tooltip }) => (
   <div
     style={{
@@ -88,6 +93,20 @@ export const ShiftLineChart: React.FC<ShiftLineChartProps> = ({ data, height, to
           dot={{ r: 4.5, fill: 'var(--secondary-color)', stroke: '#ffffff', strokeWidth: 1.5 }}
           activeDot={{ r: 7 }}
         />
+
+        {data.some((d) => d.planning_kg != null) && (
+          <Area
+            type="linear"
+            dataKey="planning_kg"
+            name="Planning Harian"
+            stroke={PLANNING_COLOR}
+            fill="none"
+            strokeWidth={2}
+            strokeDasharray="6 4"
+            dot={{ r: 2.5, fill: PLANNING_COLOR, stroke: PLANNING_COLOR }}
+            activeDot={{ r: 5 }}
+          />
+        )}
       </AreaChart>
     </ResponsiveContainer>
   </div>

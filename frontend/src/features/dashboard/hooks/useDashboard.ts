@@ -40,7 +40,6 @@ export function useDashboard() {
   // Plant / Operator / Admin Dashboard Data
   const [summaryStats, setSummaryStats] = useState<DashboardSummaryStats | null>(null);
   const [dailyChart, setDailyChart] = useState<DailyRecycleChartItem[]>([]);
-  const [totalAllowanceKg, setTotalAllowanceKg] = useState<number>(0);
   const [paretoMaterials, setParetoMaterials] = useState<ParetoMaterialItem[]>([]);
   const [topParts, setTopParts] = useState<TopNgPartItem[]>([]);
   const [departmentPareto, setDepartmentPareto] = useState<DepartmentParetoItem[]>([]);
@@ -72,7 +71,6 @@ export function useDashboard() {
 
         setSummaryStats(statsData);
         setDailyChart(chartResult.daily_chart || []);
-        setTotalAllowanceKg(chartResult.total_allowance_kg || 0);
         setParetoMaterials(paretoData);
         setTopParts(topPartsData);
         setDepartmentPareto(deptParetoData);
@@ -112,7 +110,6 @@ export function useDashboard() {
     setSelectedLocation,
     summaryStats,
     dailyChart,
-    totalAllowanceKg,
     paretoMaterials,
     topParts,
     departmentPareto,

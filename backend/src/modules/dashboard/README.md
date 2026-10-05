@@ -15,6 +15,7 @@ Mengembalikan total statistik KPI: `input_kg`, `output_kg`, `waste_kg`, dan `inp
 
 ### 2. `GET /api/dashboard/daily-chart`
 Mengembalikan data grafik harian total recycle material (kg & pcs per tanggal).
+- **Planning Harian** (`planning_kg` per hari) = SUM(`production_analytics_items.allowance_kg`) dari data produksi yang sudah diupload di modul Analytics (allowance di-snapshot saat upload). Hari yang belum diupload bernilai `null`.
 - **Query Params**: `year`, `month`, `location`
 
 ### 3. `GET /api/dashboard/pareto-material`

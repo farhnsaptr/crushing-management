@@ -29,7 +29,7 @@ export class DashboardService {
     const response = await apiClient.get('/api/dashboard/daily-chart', {
       params: { year, month, location },
     });
-    return response.data.data || { total_allowance_kg: 0, daily_chart: [] };
+    return response.data.data || { daily_chart: [] };
   }
 
   static async getParetoMaterial(

@@ -12,7 +12,7 @@ Fitur ini menyediakan visualisasi KPI, grafik harian, dan analisis pareto untuk 
 - **Role Guest (`guest`)**: Viewer murni. Melihat dashboard yang sama dengan admin (KPI, grafik, pareto, toggle lokasi, filter bulan/tahun, Segarkan) tanpa tombol aksi: Verifikasi Pengiriman, Input Part Runner, Detail Part NG, Export, banner & modal verifikasi disembunyikan dan status verifikasi tidak di-fetch. Aturan role ada di `config/permissions.config.ts` (`canManageData`).
 - **Role Operator / Admin / Super-Admin**:
   - Executive KPI Cards (Total Input, Total Output, Waste, Input Pcs).
-  - Grafik garis harian daur ulang per shift (Pagi & Malam, total NG + Runner).
+  - Grafik garis harian daur ulang per shift (Pagi & Malam, total NG + Runner), ditambah **garis putus-putus Planning Harian** (allowance dari upload data produksi di Analitik). Garis hanya muncul di hari yang data produksinya sudah diupload; nilainya juga tampil di tooltip.
   - **Pareto Departemen Pengirim Part NG Terbanyak** (Peringkat, Nama Departemen, Total Transaksi, Jumlah Pcs, Total Berat kg, Proporsi %).
   - Top Part NG terbanyak.
   - Pareto Material / Resin.

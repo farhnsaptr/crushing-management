@@ -105,6 +105,12 @@ export const DailyRecycleChart: React.FC<DailyRecycleChartProps> = ({
             <span>Total Waste:</span>
             <span style={{ fontWeight: 900 }}>{Number(d.total_waste_kg ?? 0).toFixed(2)} kg</span>
           </div>
+          <div style={{ fontWeight: 800, display: 'flex', justifyContent: 'space-between', color: '#2563eb' }}>
+            <span>Planning Harian:</span>
+            <span style={{ fontWeight: 900 }}>
+              {d.planning_kg != null ? `${Number(d.planning_kg).toFixed(2)} kg` : 'Belum upload produksi'}
+            </span>
+          </div>
         </div>
       </div>
     );
