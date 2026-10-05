@@ -1,4 +1,5 @@
 import { apiClient } from '../../../services/api.client';
+import { uploadFileInChunks } from '../../../services/chunkedUpload.service';
 import type {
   ParsedCsvRow,
   RunnerMaterialPreviewResponse,
@@ -13,18 +14,14 @@ import type {
 export class RunnerMaterialService {
   /**
    * Sends uploaded Excel (.xlsx/.xls) or CSV file to backend for parsing & calculation.
+   * File diunggah per-chunk (< 1MB/request) lalu dirakit backend via `upload_id`.
    */
   static async previewImportFile(file: File, selectedDate?: string): Promise<RunnerMaterialPreviewResponse> {
-    const formData = new FormData();
-    formData.append('file', file);
-
+    const uploadRef = await uploadFileInChunks(file);
     const response = await apiClient.post<{ success: boolean; data: RunnerMaterialPreviewResponse }>(
       '/api/runner-material/preview',
-      formData,
+      uploadRef,
       {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
         params: selectedDate ? { selected_date: selectedDate } : undefined,
       }
     );

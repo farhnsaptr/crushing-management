@@ -23,7 +23,7 @@ frontend/
 │   │   ├── analytics/         # Data Analitik, Komparasi 3 Batang, Gap Matriks & Pareto
 │   │   ├── global-logs/       # Admin Database Audit Log Viewer (MySQL)
 │   │   └── site-config/       # Admin Theme Color Customizer
-│   ├── services/              # Axios API Client dengan JWT Interceptor
+│   ├── services/              # Axios API Client dengan JWT Interceptor & chunked upload (file > 1MB)
 │   ├── index.css              # Font Outfit, CSS Reset & Color Variables
 │   ├── App.tsx                # App Routing setup
 │   └── main.tsx               # React Entry Point
@@ -34,6 +34,7 @@ frontend/
 - **Dynamic Sidebar**: Menu sidebar terpusat di `navigation.config.ts` dan difilter otomatis berdasar role pengguna.
 - **Strict AGENTS.md**: Pemisahan tegas antara komponen UI murni (`*.tsx`) dan logika API/state (`hooks/` & `services/`).
 - **Shared Error Pages**: Komponen khusus untuk 404 Not Found dan 403 Forbidden.
+- **Chunked Upload**: `services/chunkedUpload.service.ts` memotong file per 768KB sehingga upload Excel/CSV runner & analitik > 1MB lolos limit body 1MB nginx produksi.
 
 ## Run Locally
 ```bash

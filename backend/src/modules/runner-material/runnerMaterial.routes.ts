@@ -3,6 +3,7 @@ import multer from 'multer';
 import { RunnerMaterialController } from './runnerMaterial.controller';
 import { verifyToken, requireRole } from '../../middlewares/auth.middleware';
 import { importLimiter } from '../../middlewares/rateLimiter.middleware';
+import { attachChunkedFile } from '../../middlewares/chunkedUpload.middleware';
 
 const uploadMemory = multer({
   storage: multer.memoryStorage(),
@@ -28,7 +29,7 @@ router.use(verifyToken);
  *       200:
  *         description: Preview calculation grouped per material
  */
-router.post('/preview', importLimiter, uploadMemory.single('file'), RunnerMaterialController.preview);
+router.post('/preview', importLimiter, uploadMemory.single('file'), attachChunkedFile, RunnerMaterialController.preview);
 
 /**
  * @openapi

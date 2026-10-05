@@ -26,6 +26,7 @@ import materialsRoutes from './modules/materials/materials.routes';
 import runnerMaterialRoutes from './modules/runner-material/runnerMaterial.routes';
 import verificationRoutes from './modules/verification/verification.routes';
 import analyticsRoutes from './modules/analytics/analytics.routes';
+import uploadsRoutes from './modules/uploads/uploads.routes';
 
 const app: Application = express();
 
@@ -96,6 +97,7 @@ app.use('/api/production-actual', productionActualRoutes);
 app.use('/api/runner-material', runnerMaterialRoutes);
 app.use('/api/verifications', verificationRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/uploads', uploadsRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/site-config', siteConfigRoutes);
 app.use('/api/admin/logs', globalLogsRoutes);
