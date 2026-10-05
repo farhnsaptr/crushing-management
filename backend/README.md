@@ -19,6 +19,7 @@ backend/
 │   │   ├── production-actual/# Import data aktual produksi dari CSV shopfloor
 │   │   ├── dashboard/      # Stat Summary, Pareto, Charts, SSE stream, & Export
 │   │   ├── analytics/      # Data analitik produksi, 3-bar chart, gap matriks, pareto & rollback
+│   │   ├── uploads/        # Chunked upload: file > 1MB dipotong per-chunk agar lolos limit body nginx
 │   │   ├── site-config/    # Application theme & visual branding configuration
 │   │   └── global-logs/    # Global API audit trail logs (MySQL)
 │   ├── utils/              # Response helper & SSE Event Emitter
@@ -34,6 +35,7 @@ backend/
 - Real-time updates via Server-Sent Events (SSE).
 - Role-based authorization (`super-admin`, `admin`, `operator`, `pengirim`).
 - Cloud Object Storage (MinIO / S3) untuk upload dan kompresi foto master part.
+- Chunked upload (`/api/uploads/chunk`) agar file Excel/CSV > 1MB lolos limit body 1MB nginx produksi.
 
 ## Environment Setup
 Pastikan file `.env` di folder `backend/` memiliki konfigurasi berikut:

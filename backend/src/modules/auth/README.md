@@ -8,7 +8,7 @@ Modul ini mengelola autentikasi pengguna, penerbitan JSON Web Token (JWT), serta
    - Mencari user di tabel `users` MySQL.
    - Memeriksa apakah status akun aktif (`is_active = TRUE`).
    - Memverifikasi hash password menggunakan `bcrypt.compare`.
-   - Mengenerate JWT token bertipe Bearer yang berisi payload `id`, `username`, `full_name`, dan `role`.
+   - Mengenerate JWT token bertipe Bearer yang berisi payload `id`, `username`, `full_name`, dan `role`. Role `guest` bersifat read-only (non-GET ditolak 403 oleh `verifyToken`; `/logout` memakai `authenticate`).
    - Menyimpan token di cookie HTTP-only serta mengembalikan token di respons JSON.
 2. **Rate Limiting**:
    - Diproteksi oleh `authLimiter` (maksimal 10 percobaan per 15 menit) untuk mencegah seragan brute-force.

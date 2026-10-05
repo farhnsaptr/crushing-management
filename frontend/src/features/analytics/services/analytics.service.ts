@@ -1,4 +1,5 @@
 import { apiClient } from '../../../services/api.client';
+import { uploadFileInChunks } from '../../../services/chunkedUpload.service';
 import type {
   YearlyAnalyticsResponse,
   ProductionAnalyticsItem,
@@ -8,42 +9,26 @@ import type {
 
 export class AnalyticsService {
   /**
-   * Preview and analyze production Excel (.xlsx/.xls) or CSV file via FormData.
+   * Preview and analyze production Excel (.xlsx/.xls) or CSV file.
+   * File diunggah per-chunk (< 1MB/request) lalu dirakit backend via `upload_id`.
    */
   static async previewProductionFile(file: File): Promise<any> {
-    const formData = new FormData();
-    formData.append('file', file);
-
+    const uploadRef = await uploadFileInChunks(file);
     const response = await apiClient.post<{ success: boolean; data: any }>(
       '/api/analytics/preview',
-      formData,
-      {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      }
+      uploadRef
     );
     return response.data.data;
   }
 
   /**
-   * Upload and import production report directly using file via FormData.
+   * Upload and import production report file (per-chunk, dirakit backend via `upload_id`).
    */
   static async uploadProductionFile(file: File, batch_name?: string): Promise<any> {
-    const formData = new FormData();
-    formData.append('file', file);
-    if (batch_name) {
-      formData.append('batch_name', batch_name);
-    }
-
+    const uploadRef = await uploadFileInChunks(file);
     const response = await apiClient.post<{ success: boolean; data: any }>(
       '/api/analytics/upload',
-      formData,
-      {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      }
+      { ...uploadRef, batch_name }
     );
     return response.data.data;
   }

@@ -2,6 +2,7 @@ import { Router } from 'express';
 import multer from 'multer';
 import { AnalyticsController } from './analytics.controller';
 import { verifyToken, requireRole } from '../../middlewares/auth.middleware';
+import { attachChunkedFile } from '../../middlewares/chunkedUpload.middleware';
 
 const uploadMemory = multer({
   storage: multer.memoryStorage(),
@@ -18,12 +19,14 @@ router.post(
   '/preview',
   requireRole(['super-admin', 'admin', 'operator']),
   uploadMemory.single('file'),
+  attachChunkedFile,
   (req, res) => AnalyticsController.previewProductionReport(req, res)
 );
 router.post(
   '/upload',
   requireRole(['super-admin', 'admin', 'operator']),
   uploadMemory.single('file'),
+  attachChunkedFile,
   (req, res) => AnalyticsController.importProductionReport(req, res)
 );
 

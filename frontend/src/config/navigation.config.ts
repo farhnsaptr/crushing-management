@@ -33,7 +33,7 @@ export const NAVIGATION_ITEMS: NavigationItem[] = [
     title: 'Dashboard',
     path: '/dashboard',
     icon: LayoutDashboard,
-    roles: ['super-admin', 'admin', 'operator', 'pengirim'],
+    roles: ['super-admin', 'admin', 'operator', 'pengirim', 'guest'],
     section: 'main',
   },
   {
@@ -81,7 +81,7 @@ export const NAVIGATION_ITEMS: NavigationItem[] = [
     title: 'Data Analitik',
     path: '/analytics',
     icon: BarChart3,
-    roles: ['super-admin', 'admin', 'operator', 'pengirim'],
+    roles: ['super-admin', 'admin', 'operator', 'pengirim', 'guest'],
     section: 'main',
   },
   {

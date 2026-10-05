@@ -1,7 +1,7 @@
 import { Response } from 'express';
 import { UsersService } from './users.service';
 import { sendSuccess, sendError } from '../../utils/response.util';
-import { AuthenticatedRequest } from '../../middlewares/auth.middleware';
+import { AuthenticatedRequest, USER_ROLES } from '../../middlewares/auth.middleware';
 
 export class UsersController {
   static async listUsers(req: AuthenticatedRequest, res: Response): Promise<void> {
@@ -23,8 +23,8 @@ export class UsersController {
         return;
       }
 
-      if (!['super-admin', 'admin', 'operator', 'pengirim'].includes(role)) {
-        sendError(res, 'Role must be super-admin, admin, operator, or pengirim', 400);
+      if (!USER_ROLES.includes(role)) {
+        sendError(res, `Role must be one of: ${USER_ROLES.join(', ')}`, 400);
         return;
       }
 
@@ -59,8 +59,8 @@ export class UsersController {
         return;
       }
 
-      if (role && !['super-admin', 'admin', 'operator', 'pengirim'].includes(role)) {
-        sendError(res, 'Role must be super-admin, admin, operator, or pengirim', 400);
+      if (role && !USER_ROLES.includes(role)) {
+        sendError(res, `Role must be one of: ${USER_ROLES.join(', ')}`, 400);
         return;
       }
 

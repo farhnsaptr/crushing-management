@@ -3,7 +3,11 @@ import jwt from 'jsonwebtoken';
 import { env } from '../config/env.config';
 import { sendError } from '../utils/response.util';
 
-export type UserRole = 'super-admin' | 'admin' | 'operator' | 'pengirim';
+export const USER_ROLES = ['super-admin', 'admin', 'operator', 'pengirim', 'guest'] as const;
+export type UserRole = (typeof USER_ROLES)[number];
+
+// Role 'guest' = viewer murni: hanya boleh request yang tidak mengubah data.
+const SAFE_METHODS = ['GET', 'HEAD', 'OPTIONS'];
 
 export interface JwtPayloadUser {
   id: string;
@@ -26,7 +30,8 @@ export function getLockedFactoryId(user?: JwtPayloadUser): string | undefined {
     : undefined;
 }
 
-export function verifyToken(
+/** Hanya memverifikasi token & mengisi req.user (tanpa pembatasan role). */
+export function authenticate(
   req: AuthenticatedRequest,
   res: Response,
   next: NextFunction
@@ -52,6 +57,21 @@ export function verifyToken(
   } catch (error) {
     sendError(res, 'Invalid or expired token.', 401);
   }
+}
+
+/** authenticate + guard read-only: role guest ditolak (403) untuk method yang mengubah data. */
+export function verifyToken(
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): void {
+  authenticate(req, res, () => {
+    if (req.user?.role === 'guest' && !SAFE_METHODS.includes(req.method)) {
+      sendError(res, 'Forbidden. Akun guest hanya dapat melihat data.', 403);
+      return;
+    }
+    next();
+  });
 }
 
 export function preventReLogin(

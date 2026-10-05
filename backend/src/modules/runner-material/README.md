@@ -6,6 +6,7 @@ Modul ini bertanggung jawab mengelola pencatatan data **Part Runner NG per Jenis
 
 1. **Excel & CSV File Ingestion**:
    - File Excel (`.xlsx` / `.xls`) atau `.csv` diunggah via `multipart/form-data` ke backend (`POST /api/runner-material/preview`).
+   - File > 1MB dikirim per-chunk lewat `POST /api/uploads/chunk`, lalu endpoint preview menerima JSON `{ upload_id, total_chunks, filename }` (lihat modul `uploads`).
    - Backend mem-parsing buffer spreadsheet secara langsung menggunakan `xlsx` (SheetJS) tanpa membebani bundle frontend.
    - Kolom yang dipetakan secara dinamis:
      - Tanggal: `PRODUCTION DATE`, `DATE`, `TANGGAL` (format `DD-MM-YYYY` atau Excel serial date distandarisasi ke `YYYY-MM-DD`).

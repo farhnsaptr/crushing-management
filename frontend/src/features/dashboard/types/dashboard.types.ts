@@ -10,6 +10,14 @@ export interface DashboardSummaryStats {
   input_pcs: number;
 }
 
+/** Titik data minimum untuk grafik garis per shift (kg). */
+export interface ShiftChartPoint {
+  day_num: number;
+  pagi_kg: number;
+  malam_kg: number;
+  planning_kg?: number | null;
+}
+
 export interface DailyRecycleChartItem {
   day: string;
   day_num: number;
@@ -28,10 +36,11 @@ export interface DailyRecycleChartItem {
   total_kg: number;
   total_output_kg?: number;
   total_waste_kg?: number;
+  /** Planning Harian (allowance dari upload data produksi); null = data produksi hari itu belum diupload. */
+  planning_kg?: number | null;
 }
 
 export interface DailyRecycleChartResponse {
-  total_allowance_kg: number;
   daily_chart: DailyRecycleChartItem[];
 }
 

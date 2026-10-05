@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { DashboardService } from '../services/dashboard.service';
 import { VerificationService } from '../../verification/services/verification.service';
 import { useAuth } from '../../../context/AuthContext';
+import { canManageData } from '../../../config/permissions.config';
 import { extractErrorMessage } from '../../../services/api.client';
 import type { VerificationDashboardStatusResponse } from '../../verification/types/verification.types';
 import type {
@@ -39,7 +40,6 @@ export function useDashboard() {
   // Plant / Operator / Admin Dashboard Data
   const [summaryStats, setSummaryStats] = useState<DashboardSummaryStats | null>(null);
   const [dailyChart, setDailyChart] = useState<DailyRecycleChartItem[]>([]);
-  const [totalAllowanceKg, setTotalAllowanceKg] = useState<number>(0);
   const [paretoMaterials, setParetoMaterials] = useState<ParetoMaterialItem[]>([]);
   const [topParts, setTopParts] = useState<TopNgPartItem[]>([]);
   const [departmentPareto, setDepartmentPareto] = useState<DepartmentParetoItem[]>([]);
@@ -66,12 +66,11 @@ export function useDashboard() {
           DashboardService.getParetoMaterial(selectedYear, selectedMonth, selectedLocation),
           DashboardService.getTopNgParts(selectedYear, selectedMonth, selectedLocation),
           DashboardService.getDepartmentPareto(selectedYear, selectedMonth, selectedLocation),
-          VerificationService.getDashboardStatus(),
+          canManageData(user?.role) ? VerificationService.getDashboardStatus() : Promise.resolve(null),
         ]);
 
         setSummaryStats(statsData);
         setDailyChart(chartResult.daily_chart || []);
-        setTotalAllowanceKg(chartResult.total_allowance_kg || 0);
         setParetoMaterials(paretoData);
         setTopParts(topPartsData);
         setDepartmentPareto(deptParetoData);
@@ -111,7 +110,6 @@ export function useDashboard() {
     setSelectedLocation,
     summaryStats,
     dailyChart,
-    totalAllowanceKg,
     paretoMaterials,
     topParts,
     departmentPareto,

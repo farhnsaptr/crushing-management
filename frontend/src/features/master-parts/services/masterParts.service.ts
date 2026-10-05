@@ -1,4 +1,5 @@
 import { apiClient } from '../../../services/api.client';
+import { uploadFileInChunks } from '../../../services/chunkedUpload.service';
 import type {
   MasterPart,
   CreateMasterPartPayload,
@@ -58,14 +59,8 @@ export class MasterPartsService {
   }
 
   static async previewImportFile(file: File): Promise<ImportPreviewResult> {
-    const formData = new FormData();
-    formData.append('file', file);
-
-    const response = await apiClient.post('/api/master-parts/preview-import', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
+    const uploadRef = await uploadFileInChunks(file);
+    const response = await apiClient.post('/api/master-parts/preview-import', uploadRef);
 
     return response.data.data;
   }
@@ -108,14 +103,10 @@ export class MasterPartsService {
   }
 
   static async uploadPartImage(partId: string, imageBlobOrFile: Blob | File): Promise<MasterPart> {
-    const formData = new FormData();
-    formData.append('image', imageBlobOrFile, 'part_image.jpg');
-
-    const response = await apiClient.post(`/api/master-parts/${partId}/upload-image`, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
+    const uploadRef = await uploadFileInChunks(
+      new File([imageBlobOrFile], 'part_image.jpg', { type: imageBlobOrFile.type })
+    );
+    const response = await apiClient.post(`/api/master-parts/${partId}/upload-image`, uploadRef);
 
     return response.data.data;
   }

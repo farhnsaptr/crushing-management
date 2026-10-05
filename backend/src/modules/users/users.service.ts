@@ -2,6 +2,7 @@ import bcrypt from 'bcrypt';
 import { randomUUID } from 'crypto';
 import { pool } from '../../config/database';
 import { RowDataPacket, ResultSetHeader } from 'mysql2';
+import type { UserRole } from '../../middlewares/auth.middleware';
 
 export class UsersService {
   static async listUsers(currentUserId?: string) {
@@ -32,7 +33,7 @@ export class UsersService {
     username: string;
     password: string;
     full_name: string;
-    role: 'super-admin' | 'admin' | 'operator' | 'pengirim';
+    role: UserRole;
     factory_id?: string | null;
     department_id?: string | null;
   }) {
@@ -83,7 +84,7 @@ export class UsersService {
     userId: string,
     data: {
       full_name?: string;
-      role?: 'super-admin' | 'admin' | 'operator' | 'pengirim';
+      role?: UserRole;
       factory_id?: string | null;
       department_id?: string | null;
       password?: string;

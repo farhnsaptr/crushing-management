@@ -5,6 +5,7 @@ Modul ini menyediakan layanan analitik produksi, komparasi 3-komponen (*Allowanc
 ## Fitur Utama
 1. **Live Preview & Validasi Kecocokan Excel/CSV (`POST /api/analytics/preview`)**:
    - Menerima file Excel (`.xlsx` / `.xls` seperti `08. LAPORAN AGUSTUS 2026.xlsx`) via `multipart/form-data` atau raw records CSV, lalu melakukan pencocokan instan ke `master_parts`.
+   - File > 1MB dikirim per-chunk lewat `POST /api/uploads/chunk`, lalu endpoint ini menerima JSON `{ upload_id, total_chunks, filename }` (lihat modul `uploads`). Berlaku juga untuk `POST /api/analytics/upload`.
    - Mengembalikan ringkasan statistik (jumlah baris cocok vs tidak cocok, match rate %, total estimasi allowance kg, daftar Sebango yang tidak terdaftar).
    - Menghitung Shikake aktual per (Tanggal + Sebango) dan estimasi allowance per baris sebelum disimpan.
 

@@ -11,6 +11,8 @@ Modul ini mengelola katalog data master part resin, model kendaraan, berat part/
    - Pencarian part berdasarkan part number atau kode sebango.
 4. **Filter Berdasarkan Jenis Part (`MasterPartsService.getPartsByJenis`)**:
    - Menampilkan daftar part sesuai `jenis_part` (misal: BUMPER, GRILLE, DOOR TRIM) untuk halaman input scan.
+5. **Upload File > 1MB (`preview-import` & `:id/upload-image`)**:
+   - Excel import dan foto part dikirim per-chunk lewat `POST /api/uploads/chunk`, lalu endpoint menerima JSON `{ upload_id, total_chunks, filename }` (lihat modul `uploads`). Upload multipart langsung tetap didukung.
 
 ## Struktur File
 ```

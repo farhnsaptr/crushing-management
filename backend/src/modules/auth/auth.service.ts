@@ -3,13 +3,14 @@ import jwt from 'jsonwebtoken';
 import { pool } from '../../config/database';
 import { env } from '../../config/env.config';
 import { RowDataPacket } from 'mysql2';
+import type { UserRole } from '../../middlewares/auth.middleware';
 
 export interface UserRow extends RowDataPacket {
   id: string;
   username: string;
   password_hash: string;
   full_name: string;
-  role: 'super-admin' | 'admin' | 'operator' | 'pengirim';
+  role: UserRole;
   factory_id?: string | null;
   factory_name?: string | null;
   department_id?: string | null;

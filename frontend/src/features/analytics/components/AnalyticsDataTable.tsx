@@ -12,6 +12,7 @@ import {
 import type { ProductionAnalyticsItem } from '../types/analytics.types';
 
 interface AnalyticsDataTableProps {
+  canManage?: boolean;
   records: ProductionAnalyticsItem[];
   pagination: { page: number; limit: number; total: number; totalPages: number };
   search: string;
@@ -26,6 +27,7 @@ interface AnalyticsDataTableProps {
 }
 
 export const AnalyticsDataTable: React.FC<AnalyticsDataTableProps> = ({
+  canManage = false,
   records,
   pagination,
   search,
@@ -155,11 +157,13 @@ export const AnalyticsDataTable: React.FC<AnalyticsDataTableProps> = ({
         <div style={{ padding: '2.5rem', textAlign: 'center', color: '#64748b', backgroundColor: '#f8fafc', borderRadius: '12px', border: '1px dashed #cbd5e1' }}>
           <Layers size={32} color="#94a3b8" style={{ marginBottom: '0.5rem' }} />
           <p style={{ fontWeight: 700, margin: 0, color: '#475569' }}>
-            Belum ada data laporan produksi yang diunggah.
+            {canManage ? 'Belum ada data laporan produksi yang diunggah.' : 'Belum ada data laporan produksi.'}
           </p>
-          <p style={{ fontSize: '0.8rem', margin: '0.25rem 0 0 0' }}>
-            Silakan klik tombol "Upload Data Produksi" di atas untuk mengunggah file Excel / CSV.
-          </p>
+          {canManage && (
+            <p style={{ fontSize: '0.8rem', margin: '0.25rem 0 0 0' }}>
+              Silakan klik tombol "Upload Data Produksi" di atas untuk mengunggah file Excel / CSV.
+            </p>
+          )}
         </div>
       ) : (
         <div style={{ overflowX: 'auto', border: '1px solid #e2e8f0', borderRadius: '12px' }}>

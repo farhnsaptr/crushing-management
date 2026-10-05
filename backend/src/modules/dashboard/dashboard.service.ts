@@ -86,18 +86,6 @@ export class DashboardService {
     const qYear = year || now.getFullYear();
     const qMonth = month || now.getMonth() + 1;
 
-    // Fetch sum of all allowance_kg from active master_parts for the selected factory location
-    const [allowanceRows] = await pool.query<RowDataPacket[]>(
-      `SELECT COALESCE(SUM(mp.allowance_kg), 0) AS total_allowance_kg
-       FROM master_parts mp
-       JOIN machines mc ON mp.machine_id = mc.id
-       JOIN factories fc ON mc.factory_id = fc.id
-       WHERE mp.is_active = TRUE AND fc.location = ?`,
-      [location]
-    );
-
-    const totalAllowanceKg = Number(Number(allowanceRows[0]?.total_allowance_kg || 0).toFixed(2));
-
     // 1. Fetch Part NG transactions per day & shift (with reuse vs no-reuse breakdown)
     const [ngRows] = await pool.query<RowDataPacket[]>(
       `SELECT 
@@ -148,6 +136,24 @@ export class DashboardService {
        GROUP BY DAY(verification_date), shift
        ORDER BY day_num ASC`,
       [qYear, qMonth]
+    );
+
+    // 4. Planning Harian: SUM allowance dari data produksi yang sudah diupload (production_analytics_items).
+    //    Hari yang belum diupload tidak punya baris → planning_kg = null (garis putus di grafik).
+    const [planningRows] = await pool.query<RowDataPacket[]>(
+      `SELECT
+        DAY(pai.production_date) AS day_num,
+        SUM(pai.allowance_kg) AS planning_kg
+       FROM production_analytics_items pai
+       JOIN master_parts mp ON pai.master_part_id = mp.id
+       JOIN machines mc ON mp.machine_id = mc.id
+       JOIN factories fc ON mc.factory_id = fc.id
+       WHERE YEAR(pai.production_date) = ? AND MONTH(pai.production_date) = ? AND fc.location = ?
+       GROUP BY DAY(pai.production_date)`,
+      [qYear, qMonth, location]
+    );
+    const planningMap = new Map<number, number>(
+      planningRows.map((r) => [Number(r.day_num), Number(Number(r.planning_kg).toFixed(2))])
     );
 
     // Generate full days for the month (1..daysInMonth)
@@ -298,11 +304,11 @@ export class DashboardService {
         total_output_kg: totalOutputKg,
         total_waste_kg: totalWasteKg,
         total_pcs: data.pagi_pcs + data.malam_pcs,
+        planning_kg: planningMap.get(dayNum) ?? null,
       };
     });
 
     return {
-      total_allowance_kg: totalAllowanceKg,
       daily_chart: chartItems,
     };
   }
