@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
+import { canManageData } from '../../../config/permissions.config';
 import { useDashboard, MONTH_OPTIONS } from '../hooks/useDashboard';
 import { DashboardMetricCards } from '../components/DashboardMetricCards';
 import { DailyRecycleChart } from '../components/DailyRecycleChart';
@@ -27,6 +28,7 @@ import {
 export const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const canManage = canManageData(user?.role);
   const [isExportModalOpen, setIsExportModalOpen] = useState<boolean>(false);
   const [isVerificationModalOpen, setIsVerificationModalOpen] = useState<boolean>(false);
 
@@ -258,104 +260,106 @@ export const DashboardPage: React.FC = () => {
           </button>
         </div>
 
-        {/* Action Buttons: Verifikasi Tiket, + Add Data & Export */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', flexWrap: 'wrap' }}>
-          {/* Verifikasi Pengiriman Button */}
-          <button
-            onClick={() => navigate('/approval-requests')}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.4rem',
-              padding: '0.45rem 1.15rem',
-              borderRadius: '14px',
-              border: '1.5px solid var(--primary-color, #008d51)',
-              backgroundColor: 'var(--primary-color, #008d51)',
-              color: '#ffffff',
-              fontWeight: 800,
-              fontSize: '0.825rem',
-              cursor: 'pointer',
-              boxShadow: '0 2px 6px rgba(0, 141, 81, 0.2)',
-              transition: 'all 0.2s ease',
-            }}
-          >
-            <ClipboardCheck size={16} />
-            <span>Verifikasi Pengiriman</span>
-          </button>
+        {/* Action Buttons: Verifikasi Tiket, + Add Data & Export (disembunyikan untuk guest/viewer) */}
+        {canManage && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', flexWrap: 'wrap' }}>
+            {/* Verifikasi Pengiriman Button */}
+            <button
+              onClick={() => navigate('/approval-requests')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.4rem',
+                padding: '0.45rem 1.15rem',
+                borderRadius: '14px',
+                border: '1.5px solid var(--primary-color, #008d51)',
+                backgroundColor: 'var(--primary-color, #008d51)',
+                color: '#ffffff',
+                fontWeight: 800,
+                fontSize: '0.825rem',
+                cursor: 'pointer',
+                boxShadow: '0 2px 6px rgba(0, 141, 81, 0.2)',
+                transition: 'all 0.2s ease',
+              }}
+            >
+              <ClipboardCheck size={16} />
+              <span>Verifikasi Pengiriman</span>
+            </button>
 
-          {/* + Add Runner Data Button */}
-          <button
-            onClick={() => navigate('/part-runner-ng')}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.4rem',
-              padding: '0.45rem 1.15rem',
-              borderRadius: '14px',
-              border: '1.5px solid var(--secondary-color, #e76114)',
-              backgroundColor: 'var(--secondary-color, #e76114)',
-              color: '#ffffff',
-              fontWeight: 800,
-              fontSize: '0.825rem',
-              cursor: 'pointer',
-              boxShadow: '0 2px 6px rgba(231, 97, 20, 0.2)',
-              transition: 'all 0.2s ease',
-            }}
-          >
-            <FileSpreadsheet size={16} />
-            <span>Input Part Runner</span>
-          </button>
+            {/* + Add Runner Data Button */}
+            <button
+              onClick={() => navigate('/part-runner-ng')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.4rem',
+                padding: '0.45rem 1.15rem',
+                borderRadius: '14px',
+                border: '1.5px solid var(--secondary-color, #e76114)',
+                backgroundColor: 'var(--secondary-color, #e76114)',
+                color: '#ffffff',
+                fontWeight: 800,
+                fontSize: '0.825rem',
+                cursor: 'pointer',
+                boxShadow: '0 2px 6px rgba(231, 97, 20, 0.2)',
+                transition: 'all 0.2s ease',
+              }}
+            >
+              <FileSpreadsheet size={16} />
+              <span>Input Part Runner</span>
+            </button>
 
-          {/* Detail Part NG Button */}
-          <button
-            onClick={() => navigate('/ng-input')}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.4rem',
-              padding: '0.45rem 1.15rem',
-              borderRadius: '14px',
-              border: '1.5px solid #2563eb',
-              backgroundColor: '#2563eb',
-              color: '#ffffff',
-              fontWeight: 800,
-              fontSize: '0.825rem',
-              cursor: 'pointer',
-              boxShadow: '0 2px 6px rgba(37, 99, 235, 0.2)',
-              transition: 'all 0.2s ease',
-            }}
-          >
-            <BarChart3 size={16} />
-            <span>Detail Part NG</span>
-          </button>
+            {/* Detail Part NG Button */}
+            <button
+              onClick={() => navigate('/ng-input')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.4rem',
+                padding: '0.45rem 1.15rem',
+                borderRadius: '14px',
+                border: '1.5px solid #2563eb',
+                backgroundColor: '#2563eb',
+                color: '#ffffff',
+                fontWeight: 800,
+                fontSize: '0.825rem',
+                cursor: 'pointer',
+                boxShadow: '0 2px 6px rgba(37, 99, 235, 0.2)',
+                transition: 'all 0.2s ease',
+              }}
+            >
+              <BarChart3 size={16} />
+              <span>Detail Part NG</span>
+            </button>
 
-          {/* Export Excel Button (Opens Date Range Modal) */}
-          <button
-            onClick={() => setIsExportModalOpen(true)}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.4rem',
-              padding: '0.45rem 1.15rem',
-              borderRadius: '14px',
-              border: '1.5px solid #0f172a',
-              backgroundColor: '#0f172a',
-              color: '#ffffff',
-              fontWeight: 800,
-              fontSize: '0.825rem',
-              cursor: 'pointer',
-              boxShadow: '0 2px 6px rgba(15, 23, 42, 0.2)',
-              transition: 'all 0.2s ease',
-            }}
-          >
-            <FileSpreadsheet size={16} />
-            <span>Export</span>
-          </button>
-        </div>
+            {/* Export Excel Button (Opens Date Range Modal) */}
+            <button
+              onClick={() => setIsExportModalOpen(true)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.4rem',
+                padding: '0.45rem 1.15rem',
+                borderRadius: '14px',
+                border: '1.5px solid #0f172a',
+                backgroundColor: '#0f172a',
+                color: '#ffffff',
+                fontWeight: 800,
+                fontSize: '0.825rem',
+                cursor: 'pointer',
+                boxShadow: '0 2px 6px rgba(15, 23, 42, 0.2)',
+                transition: 'all 0.2s ease',
+              }}
+            >
+              <FileSpreadsheet size={16} />
+              <span>Export</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Verification Status Reminder Banner */}
-      {verificationStatus && (
+      {canManage && verificationStatus && (
         <div
           style={{
             display: 'flex',
@@ -440,6 +444,7 @@ export const DashboardPage: React.FC = () => {
       </div>
 
       {/* Date Range Selection Export Modal */}
+      {canManage && (
       <ExportDateModal
         isOpen={isExportModalOpen}
         onClose={() => setIsExportModalOpen(false)}
@@ -447,13 +452,16 @@ export const DashboardPage: React.FC = () => {
         isExporting={isExporting}
         onExport={handleExportExcel}
       />
+      )}
 
       {/* Quick Input Verification Modal */}
+      {canManage && (
       <VerificationModal
         isOpen={isVerificationModalOpen}
         onClose={() => setIsVerificationModalOpen(false)}
         onSuccessSave={fetchDashboardData}
       />
+      )}
     </div>
   );
 };

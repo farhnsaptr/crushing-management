@@ -34,7 +34,7 @@ router.use(verifyToken, requireRole(['super-admin']));
  *               username: { type: string, description: "Username unik akun" }
  *               password: { type: string, description: "Password akun" }
  *               full_name: { type: string, description: "Nama lengkap pengguna" }
- *               role: { type: string, enum: [super-admin, admin, operator], description: "Role akses akun" }
+ *               role: { type: string, enum: [super-admin, admin, operator, pengirim, guest], description: "Role akses akun" }
  *     responses:
  *       201:
  *         description: User created
@@ -63,7 +63,7 @@ router.post('/', UsersController.createUser);
  *             type: object
  *             properties:
  *               full_name: { type: string, description: "Nama lengkap baru" }
- *               role: { type: string, enum: [super-admin, admin, operator], description: "Role akses baru" }
+ *               role: { type: string, enum: [super-admin, admin, operator, pengirim, guest], description: "Role akses baru" }
  *               password: { type: string, description: "Password baru (opsional)" }
  *     responses:
  *       200:

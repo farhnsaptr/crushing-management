@@ -41,8 +41,8 @@ export const App: React.FC = () => {
             {/* Error Pages */}
             <Route path="/forbidden" element={<ForbiddenPage />} />
 
-            {/* Protected Route for Dashboard & Analytics (Accessible by All Roles including Pengirim) */}
-            <Route element={<ProtectedRoute allowedRoles={['super-admin', 'admin', 'operator', 'pengirim']} />}>
+            {/* Protected Route for Dashboard & Analytics (Accessible by All Roles including Pengirim & Guest viewer) */}
+            <Route element={<ProtectedRoute allowedRoles={['super-admin', 'admin', 'operator', 'pengirim', 'guest']} />}>
               <Route element={<MainLayout />}>
                 <Route path="/dashboard" element={<DashboardPage />} />
                 <Route path="/analytics" element={<AnalyticsPage />} />

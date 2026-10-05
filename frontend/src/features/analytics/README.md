@@ -2,6 +2,9 @@
 
 Modul ini menyediakan antarmuka analitik visual komprehensif untuk menghubungkan data laporan produksi dengan data riil crushing dan transaksi NG di sistem.
 
+## Hak Akses
+Upload dan Rollback hanya untuk `super-admin`, `admin`, `operator` (`canManageData` di `config/permissions.config.ts`). Role `pengirim` dan `guest` (viewer murni) hanya melihat tab, grafik, dan tabel; tombol serta modal Upload/Rollback tidak dirender.
+
 ## Fitur Utama
 1. **Upload File Laporan Produksi Excel/CSV & Live Preview Kecocokan**:
    - Mendukung format file Excel Laporan Produksi (seperti `08. LAPORAN AGUSTUS 2026.xlsx`) serta retro-kompatibilitas file CSV `Report  Production.csv`.

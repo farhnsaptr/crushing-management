@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { AuthController } from './auth.controller';
-import { verifyToken, preventReLogin } from '../../middlewares/auth.middleware';
+import { verifyToken, authenticate, preventReLogin } from '../../middlewares/auth.middleware';
 import { authLimiter } from '../../middlewares/rateLimiter.middleware';
 
 const router = Router();
@@ -61,6 +61,6 @@ router.get('/me', verifyToken, AuthController.me);
  *       200:
  *         description: Logged out successfully
  */
-router.post('/logout', verifyToken, AuthController.logout);
+router.post('/logout', authenticate, AuthController.logout);
 
 export default router;

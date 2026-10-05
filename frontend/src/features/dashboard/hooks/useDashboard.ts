@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { DashboardService } from '../services/dashboard.service';
 import { VerificationService } from '../../verification/services/verification.service';
 import { useAuth } from '../../../context/AuthContext';
+import { canManageData } from '../../../config/permissions.config';
 import { extractErrorMessage } from '../../../services/api.client';
 import type { VerificationDashboardStatusResponse } from '../../verification/types/verification.types';
 import type {
@@ -66,7 +67,7 @@ export function useDashboard() {
           DashboardService.getParetoMaterial(selectedYear, selectedMonth, selectedLocation),
           DashboardService.getTopNgParts(selectedYear, selectedMonth, selectedLocation),
           DashboardService.getDepartmentPareto(selectedYear, selectedMonth, selectedLocation),
-          VerificationService.getDashboardStatus(),
+          canManageData(user?.role) ? VerificationService.getDashboardStatus() : Promise.resolve(null),
         ]);
 
         setSummaryStats(statsData);

@@ -30,6 +30,8 @@ export const UserTable: React.FC<UserTableProps> = ({
         return 'warning';
       case 'pengirim':
         return 'info';
+      case 'guest':
+        return 'neutral';
       default:
         return 'neutral';
     }

@@ -209,6 +209,7 @@ export const UserModal: React.FC<UserModalProps> = ({
               <option value="operator">OPERATOR (Validasi, Approval & Crushing)</option>
               <option value="admin">ADMIN (Kelola Master Data, Departemen & Pabrik)</option>
               <option value="super-admin">SUPER-ADMIN (Akses Penuh Seluruh Sistem)</option>
+              <option value="guest">GUEST (Hanya melihat Dashboard &amp; Analitik)</option>
             </select>
           </div>
         </div>

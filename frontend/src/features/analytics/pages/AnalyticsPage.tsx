@@ -17,11 +17,12 @@ import {
   AlertCircle,
   RotateCcw,
 } from 'lucide-react';
+import { canManageData } from '../../../config/permissions.config';
 import { AnalyticsRollbackModal } from '../components/AnalyticsRollbackModal';
 
 export const AnalyticsPage: React.FC = () => {
   const { user } = useAuth();
-  const canManage = user && user.role !== 'pengirim';
+  const canManage = canManageData(user?.role);
 
   const {
     activeTab,
@@ -302,6 +303,7 @@ export const AnalyticsPage: React.FC = () => {
 
           {/* Raw Production Records Table */}
           <AnalyticsDataTable
+            canManage={canManage}
             records={records}
             pagination={pagination}
             search={search}

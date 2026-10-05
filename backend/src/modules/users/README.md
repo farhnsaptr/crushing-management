@@ -7,6 +7,7 @@ Modul ini mengelola data autentikasi dan otorisasi pengguna sistem Material Mana
 2. **`operator`** — Petugas operasional crushing yang memvalidasi dan menyetujui request pengiriman, input NG, dan verifikasi box output.
 3. **`admin`** — Administrator yang mengelola master data pabrik, mesin, material, part, dan departemen.
 4. **`super-admin`** — Akses menyeluruh ke seluruh sistem termasuk User Management, Global Audit Logs, dan Site Configuration.
+5. **`guest`** — Viewer murni: hanya melihat Dashboard dan Data Analitik. Tidak wajib `department_id`/`factory_id`. Semua request selain `GET`/`HEAD`/`OPTIONS` ditolak `403` oleh `verifyToken` (`middlewares/auth.middleware.ts`), sehingga route tulis baru otomatis tertutup untuk guest. Logout memakai `authenticate` agar tetap diizinkan.
 
 ## Endpoint
 - `GET /api/users` — Mengambil daftar akun pengguna (`super-admin`)

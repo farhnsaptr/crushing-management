@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { apiClient } from '../services/api.client';
 import { AuthService } from '../features/auth/services/auth.service';
 
-export type UserRole = 'super-admin' | 'admin' | 'operator' | 'pengirim';
+export type UserRole = 'super-admin' | 'admin' | 'operator' | 'pengirim' | 'guest';
 
 export interface UserProfile {
   id: string;
