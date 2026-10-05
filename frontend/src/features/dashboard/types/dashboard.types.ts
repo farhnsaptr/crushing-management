@@ -10,6 +10,13 @@ export interface DashboardSummaryStats {
   input_pcs: number;
 }
 
+/** Titik data minimum untuk grafik garis per shift (kg). */
+export interface ShiftChartPoint {
+  day_num: number;
+  pagi_kg: number;
+  malam_kg: number;
+}
+
 export interface DailyRecycleChartItem {
   day: string;
   day_num: number;
