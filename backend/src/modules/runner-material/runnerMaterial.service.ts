@@ -73,14 +73,19 @@ function formatStandardDate(val: any): string {
  */
 async function getMasterMaterialsLookup() {
   const [rows] = await pool.query<RowDataPacket[]>(
-    'SELECT id, material_name, recycle_type FROM master_materials'
+    `SELECT m.id, m.material_name, m.recycle_type, x.mixed_name
+     FROM master_materials m
+     LEFT JOIN mixed_materials x ON x.id = m.mixed_material_id`
   );
 
-  const byId = new Map<string, { id: string; material_name: string }>();
-  const byNormalized = new Map<string, { id: string; material_name: string }>();
+  const byId = new Map<string, { id: string | null; material_name: string }>();
+  const byNormalized = new Map<string, { id: string | null; material_name: string }>();
 
   for (const r of rows) {
-    const entry = { id: r.id, material_name: r.material_name };
+    // Material yang sedang dicampur dicatat atas nama campuran (id null: campuran tidak ada di master_materials)
+    const entry = r.mixed_name
+      ? { id: null, material_name: r.mixed_name as string }
+      : { id: r.id as string, material_name: r.material_name as string };
     byId.set(r.id, entry);
 
     // Normalize: lowercase, trim, strip spaces, dashes, underscores, slashes

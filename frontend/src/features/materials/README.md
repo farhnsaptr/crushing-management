@@ -37,3 +37,6 @@ materials/
 - `PUT /api/materials/:id` - Mengubah data material.
 - `DELETE /api/materials/:id` - Menghapus data material.
 - `DELETE /api/materials/all` - Menghapus seluruh data material (Super-admin only).
+
+## Material Campuran
+Dropdown "Dicampur ke Material Campuran" di modal edit memilih campuran yang dibuat di halaman `mixed-materials`. Kolom "Dicampur ke" di tabel menampilkan hasilnya. Pencatatan efektif dilakukan backend.

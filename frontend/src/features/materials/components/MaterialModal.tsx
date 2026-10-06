@@ -3,6 +3,7 @@ import { Modal } from '../../../components/common/Modal';
 import { Input } from '../../../components/common/Input';
 import { Button } from '../../../components/common/Button';
 import type { Material, CreateMaterialPayload } from '../types/materials.types';
+import type { MixedMaterial } from '../../mixed-materials/types/mixedMaterials.types';
 import { Layers, FileText } from 'lucide-react';
 import { extractErrorMessage } from '../../../services/api.client';
 
@@ -10,6 +11,7 @@ interface MaterialModalProps {
   isOpen: boolean;
   onClose: () => void;
   editingMaterial?: Material | null;
+  mixedOptions: MixedMaterial[];
   onCreateSubmit: (payload: CreateMaterialPayload) => Promise<void>;
   onUpdateSubmit: (id: string, payload: Partial<CreateMaterialPayload>) => Promise<void>;
 }
@@ -18,12 +20,14 @@ export const MaterialModal: React.FC<MaterialModalProps> = ({
   isOpen,
   onClose,
   editingMaterial,
+  mixedOptions,
   onCreateSubmit,
   onUpdateSubmit,
 }) => {
   const [materialName, setMaterialName] = useState<string>('');
   const [description, setDescription] = useState<string>('');
   const [recycleType, setRecycleType] = useState<'reuse' | 'no_reuse'>('reuse');
+  const [mixedMaterialId, setMixedMaterialId] = useState<string>('');
 
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -35,10 +39,12 @@ export const MaterialModal: React.FC<MaterialModalProps> = ({
       setMaterialName(editingMaterial.material_name);
       setDescription(editingMaterial.description || '');
       setRecycleType(editingMaterial.recycle_type || 'reuse');
+      setMixedMaterialId(editingMaterial.mixed_material_id || '');
     } else {
       setMaterialName('');
       setDescription('');
       setRecycleType('reuse');
+      setMixedMaterialId('');
     }
     setError(null);
   }, [editingMaterial, isOpen]);
@@ -69,12 +75,14 @@ export const MaterialModal: React.FC<MaterialModalProps> = ({
           material_name: materialName.trim(),
           description: description.trim() || undefined,
           recycle_type: recycleType,
+          mixed_material_id: mixedMaterialId || null,
         });
       } else {
         await onCreateSubmit({
           material_name: materialName.trim(),
           description: description.trim() || undefined,
           recycle_type: recycleType,
+          mixed_material_id: mixedMaterialId || null,
         });
       }
     } catch (err: any) {
@@ -185,6 +193,24 @@ export const MaterialModal: React.FC<MaterialModalProps> = ({
               <span>Part No Reuse (Menjadi Waste)</span>
             </label>
           </div>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+          <label style={{ fontSize: '0.825rem', fontWeight: 700, color: 'var(--text-main, #0f172a)' }}>
+            Dicampur ke Material Campuran (opsional)
+          </label>
+          <select
+            value={mixedMaterialId}
+            onChange={(e) => setMixedMaterialId(e.target.value)}
+            style={{ padding: '0.65rem 0.85rem', borderRadius: 'var(--radius-md, 8px)', border: '1px solid var(--border-color, #e2e8f0)', fontSize: '0.85rem' }}
+          >
+            <option value="">— Tidak dicampur —</option>
+            {mixedOptions.map((o) => (
+              <option key={o.id} value={o.id}>
+                {o.mixed_name} ({o.recycle_type === 'no_reuse' ? 'No Reuse' : 'Reuse'})
+              </option>
+            ))}
+          </select>
         </div>
 
         <Input

@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { MaterialsService } from '../services/materials.service';
 import { useDebounce } from '../../../hooks';
+import { MixedMaterialsService } from '../../mixed-materials/services/mixedMaterials.service';
+import type { MixedMaterial } from '../../mixed-materials/types/mixedMaterials.types';
 import type { Material, CreateMaterialPayload } from '../types/materials.types';
 import type { ToastMessage } from '../../../components/common/Toast';
 import { extractErrorMessage } from '../../../services/api.client';
@@ -20,6 +22,7 @@ export const useMaterials = () => {
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [editingMaterial, setEditingMaterial] = useState<Material | null>(null);
 
+  const [mixedOptions, setMixedOptions] = useState<MixedMaterial[]>([]);
   const [toast, setToast] = useState<ToastMessage | null>(null);
 
   const fetchMaterials = useCallback(async () => {
@@ -44,12 +47,23 @@ export const useMaterials = () => {
     fetchMaterials();
   }, [fetchMaterials]);
 
+  // Pilihan campuran untuk dropdown "Dicampur ke"
+  const loadMixedOptions = useCallback(async () => {
+    try {
+      setMixedOptions(await MixedMaterialsService.list());
+    } catch {
+      setMixedOptions([]);
+    }
+  }, []);
+
   const handleOpenCreateModal = () => {
+    loadMixedOptions();
     setEditingMaterial(null);
     setIsModalOpen(true);
   };
 
   const handleOpenEditModal = (material: Material) => {
+    loadMixedOptions();
     setEditingMaterial(material);
     setIsModalOpen(true);
   };
@@ -155,6 +169,7 @@ export const useMaterials = () => {
     isLoading,
     isModalOpen,
     setIsModalOpen,
+    mixedOptions,
     editingMaterial,
     handleOpenCreateModal,
     handleOpenEditModal,

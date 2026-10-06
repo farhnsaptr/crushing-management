@@ -49,29 +49,29 @@ export class VerificationService {
     // 2. Fetch Part NG reuse material transactions
     const [ngRows] = await pool.query<RowDataPacket[]>(
       `SELECT 
-        mm.id AS material_id,
-        COALESCE(mm.material_name, mp.material, 'Unassigned Material') AS material_name,
+        CASE WHEN COALESCE(t.material_name_snapshot, mm.material_name) = mm.material_name THEN mm.id END AS material_id,
+        COALESCE(t.material_name_snapshot, mm.material_name, mp.material, 'Unassigned Material') AS material_name,
         SUM(t.weight_kg) AS total_ng_kg
        FROM ng_transactions t
        JOIN master_parts mp ON t.master_part_id = mp.id
        LEFT JOIN master_materials mm ON mp.material_id = mm.id
        WHERE DATE(t.transaction_date) = ? AND t.shift = ?
          AND t.recycle_type_snapshot = 'reuse'
-       GROUP BY mm.id, COALESCE(mm.material_name, mp.material, 'Unassigned Material')`,
+       GROUP BY 1, 2`,
       [cleanDate, cleanShift]
     );
 
     // 3. Fetch Part Runner reuse material transactions
     const [runnerRows] = await pool.query<RowDataPacket[]>(
       `SELECT 
-        mm.id AS material_id,
+        CASE WHEN mm.is_mixed THEN NULL ELSE mm.id END AS material_id,
         COALESCE(mm.material_name, rmt.material_name_snapshot, 'Unassigned Material') AS material_name,
         SUM(rmt.total_runner_weight_kg) AS total_runner_kg
        FROM runner_material_transactions rmt
-       LEFT JOIN master_materials mm ON (rmt.material_id = mm.id OR rmt.material_name_snapshot = mm.material_name)
+       LEFT JOIN v_all_materials mm ON (rmt.material_id = mm.id OR rmt.material_name_snapshot = mm.material_name)
        WHERE DATE(rmt.transaction_date) = ? AND rmt.shift = ?
          AND (mm.recycle_type = 'reuse' OR (mm.recycle_type IS NULL AND LOWER(rmt.material_name_snapshot) NOT LIKE '%no reuse%'))
-       GROUP BY mm.id, COALESCE(mm.material_name, rmt.material_name_snapshot, 'Unassigned Material')`,
+       GROUP BY 1, 2`,
       [cleanDate, cleanShift]
     );
 
@@ -373,7 +373,7 @@ export class VerificationService {
            AND t.recycle_type_snapshot = 'reuse')
         +
         (SELECT COUNT(*) FROM runner_material_transactions rmt 
-         LEFT JOIN master_materials mm ON (rmt.material_id = mm.id OR rmt.material_name_snapshot = mm.material_name) 
+         LEFT JOIN v_all_materials mm ON (rmt.material_id = mm.id OR rmt.material_name_snapshot = mm.material_name) 
          WHERE DATE(rmt.transaction_date) = ? AND rmt.shift = ? 
            AND (mm.recycle_type = 'reuse' OR (mm.recycle_type IS NULL AND LOWER(rmt.material_name_snapshot) NOT LIKE '%no reuse%')))
         AS total_reuse_transactions`,

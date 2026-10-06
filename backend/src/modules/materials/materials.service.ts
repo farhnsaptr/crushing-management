@@ -3,6 +3,19 @@ import { pool } from '../../config/database';
 import { RowDataPacket, ResultSetHeader } from 'mysql2';
 
 export class MaterialsService {
+  /** Nama material harus unik juga terhadap nama material campuran. */
+  private static async assertNotMixedName(name: string) {
+    const [rows] = await pool.query<RowDataPacket[]>('SELECT id FROM mixed_materials WHERE mixed_name = ?', [name]);
+    if (rows.length > 0) {
+      throw new Error(`Nama "${name}" sudah dipakai oleh material campuran.`);
+    }
+  }
+
+  private static async assertMixedExists(mixedId: string) {
+    const [rows] = await pool.query<RowDataPacket[]>('SELECT id FROM mixed_materials WHERE id = ?', [mixedId]);
+    if (rows.length === 0) throw new Error('Material campuran tidak ditemukan.');
+  }
+
   static async listAllMaterials(page: number = 1, limit: number = 20, search: string = '') {
     const offset = (page - 1) * limit;
 
@@ -25,13 +38,16 @@ export class MaterialsService {
         mm.material_name,
         mm.description,
         mm.recycle_type,
+        mm.mixed_material_id,
+        xm.mixed_name AS mixed_material_name,
         mm.created_at,
         mm.updated_at,
         COUNT(mp.id) AS used_parts_count
       FROM master_materials mm
+      LEFT JOIN mixed_materials xm ON xm.id = mm.mixed_material_id
       LEFT JOIN master_parts mp ON mp.material_id = mm.id
       ${whereClause}
-      GROUP BY mm.id
+      GROUP BY mm.id, xm.mixed_name
       ORDER BY mm.created_at DESC
       LIMIT ? OFFSET ?
     `;
@@ -59,13 +75,16 @@ export class MaterialsService {
         mm.material_name,
         mm.description,
         mm.recycle_type,
+        mm.mixed_material_id,
+        xm.mixed_name AS mixed_material_name,
         mm.created_at,
         mm.updated_at,
         COUNT(mp.id) AS used_parts_count
        FROM master_materials mm
+       LEFT JOIN mixed_materials xm ON xm.id = mm.mixed_material_id
        LEFT JOIN master_parts mp ON mp.material_id = mm.id
        WHERE mm.id = ?
-       GROUP BY mm.id`,
+       GROUP BY mm.id, xm.mixed_name`,
       [id]
     );
     if (!rows[0]) return null;
@@ -75,7 +94,7 @@ export class MaterialsService {
     };
   }
 
-  static async createMaterial(data: { material_name: string; description?: string; recycle_type?: 'reuse' | 'no_reuse' }) {
+  static async createMaterial(data: { material_name: string; description?: string; recycle_type?: 'reuse' | 'no_reuse'; mixed_material_id?: string | null }) {
     const cleanName = data.material_name.trim();
 
     // Check duplicate material_name
@@ -88,6 +107,10 @@ export class MaterialsService {
       throw new Error(`Nama material "${cleanName}" sudah terdaftar.`);
     }
 
+    await this.assertNotMixedName(cleanName);
+    const mixedMaterialId = data.mixed_material_id || null;
+    if (mixedMaterialId) await this.assertMixedExists(mixedMaterialId);
+
     const id = randomUUID();
     let recycleType = data.recycle_type;
     if (!recycleType) {
@@ -96,14 +119,14 @@ export class MaterialsService {
     }
 
     await pool.query(
-      'INSERT INTO master_materials (id, material_name, description, recycle_type) VALUES (?, ?, ?, ?)',
-      [id, cleanName, data.description || null, recycleType]
+      'INSERT INTO master_materials (id, material_name, description, recycle_type, mixed_material_id) VALUES (?, ?, ?, ?, ?)',
+      [id, cleanName, data.description || null, recycleType, mixedMaterialId]
     );
 
     return this.getMaterialById(id);
   }
 
-  static async updateMaterial(id: string, data: { material_name?: string; description?: string; recycle_type?: 'reuse' | 'no_reuse' }) {
+  static async updateMaterial(id: string, data: { material_name?: string; description?: string; recycle_type?: 'reuse' | 'no_reuse'; mixed_material_id?: string | null }) {
     const existing = await this.getMaterialById(id);
     if (!existing) {
       throw new Error('Material not found');
@@ -128,9 +151,20 @@ export class MaterialsService {
       }
     }
 
+    if (data.material_name && cleanName !== existing.material_name) {
+      await this.assertNotMixedName(cleanName);
+    }
+
+    // mixed_material_id tidak dikirim = mapping campuran tidak diubah; null / '' = lepas dari campuran
+    let mixedMaterialId: string | null = existing.mixed_material_id || null;
+    if (data.mixed_material_id !== undefined) {
+      mixedMaterialId = data.mixed_material_id || null;
+      if (mixedMaterialId) await this.assertMixedExists(mixedMaterialId);
+    }
+
     await pool.query(
-      'UPDATE master_materials SET material_name = ?, description = ?, recycle_type = ? WHERE id = ?',
-      [cleanName, description, recycleType, id]
+      'UPDATE master_materials SET material_name = ?, description = ?, recycle_type = ?, mixed_material_id = ? WHERE id = ?',
+      [cleanName, description, recycleType, mixedMaterialId, id]
     );
 
     return this.getMaterialById(id);

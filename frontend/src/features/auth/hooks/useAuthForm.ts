@@ -8,8 +8,13 @@ import { extractErrorMessage } from '../../../services/api.client';
 export const useAuthForm = () => {
   const [username, setUsername] = useState<string>('');
   const [password, setPassword] = useState<string>('');
+  const [showPassword, setShowPassword] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+
+  const toggleShowPassword = () => {
+    setShowPassword((prev) => !prev);
+  };
 
   const { setSession } = useAuth();
   const navigate = useNavigate();
@@ -47,6 +52,8 @@ export const useAuthForm = () => {
     setUsername,
     password,
     setPassword,
+    showPassword,
+    toggleShowPassword,
     error,
     isLoading,
     handleSubmit,

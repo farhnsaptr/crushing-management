@@ -43,13 +43,13 @@ export class MaterialsController {
 
   static async create(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
-      const { material_name, description, recycle_type } = req.body;
+      const { material_name, description, recycle_type, mixed_material_id } = req.body;
       if (!material_name || !material_name.trim()) {
         sendError(res, 'material_name is required', 400);
         return;
       }
 
-      const material = await MaterialsService.createMaterial({ material_name, description, recycle_type });
+      const material = await MaterialsService.createMaterial({ material_name, description, recycle_type, mixed_material_id });
       sendSuccess(res, material, 'Material created successfully', 201);
     } catch (error: any) {
       sendError(res, error.message || 'Failed to create material', 400);

@@ -30,7 +30,7 @@ export class DashboardService {
         COALESCE(SUM(CASE WHEN mm.recycle_type = 'reuse' OR (mm.recycle_type IS NULL AND LOWER(rmt.material_name_snapshot) NOT LIKE '%no reuse%') THEN rmt.total_runner_weight_kg ELSE 0 END), 0) AS total_output_kg,
         COALESCE(SUM(CASE WHEN mm.recycle_type = 'no_reuse' OR LOWER(rmt.material_name_snapshot) LIKE '%no reuse%' THEN rmt.total_runner_weight_kg ELSE 0 END), 0) AS total_waste_kg
        FROM runner_material_transactions rmt
-       LEFT JOIN master_materials mm ON (rmt.material_id = mm.id OR rmt.material_name_snapshot = mm.material_name)
+       LEFT JOIN v_all_materials mm ON (rmt.material_id = mm.id OR rmt.material_name_snapshot = mm.material_name)
        WHERE YEAR(rmt.transaction_date) = ? AND MONTH(rmt.transaction_date) = ?`,
       [qYear, qMonth]
     );
@@ -114,7 +114,7 @@ export class DashboardService {
         SUM(CASE WHEN mm.recycle_type = 'reuse' OR (mm.recycle_type IS NULL AND LOWER(rmt.material_name_snapshot) NOT LIKE '%no reuse%') THEN rmt.total_runner_weight_kg ELSE 0 END) AS reuse_kg,
         SUM(CASE WHEN mm.recycle_type = 'no_reuse' OR LOWER(rmt.material_name_snapshot) LIKE '%no reuse%' THEN rmt.total_runner_weight_kg ELSE 0 END) AS no_reuse_waste_kg
        FROM runner_material_transactions rmt
-       LEFT JOIN master_materials mm ON (rmt.material_id = mm.id OR rmt.material_name_snapshot = mm.material_name)
+       LEFT JOIN v_all_materials mm ON (rmt.material_id = mm.id OR rmt.material_name_snapshot = mm.material_name)
        LEFT JOIN factories fc ON rmt.factory_id = fc.id
        WHERE YEAR(rmt.transaction_date) = ? AND MONTH(rmt.transaction_date) = ?
          AND (rmt.factory_id IS NULL OR fc.location = ?)
@@ -325,7 +325,7 @@ export class DashboardService {
         SUM(total_pcs) AS total_pcs
        FROM (
          SELECT 
-           COALESCE(mm.material_name, mp.material, 'Unknown Material') AS material_name,
+           COALESCE(t.material_name_snapshot, mm.material_name, mp.material, 'Unknown Material') AS material_name,
            t.weight_kg AS total_kg,
            t.quantity_pcs AS total_pcs
          FROM ng_transactions t
@@ -342,7 +342,7 @@ export class DashboardService {
            rmt.total_runner_weight_kg AS total_kg,
            0 AS total_pcs
          FROM runner_material_transactions rmt
-         LEFT JOIN master_materials mm ON (rmt.material_id = mm.id OR rmt.material_name_snapshot = mm.material_name)
+         LEFT JOIN v_all_materials mm ON (rmt.material_id = mm.id OR rmt.material_name_snapshot = mm.material_name)
          WHERE YEAR(rmt.transaction_date) = ? AND MONTH(rmt.transaction_date) = ?
        ) combined
        GROUP BY material_name
@@ -417,7 +417,7 @@ export class DashboardService {
         mp.sebango_code AS sebango,
         t.part_name_snapshot AS part_name,
         t.part_number_snapshot AS part_number,
-        COALESCE(mm.material_name, mp.material, '-') AS material,
+        COALESCE(t.material_name_snapshot, mm.material_name, mp.material, '-') AS material,
         t.model_snapshot AS model,
         t.berat_part_gr_snapshot AS berat_part,
         t.quantity_pcs AS qty_per_pcs,
@@ -449,10 +449,8 @@ export class DashboardService {
        LEFT JOIN crushing_request_items cri ON (t.request_id IS NOT NULL AND cri.request_id = t.request_id AND cri.master_part_id = t.master_part_id)
        LEFT JOIN input_verifications iv ON (iv.verification_date = t.transaction_date AND iv.shift = t.shift)
        LEFT JOIN input_verification_items ivi ON (
-         ivi.verification_id = iv.id AND (
-           (mp.material_id IS NOT NULL AND ivi.material_id = mp.material_id)
-           OR ivi.material_name_snapshot = COALESCE(mm.material_name, mp.material)
-         )
+         ivi.verification_id = iv.id
+         AND ivi.material_name_snapshot = COALESCE(t.material_name_snapshot, mm.material_name, mp.material)
        )
        WHERE t.transaction_date BETWEEN ? AND ?
          AND fc.location = ?
@@ -488,7 +486,7 @@ export class DashboardService {
         END AS waste_kg,
         COALESCE(rmt.import_batch_ref, '-') AS batch_ref
        FROM runner_material_transactions rmt
-       LEFT JOIN master_materials mm ON (rmt.material_id = mm.id OR rmt.material_name_snapshot = mm.material_name)
+       LEFT JOIN v_all_materials mm ON (rmt.material_id = mm.id OR rmt.material_name_snapshot = mm.material_name)
        LEFT JOIN factories fc ON rmt.factory_id = fc.id
        LEFT JOIN crushing_request_items cri ON (rmt.request_id IS NOT NULL AND cri.request_id = rmt.request_id AND cri.item_type = 'runner_ng' AND (cri.material_id = rmt.material_id OR cri.material_name_snapshot = rmt.material_name_snapshot))
        LEFT JOIN input_verifications iv ON (iv.verification_date = rmt.transaction_date AND iv.shift = rmt.shift)

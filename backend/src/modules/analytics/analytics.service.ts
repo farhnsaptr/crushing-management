@@ -692,7 +692,7 @@ export class AnalyticsService {
     // 1. Part NG weight per material
     let ngQuery = `
       SELECT 
-        COALESCE(mm.material_name, mp.material, 'OTHER') AS material_name,
+        COALESCE(nt.material_name_snapshot, mm.material_name, mp.material, 'OTHER') AS material_name,
         COALESCE(SUM(nt.weight_kg), 0) AS ng_weight_kg,
         COALESCE(SUM(nt.quantity_pcs), 0) AS ng_pcs
       FROM ng_transactions nt
@@ -705,7 +705,7 @@ export class AnalyticsService {
       ngQuery += ` AND nt.factory_id = ?`;
       ngParams.push(factory);
     }
-    ngQuery += ` GROUP BY COALESCE(mm.material_name, mp.material, 'OTHER')`;
+    ngQuery += ` GROUP BY COALESCE(nt.material_name_snapshot, mm.material_name, mp.material, 'OTHER')`;
     const [ngRows] = await pool.query<RowDataPacket[]>(ngQuery, ngParams);
 
     // 2. Runner weight per material
@@ -847,13 +847,14 @@ export class AnalyticsService {
         COALESCE(mp.part_name, nt.part_name_snapshot, '-') AS part_name,
         COALESCE(mp.sebango_code, '-') AS sebango_code,
         COALESCE(m.model_code, '-') AS model_code,
-        COALESCE(mm.material_name, mp.material, '-') AS material_name,
+        COALESCE(pm.mixed_name, mm.material_name, mp.material, '-') AS material_name,
         COALESCE(SUM(nt.quantity_pcs), 0) AS total_ng_pcs,
         COALESCE(SUM(nt.weight_kg), 0) AS total_ng_kg
       FROM ng_transactions nt
       LEFT JOIN master_parts mp ON nt.master_part_id = mp.id
       LEFT JOIN master_models m ON mp.model_id = m.id
       LEFT JOIN master_materials mm ON mp.material_id = mm.id
+      LEFT JOIN mixed_materials pm ON pm.id = mm.mixed_material_id
       WHERE YEAR(nt.transaction_date) = ?
     `;
     const params: any[] = [qYear];
@@ -866,7 +867,7 @@ export class AnalyticsService {
       COALESCE(mp.part_name, nt.part_name_snapshot, '-'),
       COALESCE(mp.sebango_code, '-'),
       COALESCE(m.model_code, '-'),
-      COALESCE(mm.material_name, mp.material, '-')`;
+      COALESCE(pm.mixed_name, mm.material_name, mp.material, '-')`;
     const [ngRows] = await pool.query<RowDataPacket[]>(query, params);
 
     // 2. Map & calculate totals

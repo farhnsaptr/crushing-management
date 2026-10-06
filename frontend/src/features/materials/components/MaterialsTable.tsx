@@ -45,6 +45,16 @@ export const MaterialsTable: React.FC<MaterialsTableProps> = ({
       width: '180px',
     },
     {
+      header: 'Dicampur ke',
+      accessorKey: 'mixed_material_name',
+      cell: (m) => (
+        <span style={{ fontSize: '0.85rem', fontWeight: m.mixed_material_name ? 700 : 400, color: m.mixed_material_name ? 'var(--text-main)' : 'var(--text-muted)' }}>
+          {m.mixed_material_name || '-'}
+        </span>
+      ),
+      width: '180px',
+    },
+    {
       header: 'Part yang Digunakan',
       cell: (m) => (
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
