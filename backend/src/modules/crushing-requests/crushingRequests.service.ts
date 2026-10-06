@@ -4,6 +4,7 @@ import { RowDataPacket } from 'mysql2';
 import { broadcastSseEvent } from '../../utils/sse.util';
 import { JwtPayloadUser } from '../../middlewares/auth.middleware';
 import { StorageService } from '../../services/storage.service';
+import { resolveEffectiveMaterial } from '../materials/effectiveMaterial';
 
 export interface CreateRequestItemDto {
   item_type: 'part_ng' | 'runner_ng';
@@ -176,7 +177,7 @@ export class CrushingRequestsService {
         }
 
         const [partRows] = await pool.query<RowDataPacket[]>(
-          `SELECT mp.id, mp.part_number, mp.part_name, mp.berat_part_gr, mp.material, m.model_code, mc.factory_id
+          `SELECT mp.id, mp.part_number, mp.part_name, mp.berat_part_gr, mp.material, mp.material_id, m.model_code, mc.factory_id
            FROM master_parts mp
            JOIN machines mc ON mp.machine_id = mc.id
            JOIN master_models m ON mp.model_id = m.id
@@ -189,6 +190,7 @@ export class CrushingRequestsService {
         }
 
         const part = partRows[0];
+        const effMat = await resolveEffectiveMaterial(part.material_id);
 
         // Security validation: verify part belongs to user's assigned factory (skip if ALL / null)
         if (userRole === 'pengirim' && factoryId && factoryId !== 'ALL' && part.factory_id !== factoryId) {
@@ -206,11 +208,11 @@ export class CrushingRequestsService {
           id: randomUUID(),
           item_type: 'part_ng',
           master_part_id: part.id,
-          material_id: null,
+          material_id: effMat?.id || null,
           part_number_snapshot: part.part_number,
           part_name_snapshot: part.part_name,
           model_snapshot: part.model_code,
-          material_name_snapshot: part.material,
+          material_name_snapshot: effMat?.name || part.material,
           berat_part_gr_snapshot: beratGr,
           quantity_pcs: qtyPcs,
           weight_kg: itemWeightKg,
@@ -228,6 +230,11 @@ export class CrushingRequestsService {
           );
           if (matRows.length > 0) {
             materialName = matRows[0].material_name;
+          }
+          const effMat = await resolveEffectiveMaterial(materialId);
+          if (effMat) {
+            materialId = effMat.id;
+            materialName = effMat.name;
           }
         }
 
@@ -668,23 +675,34 @@ export class CrushingRequestsService {
 
         // Pecah quantity per keputusan operator: sebagian pcs bisa reuse, sebagian lagi (dari part yang sama) waste
         // -- misal kiriman non-produksi yang sebagian part-nya terkontaminasi cat/material lain.
-        const buckets: Array<{ qty: number; recycleType: 'reuse' | 'no_reuse' }> = [
-          { qty: verifiedQty - wasteQty, recycleType: 'reuse' },
-          { qty: wasteQty, recycleType: 'no_reuse' },
-        ];
+        // Material efektif saat transaksi masuk statistik (campuran jika material part sedang dicampur)
+        const [partMatRows] = await pool.query<RowDataPacket[]>(
+          'SELECT material_id FROM master_parts WHERE id = ?',
+          [item.master_part_id]
+        );
+        const effMat = await resolveEffectiveMaterial(partMatRows[0]?.material_id || item.material_id);
+        // Campuran bertipe no_reuse: seluruh qty menjadi waste, tidak ada pemisahan reuse
+        const forceNoReuse = !!effMat?.is_mixed && effMat.recycle_type === 'no_reuse';
+        const buckets: Array<{ qty: number; recycleType: 'reuse' | 'no_reuse' }> = forceNoReuse
+          ? [{ qty: verifiedQty, recycleType: 'no_reuse' }]
+          : [
+              { qty: verifiedQty - wasteQty, recycleType: 'reuse' },
+              { qty: wasteQty, recycleType: 'no_reuse' },
+            ];
 
         for (const bucket of buckets) {
           if (bucket.qty <= 0) continue;
           await pool.query(
             `INSERT INTO ng_transactions
-             (id, master_part_id, request_id, department_id, factory_id, part_number_snapshot, part_name_snapshot, model_snapshot, berat_part_gr_snapshot, quantity_pcs, recycle_type_snapshot, shift, transaction_date, input_by, notes)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+             (id, master_part_id, request_id, department_id, factory_id, material_name_snapshot, part_number_snapshot, part_name_snapshot, model_snapshot, berat_part_gr_snapshot, quantity_pcs, recycle_type_snapshot, shift, transaction_date, input_by, notes)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
               randomUUID(),
               item.master_part_id,
               requestId,
               request.department_id,
               request.factory_id || item.part_factory_id || null,
+              effMat?.name || item.material_name_snapshot || null,
               item.part_number_snapshot,
               item.part_name_snapshot,
               item.model_snapshot,
@@ -700,17 +718,18 @@ export class CrushingRequestsService {
         }
       } else if (item.item_type === 'runner_ng' && verifiedWeight > 0) {
         const runnerId = randomUUID();
+        const runnerMat = await resolveEffectiveMaterial(item.material_id);
         await pool.query(
           `INSERT INTO runner_material_transactions
            (id, material_id, request_id, department_id, factory_id, material_name_snapshot, total_pcs, total_runner_weight_kg, transaction_date, shift, import_batch_ref)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             runnerId,
-            item.material_id || null,
+            runnerMat ? runnerMat.id : item.material_id || null,
             requestId,
             request.department_id,
             request.factory_id,
-            item.material_name_snapshot || 'Runner Material',
+            runnerMat?.name || item.material_name_snapshot || 'Runner Material',
             verifiedQty,
             verifiedWeight,
             request.request_date,
@@ -789,7 +808,7 @@ export class CrushingRequestsService {
     for (const item of items) {
       if (item.item_type === 'part_ng' && item.master_part_id) {
         const [partRows] = await pool.query<RowDataPacket[]>(
-          `SELECT mp.id, mp.part_number, mp.part_name, mp.berat_part_gr, mp.material, m.model_code, mc.factory_id
+          `SELECT mp.id, mp.part_number, mp.part_name, mp.berat_part_gr, mp.material, mp.material_id, m.model_code, mc.factory_id
            FROM master_parts mp
            JOIN machines mc ON mp.machine_id = mc.id
            JOIN master_models m ON mp.model_id = m.id
@@ -799,6 +818,7 @@ export class CrushingRequestsService {
 
         if (partRows.length > 0) {
           const part = partRows[0];
+        const effMat = await resolveEffectiveMaterial(part.material_id);
           const qtyPcs = Math.max(1, Number(item.quantity_pcs) || 1);
           const beratGr = Number(part.berat_part_gr) || 0;
           const itemWeightKg = Number(((qtyPcs * beratGr) / 1000).toFixed(2));
@@ -810,11 +830,11 @@ export class CrushingRequestsService {
             id: randomUUID(),
             item_type: 'part_ng',
             master_part_id: part.id,
-            material_id: null,
+            material_id: effMat?.id || null,
             part_number_snapshot: part.part_number,
             part_name_snapshot: part.part_name,
             model_snapshot: part.model_code,
-            material_name_snapshot: part.material,
+            material_name_snapshot: effMat?.name || part.material,
             berat_part_gr_snapshot: beratGr,
             quantity_pcs: qtyPcs,
             weight_kg: itemWeightKg,

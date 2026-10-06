@@ -31,10 +31,12 @@ export class MasterPartsService {
   static async searchParts(query: string, factoryId?: string) {
     const searchTerm = `%${query}%`;
     let sql = `
-      SELECT DISTINCT mp.part_number, mp.part_name, mp.jenis_part, mp.material, m.model_code
+      SELECT DISTINCT mp.part_number, mp.part_name, mp.jenis_part, mp.material, COALESCE(xm.mixed_name, mm.material_name, mp.material) AS effective_material_name, m.model_code
       FROM master_parts mp
       JOIN machines mc ON mp.machine_id = mc.id
       JOIN master_models m ON mp.model_id = m.id
+      LEFT JOIN master_materials mm ON mp.material_id = mm.id
+      LEFT JOIN mixed_materials xm ON xm.id = mm.mixed_material_id
       WHERE (mp.part_number LIKE ? OR mp.part_name LIKE ? OR mp.sebango_code LIKE ? OR m.model_code LIKE ? OR m.description LIKE ? OR mp.customer LIKE ?) AND mp.is_active = TRUE
     `;
     const params: any[] = [searchTerm, searchTerm, searchTerm, searchTerm, searchTerm, searchTerm];
@@ -92,12 +94,15 @@ export class MasterPartsService {
   static async getByQrCode(qrCodeValue: string, factoryId?: string) {
     let sql = `
       SELECT mp.id AS master_part_id, mp.part_number, mp.part_name, mp.jenis_part, mp.material,
+              COALESCE(xm.mixed_name, mm.material_name, mp.material) AS effective_material_name,
               mp.berat_part_gr, mp.image_url,
               m.id AS model_id, m.model_code, mc.name AS machine_name, f.name AS factory_name
        FROM master_parts mp
        JOIN master_models m ON mp.model_id = m.id
        JOIN machines mc ON mp.machine_id = mc.id
        JOIN factories f ON mc.factory_id = f.id
+       LEFT JOIN master_materials mm ON mp.material_id = mm.id
+       LEFT JOIN mixed_materials xm ON xm.id = mm.mixed_material_id
        WHERE (mp.part_number = ? OR mp.sebango_code = ?) AND mp.is_active = TRUE
     `;
     const params: any[] = [qrCodeValue, qrCodeValue];
@@ -118,12 +123,15 @@ export class MasterPartsService {
   static async getPartsByJenis(jenisPart: string, factoryId?: string) {
     let sql = `
       SELECT mp.id AS master_part_id, mp.part_number, mp.part_name, mp.jenis_part, mp.material,
+              COALESCE(xm.mixed_name, mm.material_name, mp.material) AS effective_material_name,
               mp.berat_part_gr, mp.image_url,
               m.model_code, mc.name AS machine_name, f.name AS factory_name
        FROM master_parts mp
        JOIN master_models m ON mp.model_id = m.id
        JOIN machines mc ON mp.machine_id = mc.id
        JOIN factories f ON mc.factory_id = f.id
+       LEFT JOIN master_materials mm ON mp.material_id = mm.id
+       LEFT JOIN mixed_materials xm ON xm.id = mm.mixed_material_id
        WHERE mp.jenis_part = ? AND mp.is_active = TRUE
     `;
     const params: any[] = [jenisPart];
@@ -191,12 +199,14 @@ export class MasterPartsService {
     }
 
     const dataQuery = `
-      SELECT mp.*, m.model_code, mc.name AS machine_name, mc.code AS machine_code, f.name AS factory_name, f.code AS factory_code, mm.material_name AS master_material_name
+      SELECT mp.*, m.model_code, mc.name AS machine_name, mc.code AS machine_code, f.name AS factory_name, f.code AS factory_code, mm.material_name AS master_material_name,
+             COALESCE(xm.mixed_name, mm.material_name, mp.material) AS effective_material_name
       FROM master_parts mp
       JOIN master_models m ON mp.model_id = m.id
       JOIN machines mc ON mp.machine_id = mc.id
       JOIN factories f ON mc.factory_id = f.id
       LEFT JOIN master_materials mm ON mp.material_id = mm.id
+      LEFT JOIN mixed_materials xm ON xm.id = mm.mixed_material_id
       ${whereClause}
       ${orderByClause}
       LIMIT ? OFFSET ?

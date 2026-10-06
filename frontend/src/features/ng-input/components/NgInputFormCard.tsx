@@ -96,7 +96,7 @@ export const NgInputFormCard: React.FC<NgInputFormCardProps> = ({
                 <strong>Berat/pcs:</strong> {Number(selectedPart.berat_part_gr)} gr
               </div>
               <div>
-                <strong>Material:</strong> {selectedPart.material || '-'}
+                <strong>Material:</strong> {selectedPart.effective_material_name || selectedPart.material || '-'}
               </div>
               <div>
                 <strong>Factory:</strong> {selectedPart.factory_name || selectedPart.factory_code || '-'}

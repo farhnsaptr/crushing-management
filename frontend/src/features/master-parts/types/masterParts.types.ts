@@ -13,6 +13,7 @@ export interface MasterPart {
   part_name: string;
   jenis_part: string;
   material: string;
+  effective_material_name?: string; // nama campuran jika material part sedang dicampur, jika tidak material master (dihitung backend)
   shikake: number;
   qty_day?: number;
   prod_lot?: number;

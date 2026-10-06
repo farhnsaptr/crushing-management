@@ -28,3 +28,6 @@ ng-transactions/
 | `GET` | `/api/ng-transactions` | Authenticated | Ambil riwayat transaksi NG (filter tanggal & shift) |
 | `GET` | `/api/ng-transactions/summary-by-material` | Authenticated | Ambil ringkasan pareto material & part berdasar bulan & tahun |
 | `GET` | `/api/ng-transactions/part-detail/:partId` | Authenticated | Ambil analitik detail part, grafik harian shift & allowance, serta log transaksi |
+
+## Snapshot Material (Campuran)
+`ng_transactions.material_name_snapshot` menyimpan nama material efektif saat transaksi (nama campuran jika material part sedang dicampur, lihat modul `mixed-materials`). Pareto/dashboard/verifikasi membaca snapshot ini sehingga riwayat tidak bergeser saat mapping campuran berubah.

@@ -2,7 +2,7 @@ import React from 'react';
 import { useAuthForm } from '../hooks/useAuthForm';
 import { Input } from '../../../components/common/Input';
 import { Button } from '../../../components/common/Button';
-import { User, Lock, AlertCircle } from 'lucide-react';
+import { User, Lock, AlertCircle, Eye, EyeOff } from 'lucide-react';
 
 export const LoginForm: React.FC = () => {
   const {
@@ -10,6 +10,8 @@ export const LoginForm: React.FC = () => {
     setUsername,
     password,
     setPassword,
+    showPassword,
+    toggleShowPassword,
     error,
     isLoading,
     handleSubmit,
@@ -49,11 +51,35 @@ export const LoginForm: React.FC = () => {
 
       <Input
         label="Password"
-        type="password"
+        type={showPassword ? 'text' : 'password'}
         placeholder="Masukkan password anda"
         value={password}
         onChange={(e) => setPassword(e.target.value)}
         leftIcon={<Lock size={18} />}
+        rightIcon={
+          <button
+            type="button"
+            onClick={toggleShowPassword}
+            aria-label={showPassword ? 'Sembunyikan password' : 'Lihat password'}
+            title={showPassword ? 'Sembunyikan password' : 'Lihat password'}
+            style={{
+              background: 'none',
+              border: 'none',
+              padding: '0.25rem',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'var(--text-muted)',
+              borderRadius: 'var(--radius-sm, 4px)',
+              transition: 'color 0.15s ease',
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--text-main)')}
+            onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-muted)')}
+          >
+            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+          </button>
+        }
         required
       />
 

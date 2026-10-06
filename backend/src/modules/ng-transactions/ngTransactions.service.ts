@@ -2,6 +2,7 @@ import { randomUUID } from 'crypto';
 import { pool } from '../../config/database';
 import { RowDataPacket } from 'mysql2';
 import { broadcastSseEvent } from '../../utils/sse.util';
+import { resolveEffectiveMaterial } from '../materials/effectiveMaterial';
 
 export interface CreateNgTransactionDto {
   master_part_id: string;
@@ -16,7 +17,7 @@ export class NgTransactionsService {
   static async createTransaction(dto: CreateNgTransactionDto) {
     // 1. Fetch master part details for snapshot
     const [partRows] = await pool.query<RowDataPacket[]>(
-      `SELECT mp.part_number, mp.part_name, mp.berat_part_gr, m.model_code, mm.recycle_type
+      `SELECT mp.part_number, mp.part_name, mp.berat_part_gr, mp.material, mp.material_id, m.model_code, mm.recycle_type
        FROM master_parts mp
        JOIN master_models m ON mp.model_id = m.id
        LEFT JOIN master_materials mm ON mp.material_id = mm.id
@@ -31,20 +32,26 @@ export class NgTransactionsService {
     const masterPart = partRows[0];
     const id = randomUUID();
 
+    // Material efektif (campuran jika sedang dicampur) dibekukan sebagai snapshot nama
+    const effMat = await resolveEffectiveMaterial(masterPart.material_id);
+    const materialName = effMat?.name || masterPart.material || null;
+    const recycleType = effMat?.recycle_type || masterPart.recycle_type || 'reuse';
+
     // 2. Insert into ng_transactions with UUID
     await pool.query(
       `INSERT INTO ng_transactions
-       (id, master_part_id, part_number_snapshot, part_name_snapshot, model_snapshot, berat_part_gr_snapshot, quantity_pcs, recycle_type_snapshot, shift, transaction_date, input_by, notes)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       (id, master_part_id, material_name_snapshot, part_number_snapshot, part_name_snapshot, model_snapshot, berat_part_gr_snapshot, quantity_pcs, recycle_type_snapshot, shift, transaction_date, input_by, notes)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
         dto.master_part_id,
+        materialName,
         masterPart.part_number,
         masterPart.part_name,
         masterPart.model_code,
         masterPart.berat_part_gr,
         dto.quantity_pcs,
-        masterPart.recycle_type || 'reuse',
+        recycleType,
         dto.shift,
         dto.transaction_date,
         dto.input_by,
@@ -110,7 +117,7 @@ export class NgTransactionsService {
     // Fetch summary by material and parts under that material in the given month and factory location
     const [partRows] = await pool.query<RowDataPacket[]>(
       `SELECT 
-        COALESCE(mm.material_name, mp.material, 'Unknown Material') AS material_name,
+        COALESCE(t.material_name_snapshot, mm.material_name, mp.material, 'Unknown Material') AS material_name,
         mp.id AS master_part_id,
         mp.part_name,
         mp.part_number,
@@ -126,7 +133,7 @@ export class NgTransactionsService {
        JOIN master_models m ON mp.model_id = m.id
        LEFT JOIN master_materials mm ON mp.material_id = mm.id
        WHERE YEAR(t.transaction_date) = ? AND MONTH(t.transaction_date) = ? AND fc.location = ?
-       GROUP BY COALESCE(mm.material_name, mp.material, 'Unknown Material'), mp.id, mp.part_name, mp.part_number, m.model_code, mp.allowance_kg, fc.location
+       GROUP BY COALESCE(t.material_name_snapshot, mm.material_name, mp.material, 'Unknown Material'), mp.id, mp.part_name, mp.part_number, m.model_code, mp.allowance_kg, fc.location
        ORDER BY total_weight_kg DESC`,
       [year, month, location]
     );
@@ -201,11 +208,13 @@ export class NgTransactionsService {
   static async getPartMonthlyDetail(partId: string, year: number, month: number, location: 'Cibitung' | 'Karawang' = 'Cibitung') {
     // 1. Get part details with factory location join
     const [partRows] = await pool.query<RowDataPacket[]>(
-      `SELECT mp.id, mp.part_name, mp.part_number, mp.allowance_kg, mp.berat_part_gr, mp.material, m.model_code, fc.location AS plant_location
+      `SELECT mp.id, mp.part_name, mp.part_number, mp.allowance_kg, mp.berat_part_gr, COALESCE(xm.mixed_name, mm.material_name, mp.material) AS material, m.model_code, fc.location AS plant_location
        FROM master_parts mp
        JOIN machines mc ON mp.machine_id = mc.id
        JOIN factories fc ON mc.factory_id = fc.id
        JOIN master_models m ON mp.model_id = m.id
+       LEFT JOIN master_materials mm ON mp.material_id = mm.id
+       LEFT JOIN mixed_materials xm ON xm.id = mm.mixed_material_id
        WHERE mp.id = ?`,
       [partId]
     );

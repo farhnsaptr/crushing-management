@@ -28,6 +28,7 @@ export const MaterialsPage: React.FC = () => {
     isModalOpen,
     setIsModalOpen,
     editingMaterial,
+    mixedOptions,
     handleOpenCreateModal,
     handleOpenEditModal,
     handleCreateMaterial,
@@ -253,6 +254,7 @@ export const MaterialsPage: React.FC = () => {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         editingMaterial={editingMaterial}
+        mixedOptions={mixedOptions}
         onCreateSubmit={handleCreateMaterial}
         onUpdateSubmit={handleUpdateMaterial}
       />

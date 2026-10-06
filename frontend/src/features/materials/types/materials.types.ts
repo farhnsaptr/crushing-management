@@ -3,6 +3,8 @@ export interface Material {
   material_name: string;
   description?: string;
   recycle_type: 'reuse' | 'no_reuse';
+  mixed_material_id?: string | null; // campuran tempat material ini dimasukkan
+  mixed_material_name?: string | null;
   used_parts_count?: number;
   created_at?: string;
   updated_at?: string;
@@ -12,6 +14,7 @@ export interface CreateMaterialPayload {
   material_name: string;
   description?: string;
   recycle_type?: 'reuse' | 'no_reuse';
+  mixed_material_id?: string | null; // null = lepas dari campuran
 }
 
 export interface MaterialPartDetail {

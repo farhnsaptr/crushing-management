@@ -20,6 +20,7 @@ import { DepartmentsPage } from './features/departments/pages/DepartmentsPage';
 import { FactoriesPage } from './features/factories/pages/FactoriesPage';
 import { MachinesPage } from './features/machines/pages/MachinesPage';
 import { MaterialsPage } from './features/materials/pages/MaterialsPage';
+import { MixedMaterialsPage } from './features/mixed-materials/pages/MixedMaterialsPage';
 import { MasterPartsPage } from './features/master-parts/pages/MasterPartsPage';
 import { UsersPage } from './features/users/pages/UsersPage';
 import { GlobalLogsPage } from './features/global-logs/pages/GlobalLogsPage';
@@ -73,6 +74,7 @@ export const App: React.FC = () => {
                 <Route path="/admin/factories" element={<FactoriesPage />} />
                 <Route path="/admin/machines" element={<MachinesPage />} />
                 <Route path="/admin/materials" element={<MaterialsPage />} />
+                <Route path="/admin/mixed-materials" element={<MixedMaterialsPage />} />
                 <Route path="/admin/master-parts" element={<MasterPartsPage />} />
               </Route>
             </Route>

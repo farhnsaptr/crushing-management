@@ -913,7 +913,7 @@ export const CreateRequestForm: React.FC<CreateRequestFormProps> = ({
                                 border: '1px solid #e2e8f0',
                               }}
                             >
-                              {part.material || '-'}
+                              {part.effective_material_name || part.material || '-'}
                             </span>
                           </div>
 
@@ -1085,7 +1085,7 @@ export const CreateRequestForm: React.FC<CreateRequestFormProps> = ({
                                   color: 'var(--text-main, #0f172a)',
                                 }}
                               >
-                                {part.material || '-'}
+                                {part.effective_material_name || part.material || '-'}
                               </span>
                               {part.model_code && (
                                 <span style={{ backgroundColor: '#f1f5f9', padding: '0.05rem 0.35rem', borderRadius: '4px', fontWeight: 700, color: '#334155' }}>
