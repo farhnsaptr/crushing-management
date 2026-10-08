@@ -121,10 +121,10 @@ export const DailyRecycleChart: React.FC<DailyRecycleChartProps> = ({
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', width: '100%' }}>
+    <div className="dash-chart">
       {/* Header & Sub-header */}
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
-        <h3 style={{ fontSize: '0.95rem', fontWeight: 900, color: 'var(--text-main, #0f172a)', margin: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.25rem' }}>
+        <h3 style={{ fontSize: '0.85rem', fontWeight: 900, color: 'var(--text-main, #0f172a)', margin: 0 }}>
           Daily Data Recycle Material
         </h3>
         <span style={{ fontSize: '0.75rem', color: 'var(--text-muted, #64748b)', fontWeight: 700 }}>
@@ -132,7 +132,9 @@ export const DailyRecycleChart: React.FC<DailyRecycleChartProps> = ({
         </span>
       </div>
 
-      <ShiftLineChart data={data || []} height={210} tooltip={<CustomTooltip />} />
+      <div className="dash-chart-box">
+        <ShiftLineChart data={data || []} tooltip={<CustomTooltip />} />
+      </div>
     </div>
   );
 };

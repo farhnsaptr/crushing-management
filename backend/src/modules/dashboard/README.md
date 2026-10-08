@@ -19,7 +19,11 @@ Mengembalikan data grafik harian total recycle material (kg & pcs per tanggal).
 - **Query Params**: `year`, `month`, `location`
 
 ### 3. `GET /api/dashboard/pareto-material`
-Mengembalikan daftar Top 10 Pareto Material.
+Mengembalikan daftar Top 5 Pareto Material (dibatasi 5 baris agar tabel dashboard muat tanpa scroll dengan tulisan yang terbaca).
+- **Query Params**: `year`, `month`, `location`
+
+### 3b. `GET /api/dashboard/departments-pareto`
+Pareto departemen pengirim NG. Dibatasi `DEPARTMENT_PARETO_MAX_ROWS` (5) baris agar tabel dashboard muat tanpa scroll: 4 departemen teratas + 1 baris `Lainnya (n departemen)` (`department_id: 'others'`) berisi jumlah sisanya, persentase total tetap lengkap.
 - **Query Params**: `year`, `month`, `location`
 
 ### 4. `GET /api/dashboard/top-ng-parts`

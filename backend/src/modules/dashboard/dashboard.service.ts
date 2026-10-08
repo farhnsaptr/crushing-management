@@ -3,6 +3,9 @@ import { RowDataPacket } from 'mysql2';
 import * as XLSX from 'xlsx';
 import { RUNNER_MATERIAL_JOIN_SQL } from '../materials/runnerMaterialJoin';
 
+// Pareto Departemen dibatasi agar tabel dashboard muat tanpa scroll: peringkat teratas + 1 baris "Lainnya" (jumlah sisanya)
+const DEPARTMENT_PARETO_MAX_ROWS = 5;
+
 export class DashboardService {
   /**
    * KPI dashboard per bulan & lokasi:
@@ -329,7 +332,7 @@ export class DashboardService {
        ) combined
        GROUP BY material_name
        ORDER BY total_kg DESC
-       LIMIT 10`,
+       LIMIT 5`,
       [qYear, qMonth, location, qYear, qMonth]
     );
 
@@ -626,20 +629,40 @@ export class DashboardService {
 
     const totalPlantKg = rows.reduce((sum, r) => sum + Number(r.total_kg || 0), 0);
 
-    return rows.map((r, index) => {
+    const pct = (kg: number) => (totalPlantKg > 0 ? Number(((kg / totalPlantKg) * 100).toFixed(1)) : 0);
+
+    const items = rows.map((r, index) => {
       const kg = Number(Number(r.total_kg).toFixed(2));
-      const percentage = totalPlantKg > 0 ? Number(((kg / totalPlantKg) * 100).toFixed(1)) : 0;
       return {
         rank: index + 1,
-        department_id: r.department_id,
-        department_code: r.department_code,
-        department_name: r.department_name,
+        department_id: r.department_id as string,
+        department_code: r.department_code as string,
+        department_name: r.department_name as string,
         total_kg: kg,
         total_pcs: Number(r.total_pcs || 0),
         total_transaksi: Number(r.total_transaksi || 0),
-        percentage,
+        percentage: pct(kg),
       };
     });
+
+    if (items.length <= DEPARTMENT_PARETO_MAX_ROWS) return items;
+
+    const top = items.slice(0, DEPARTMENT_PARETO_MAX_ROWS - 1);
+    const rest = items.slice(DEPARTMENT_PARETO_MAX_ROWS - 1);
+    const restKg = Number(rest.reduce((sum, r) => sum + r.total_kg, 0).toFixed(2));
+    return [
+      ...top,
+      {
+        rank: DEPARTMENT_PARETO_MAX_ROWS,
+        department_id: 'others',
+        department_code: '',
+        department_name: `Lainnya (${rest.length} departemen)`,
+        total_kg: restKg,
+        total_pcs: rest.reduce((sum, r) => sum + r.total_pcs, 0),
+        total_transaksi: rest.reduce((sum, r) => sum + r.total_transaksi, 0),
+        percentage: pct(restKg),
+      },
+    ];
   }
 
   /**

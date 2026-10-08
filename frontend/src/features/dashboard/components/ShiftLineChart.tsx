@@ -15,7 +15,8 @@ const PLANNING_COLOR = '#2563eb';
 
 interface ShiftLineChartProps {
   data: ShiftChartPoint[];
-  height: number;
+  /** Tinggi px; kosong = mengisi tinggi induk (induk harus punya tinggi: lihat .dash-chart-box). */
+  height?: number;
   tooltip: React.ReactElement;
 }
 
@@ -32,7 +33,7 @@ export const ShiftLineChart: React.FC<ShiftLineChartProps> = ({ data, height, to
       border: '1.5px solid #e2e8f0',
       boxShadow: '0 2px 8px rgba(0, 0, 0, 0.03)',
       width: '100%',
-      height: `${height}px`,
+      height: height ? `${height}px` : '100%',
     }}
   >
     <ResponsiveContainer width="100%" height="100%">

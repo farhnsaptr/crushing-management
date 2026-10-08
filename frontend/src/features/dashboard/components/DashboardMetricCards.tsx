@@ -15,27 +15,16 @@ interface MetricCardProps {
 }
 
 const MetricCard: React.FC<MetricCardProps> = ({ label, badge, badgeColor, value, valueColor }) => (
-  <div
-    style={{
-      backgroundColor: '#ffffff',
-      borderRadius: '16px',
-      padding: '0.75rem 1.15rem',
-      border: '1.5px solid #e2e8f0',
-      boxShadow: '0 2px 6px rgba(0, 0, 0, 0.02)',
-      display: 'flex',
-      flexDirection: 'column',
-      justifyContent: 'center',
-    }}
-  >
+  <div className="dash-kpi-card">
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.4rem' }}>
-      <span style={{ fontSize: '0.8rem', fontWeight: 800, color: '#334155' }}>{label}</span>
+      <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#334155' }}>{label}</span>
       <span
         style={{
-          fontSize: '0.7rem',
+          fontSize: '0.65rem',
           fontWeight: 800,
           color: badgeColor,
           backgroundColor: `color-mix(in srgb, ${badgeColor} 12%, transparent)`,
-          padding: '0.15rem 0.4rem',
+          padding: '0.1rem 0.35rem',
           borderRadius: '4px',
           whiteSpace: 'nowrap',
         }}
@@ -43,9 +32,9 @@ const MetricCard: React.FC<MetricCardProps> = ({ label, badge, badgeColor, value
         {badge}
       </span>
     </div>
-    <div style={{ marginTop: '0.2rem' }}>
-      <span style={{ fontSize: '1.45rem', fontWeight: 900, color: valueColor, lineHeight: 1 }}>{value}</span>
-    </div>
+    <span className="dash-kpi-value" style={{ color: valueColor }}>
+      {value}
+    </span>
   </div>
 );
 
@@ -57,13 +46,7 @@ export const DashboardMetricCards: React.FC<DashboardMetricCardsProps> = ({ summ
   const fmt = (kg: number) => (isLoading ? '--' : `${kg.toLocaleString('id-ID')} kg`);
 
   return (
-    <div
-      style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))',
-        gap: '0.85rem',
-      }}
-    >
+    <div className="dash-kpi">
       <MetricCard
         label="Material No-Reuse (Scrap) :"
         badge="No Reuse"
