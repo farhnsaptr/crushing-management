@@ -1,0 +1,354 @@
+/*
+ * Layout dashboard admin/operator/guest.
+ * Tujuan: semua komponen muat dalam satu layar tanpa scroll (desktop / tablet landscape lebar).
+ * Responsif memakai container query pada .dash-root (lebar KONTEN, bukan lebar layar) karena sidebar bisa dibuka/tutup.
+ *   >= 1150px : 3 tabel berdampingan, semua kolom
+ *   900-1149  : 3 tabel berdampingan, kolom sekunder disembunyikan (nilainya ada di tooltip / title)
+ *   < 900     : layout bertumpuk, halaman boleh scroll ke bawah (tanpa scroll di dalam kartu)
+ *   < 600     : 1 kolom, toolbar menumpuk
+ * Tinggi layar >= 640px: halaman dipaksa setinggi layar; grafik mengambil sisa tinggi,
+ * tabel setinggi isinya (ukuran tulisan ikut tinggi layar via --dash-fs) sehingga baris tidak pernah terpotong.
+ */
+
+.dash-root {
+  container-type: inline-size;
+  container-name: dash;
+  width: 100%;
+}
+
+.dash-page {
+  --dash-fs: clamp(12px, 2vh, 15px);
+  --dash-rows: 5; /* baris data maksimum per tabel (batas backend); tinggi section tabel dikunci seukuran ini */
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  width: 100%;
+}
+
+/* ---------- Toolbar ---------- */
+.dash-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  background-color: var(--card-bg, #ffffff);
+  padding: 0.5rem 0.9rem;
+  border-radius: 14px;
+  border: 1px solid var(--border-color, #e2e8f0);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
+  flex-wrap: wrap;
+}
+.dash-bar-title h1 {
+  font-size: 1.05rem;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  color: var(--text-main, #0f172a);
+  margin: 0;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.dash-bar-title p {
+  font-size: 0.7rem;
+  color: var(--text-muted, #64748b);
+  margin: 0.1rem 0 0 0;
+  font-weight: 600;
+}
+.dash-bar-filters,
+.dash-bar-right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.dash-bar-info {
+  text-align: right;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+/* ---------- KPI ---------- */
+.dash-kpi {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.6rem;
+}
+.dash-kpi-card {
+  background-color: #ffffff;
+  border-radius: 14px;
+  padding: 0.5rem 0.9rem;
+  border: 1.5px solid #e2e8f0;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+}
+.dash-kpi-value {
+  font-size: clamp(1.1rem, 2.6vh, 1.4rem);
+  font-weight: 900;
+  line-height: 1.1;
+  margin-top: 0.15rem;
+}
+
+/* ---------- Grafik ---------- */
+.dash-chart {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+  min-height: 220px;
+}
+.dash-chart-box {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+.dash-chart-box > div {
+  position: absolute;
+  inset: 0;
+}
+
+/* ---------- Tabel ---------- */
+.dash-tables {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr 1fr;
+  gap: 0.6rem;
+  align-items: stretch;
+}
+.dash-table-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+.dash-table-title {
+  font-size: 0.85rem;
+  font-weight: 900;
+  color: var(--text-main, #0f172a);
+  margin: 0;
+}
+.dash-table-box {
+  flex: 1;
+  border-radius: 14px;
+  border: 1.5px solid #e2e8f0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+  background-color: #ffffff;
+  overflow: hidden;
+  font-size: var(--dash-fs);
+}
+.dash-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: inherit;
+  line-height: 1.3;
+}
+/* tinggi baris tetap supaya tinggi tabel bisa dihitung (header + --dash-rows baris) */
+.dash-table thead tr,
+.dash-table tbody tr {
+  height: 1.9em;
+}
+.dash-table thead tr {
+  background-color: var(--primary-color, #0f172a);
+  color: #ffffff;
+  font-weight: 800;
+  text-align: left;
+}
+.dash-table th,
+.dash-table td {
+  padding: 0.3em 0.55em;
+}
+.dash-table tbody tr {
+  border-bottom: 1px solid #f1f5f9;
+}
+.dash-table tbody tr:nth-child(even) {
+  background-color: #f8fafc;
+}
+.dash-table .cell-name {
+  width: 100%;
+  max-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 800;
+  color: #0f172a;
+}
+.dash-table .cell-sub {
+  display: none;
+  font-size: 0.85em;
+  font-weight: 600;
+  color: #64748b;
+}
+.dash-table .num {
+  text-align: right;
+  white-space: nowrap;
+}
+.dash-table .ctr {
+  text-align: center;
+}
+.dash-table .empty-row td {
+  text-align: center;
+  color: #64748b;
+  font-weight: 600;
+  padding: 1em;
+}
+.dash-rank {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.7em;
+  height: 1.7em;
+  border-radius: 50%;
+  color: #ffffff;
+  font-weight: 900;
+  font-size: 0.9em;
+}
+.dash-bar-meter {
+  display: flex;
+  align-items: center;
+  gap: 0.4em;
+}
+.dash-bar-meter > .track {
+  flex: 1;
+  min-width: 2.5em;
+  height: 0.6em;
+  background-color: #e2e8f0;
+  border-radius: 4px;
+  overflow: hidden;
+}
+.dash-bar-meter > .track > span {
+  display: block;
+  height: 100%;
+  border-radius: 4px;
+}
+
+/* ---------- Tinggi layar cukup + konten cukup lebar: satu layar penuh ---------- */
+@media (min-height: 640px) {
+  @container dash (min-width: 900px) {
+    /* tinggi layar - header aplikasi (72px) - padding vertikal main (3rem) */
+    .dash-page {
+      min-height: calc(100vh - 72px - 3rem);
+    }
+    .dash-chart {
+      flex: 1 1 0;
+      min-height: 130px;
+    }
+    /* Tinggi section tabel DIKUNCI untuk header + --dash-rows baris, berapa pun jumlah barisnya,
+       sehingga ukuran grafik tidak berubah saat data tabel masih sedikit. */
+    .dash-table-box {
+      flex: 0 0 auto;
+      min-height: calc((var(--dash-rows) + 1) * 1.9em + 3px);
+    }
+  }
+}
+
+/* ---------- Kolom sekunder: sembunyikan bila 3 tabel terlalu sempit ---------- */
+@container dash (max-width: 1149px) {
+  .dash-table .col-sec {
+    display: none;
+  }
+  .dash-bar-title p,
+  .dash-bar-info {
+    display: none;
+  }
+}
+
+/* ---------- Layout bertumpuk (tablet portrait / konten sempit) ---------- */
+@container dash (max-width: 899px) {
+  .dash-page {
+    --dash-fs: 14px;
+  }
+  .dash-chart {
+    flex: none;
+    height: 260px;
+  }
+  .dash-tables {
+    grid-template-columns: 1fr 1fr;
+  }
+  .dash-tables > :first-child {
+    grid-column: 1 / -1;
+  }
+  .dash-table .cell-name {
+    max-width: none;
+    white-space: normal;
+    overflow: visible;
+  }
+  .dash-table .cell-sub {
+    display: block;
+  }
+  .dash-table .col-sec {
+    display: none;
+  }
+}
+
+/* ---------- HP / konten sangat sempit ---------- */
+@container dash (max-width: 599px) {
+  .dash-bar {
+    padding: 0.6rem 0.75rem;
+  }
+  .dash-bar-filters,
+  .dash-bar-right {
+    width: 100%;
+  }
+  .dash-bar-filters > * {
+    flex: 1 1 auto;
+  }
+  .dash-kpi {
+    grid-template-columns: 1fr 1fr;
+  }
+  .dash-tables {
+    grid-template-columns: 1fr;
+  }
+  .dash-chart {
+    height: 230px;
+  }
+}
+
+/* ---------- HP posisi vertikal: dashboard di-blur dan diminta diputar ke landscape ---------- */
+.dash-rotate-overlay {
+  display: none;
+}
+@media (max-width: 767px) and (orientation: portrait) {
+  .dash-root {
+    /* tinggi layar - header aplikasi mobile (64px); cegah scroll di balik overlay */
+    height: calc(100vh - 64px);
+    overflow: hidden;
+  }
+  .dash-page {
+    filter: blur(8px);
+    pointer-events: none;
+    user-select: none;
+  }
+  .dash-rotate-overlay {
+    position: fixed;
+    inset: 64px 0 0 0;
+    z-index: 80;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    padding: 1.5rem;
+    text-align: center;
+    color: var(--text-main, #0f172a);
+    background-color: rgba(255, 255, 255, 0.6);
+    backdrop-filter: blur(4px);
+  }
+  .dash-rotate-overlay strong {
+    font-size: 1.1rem;
+    font-weight: 900;
+  }
+  .dash-rotate-overlay span {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-muted, #64748b);
+    max-width: 18rem;
+  }
+  .dash-rotate-icon {
+    color: var(--secondary-color, #e76114);
+    animation: dash-rotate-hint 1.8s ease-in-out infinite;
+  }
+}
+@keyframes dash-rotate-hint {
+  0%, 25% { transform: rotate(0deg); }
+  60%, 100% { transform: rotate(-90deg); }
+}

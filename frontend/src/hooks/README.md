@@ -7,6 +7,9 @@ Folder ini berisi kumpulan custom React hooks yang bersifat reusable dan dapat d
 ### `useIsNarrow<T>(maxWidth: number): [ref, boolean]`
 Mengembalikan `ref` untuk dipasang ke elemen dan `true` saat lebar **elemen tsb** ≤ `maxWidth` (via `ResizeObserver`). Dipakai untuk layout responsif yang bergantung pada ruang konten sebenarnya (sidebar terbuka/tertutup), bukan lebar layar — misal rincian pengiriman berubah jadi bottom bar + sheet di form pengirim.
 
+### `usePersistedState<T>(key: string | null, initial: T): [T, setValue]`
+State yang disimpan di `localStorage` browser (per browser, tidak ikut pindah perangkat). `key = null` berarti tidak disimpan. Semua akses storage dibungkus `try/catch`, jadi tetap jalan saat storage tidak tersedia. Nilai tersimpan tidak divalidasi di hook ini; pemakai wajib mencocokkannya dengan daftar pilihan aktif (lihat `usePlantLocation` dan pilihan factory di Kirim Part). Key per user: `pref:<userId>:<nama>`.
+
 ### `useDebounce<T>(value: T, delayMs?: number): T`
 Hook utilitas untuk menunda pembaruan nilai (`value`) selama durasi tertentu (`delayMs`, default `400ms`). Sangat ideal untuk:
 - Mengurangi pemanggilan API berlebih saat user mengetik pada input pencarian (search debounce).

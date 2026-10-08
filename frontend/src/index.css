@@ -54,6 +54,10 @@
   --secondary-hover: #d2530c;
   --secondary-light: rgba(231, 97, 20, 0.1);
 
+  /* Warna garis grafik dashboard (Shift Pagi / Malam); diatur di Site Configuration */
+  --chart-shift-pagi: #008d51;
+  --chart-shift-malam: #E76114;
+
   --accent-color: #037233;
   --accent-hover: #025927;
   --accent-light: rgba(3, 114, 51, 0.1);

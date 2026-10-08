@@ -23,6 +23,9 @@ export const VerificationModal: React.FC<VerificationModalProps> = ({
     setDate,
     shift,
     setShift,
+    locations,
+    location,
+    setLocation,
     notes,
     setNotes,
     data,
@@ -53,6 +56,9 @@ export const VerificationModal: React.FC<VerificationModalProps> = ({
         setDate={setDate}
         shift={shift}
         setShift={setShift}
+        locations={locations}
+        location={location}
+        setLocation={setLocation}
         notes={notes}
         setNotes={setNotes}
         data={data}

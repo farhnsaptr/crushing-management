@@ -681,8 +681,9 @@ export class CrushingRequestsService {
           [item.master_part_id]
         );
         const effMat = await resolveEffectiveMaterial(partMatRows[0]?.material_id || item.material_id);
-        // Campuran bertipe no_reuse: seluruh qty menjadi waste, tidak ada pemisahan reuse
-        const forceNoReuse = !!effMat?.is_mixed && effMat.recycle_type === 'no_reuse';
+        // Material efektif no_reuse (master material no_reuse, atau campuran no_reuse): seluruh qty menjadi waste,
+        // tidak ada pemisahan reuse
+        const forceNoReuse = effMat?.recycle_type === 'no_reuse';
         const buckets: Array<{ qty: number; recycleType: 'reuse' | 'no_reuse' }> = forceNoReuse
           ? [{ qty: verifiedQty, recycleType: 'no_reuse' }]
           : [

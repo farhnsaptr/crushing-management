@@ -8,6 +8,8 @@ export interface ThemeColors {
   theme_dark_primary: string;
   theme_dark_secondary: string;
   theme_dark_accent: string;
+  chart_shift_pagi_color: string;
+  chart_shift_malam_color: string;
   site_title?: string;
   site_logo?: string;
   site_background?: string;
@@ -20,6 +22,8 @@ const DEFAULT_THEME: ThemeColors = {
   theme_dark_primary: '#008d51',
   theme_dark_secondary: '#E76114',
   theme_dark_accent: '#037233',
+  chart_shift_pagi_color: '#008d51',
+  chart_shift_malam_color: '#E76114',
   site_title: 'Material Management - PT Sugity Creatives',
   site_logo: '/logo.png',
   site_background: '/background.jpg',
@@ -98,6 +102,13 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       root.style.setProperty('--accent-color', colors.theme_light_accent || DEFAULT_THEME.theme_light_accent);
     }
   }, [isDarkMode, colors]);
+
+  // Warna garis grafik dashboard: pengaturan sendiri, sama untuk mode terang & gelap
+  useEffect(() => {
+    const root = document.documentElement;
+    root.style.setProperty('--chart-shift-pagi', colors.chart_shift_pagi_color || DEFAULT_THEME.chart_shift_pagi_color);
+    root.style.setProperty('--chart-shift-malam', colors.chart_shift_malam_color || DEFAULT_THEME.chart_shift_malam_color);
+  }, [colors.chart_shift_pagi_color, colors.chart_shift_malam_color]);
 
   const toggleDarkMode = () => setIsDarkMode((prev) => !prev);
 

@@ -1,10 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { DashboardService } from '../services/dashboard.service';
-import { VerificationService } from '../../verification/services/verification.service';
 import { useAuth } from '../../../context/AuthContext';
-import { canManageData } from '../../../config/permissions.config';
 import { extractErrorMessage } from '../../../services/api.client';
-import type { VerificationDashboardStatusResponse } from '../../verification/types/verification.types';
+import { usePlantLocation } from '../../factories/hooks/usePlantLocation';
 import type {
   DashboardSummaryStats,
   DailyRecycleChartItem,
@@ -35,7 +33,13 @@ export function useDashboard() {
   const currentDate = new Date();
   const [selectedMonth, setSelectedMonth] = useState<number>(currentDate.getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState<number>(currentDate.getFullYear());
-  const [selectedLocation, setSelectedLocation] = useState<PlantLocation>('Cibitung');
+  // Lokasi: daftar dari backend, pilihan terakhir tersimpan per user di browser (berbagi dengan form Verifikasi)
+  const {
+    locations,
+    location: selectedLocation,
+    setLocation: setSelectedLocation,
+    isLoaded: isLocationsLoaded,
+  } = usePlantLocation();
 
   // Plant / Operator / Admin Dashboard Data
   const [summaryStats, setSummaryStats] = useState<DashboardSummaryStats | null>(null);
@@ -43,7 +47,6 @@ export function useDashboard() {
   const [paretoMaterials, setParetoMaterials] = useState<ParetoMaterialItem[]>([]);
   const [topParts, setTopParts] = useState<TopNgPartItem[]>([]);
   const [departmentPareto, setDepartmentPareto] = useState<DepartmentParetoItem[]>([]);
-  const [verificationStatus, setVerificationStatus] = useState<VerificationDashboardStatusResponse | null>(null);
 
   // Sender Specific Dashboard Data
   const [senderStats, setSenderStats] = useState<SenderDashboardStats | null>(null);
@@ -52,21 +55,27 @@ export function useDashboard() {
   const [isExporting, setIsExporting] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  const role = user?.role;
+
   const fetchDashboardData = useCallback(async () => {
+    // Lokasi belum tersedia dari backend: tunggu (atau selesai bila memang tidak ada lokasi)
+    if (role !== 'pengirim' && !selectedLocation) {
+      setIsLoading(!isLocationsLoaded);
+      return;
+    }
     setIsLoading(true);
     setErrorMessage(null);
     try {
-      if (user?.role === 'pengirim') {
+      if (role === 'pengirim') {
         const senderData = await DashboardService.getSenderStats(selectedYear, selectedMonth);
         setSenderStats(senderData);
       } else {
-        const [statsData, chartResult, paretoData, topPartsData, deptParetoData, verStatus] = await Promise.all([
+        const [statsData, chartResult, paretoData, topPartsData, deptParetoData] = await Promise.all([
           DashboardService.getSummary(selectedYear, selectedMonth, selectedLocation),
           DashboardService.getDailyChart(selectedYear, selectedMonth, selectedLocation),
           DashboardService.getParetoMaterial(selectedYear, selectedMonth, selectedLocation),
           DashboardService.getTopNgParts(selectedYear, selectedMonth, selectedLocation),
           DashboardService.getDepartmentPareto(selectedYear, selectedMonth, selectedLocation),
-          canManageData(user?.role) ? VerificationService.getDashboardStatus() : Promise.resolve(null),
         ]);
 
         setSummaryStats(statsData);
@@ -74,7 +83,6 @@ export function useDashboard() {
         setParetoMaterials(paretoData);
         setTopParts(topPartsData);
         setDepartmentPareto(deptParetoData);
-        setVerificationStatus(verStatus);
       }
     } catch (err: any) {
       console.error('Failed to fetch dashboard dataset:', err);
@@ -82,7 +90,7 @@ export function useDashboard() {
     } finally {
       setIsLoading(false);
     }
-  }, [user?.role, selectedYear, selectedMonth, selectedLocation]);
+  }, [role, selectedYear, selectedMonth, selectedLocation, isLocationsLoaded]);
 
   useEffect(() => {
     fetchDashboardData();
@@ -106,6 +114,7 @@ export function useDashboard() {
     setSelectedMonth,
     selectedYear,
     setSelectedYear,
+    locations,
     selectedLocation,
     setSelectedLocation,
     summaryStats,
@@ -114,7 +123,6 @@ export function useDashboard() {
     topParts,
     departmentPareto,
     senderStats,
-    verificationStatus,
     isLoading,
     isExporting,
     errorMessage,

@@ -92,6 +92,19 @@ router.get('/', FactoriesController.list);
  *       200:
  *         description: Factory deleted
  */
+/**
+ * @openapi
+ * /api/factories/locations:
+ *   get:
+ *     summary: Daftar lokasi plant (distinct factories.location)
+ *     tags: [Factories Management]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of locations
+ */
+router.get('/locations', FactoriesController.listLocations);
 router.get('/:id', FactoriesController.getById);
 router.post('/', requireRole(['super-admin', 'admin']), FactoriesController.create);
 router.put('/:id', requireRole(['super-admin', 'admin']), FactoriesController.update);

@@ -32,6 +32,7 @@ export interface VerificationSummary {
 export interface VerificationDetailResponse {
   date: string;
   shift: 'Pagi' | 'Malam';
+  location: string;
   has_input?: boolean;
   is_validated: boolean;
   header: VerificationHeader | null;
@@ -42,6 +43,7 @@ export interface VerificationDetailResponse {
 export interface SaveVerificationPayload {
   verification_date: string;
   shift: 'Pagi' | 'Malam';
+  location: string;
   notes?: string;
   items: Array<{
     material_id?: string | null;

@@ -5,6 +5,8 @@ Modul ini digunakan oleh Operator Crushing untuk memvalidasi hasil akhir penggil
 ## Alur Sistem
 1. Sistem otomatis mendeteksi seluruh material *Reuse* yang digiling pada tanggal & shift aktif (berdasarkan transaksi Part NG dan Part Runner).
 2. **Blind Verification (Anti-Manipulasi Data)**:
+   - Material campuran reuse tanpa input sistem tampil di bagian "Material campuran lain" di bawah daftar utama. Form hanya aktif bila sudah ada minimal satu transaksi reuse (tombol simpan nonaktif dan muncul pesan jika belum).
+   - Operator memilih **lokasi plant** (daftar dari backend) selain tanggal & shift; satu tanggal+shift punya satu verifikasi per lokasi. Lokasi awal mengikuti pilihan terakhir user di dashboard (tersimpan di browser).
    - Form verifikasi **hanya menampilkan daftar nama material reuse** dan field input **Berat Hasil Timbangan Aktual (kg)**.
    - Angka estimasi sistem (Part NG, Runner, Total Sistem) dan perhitungan *Waste Loss* disembunyikan dari operator agar proses penimbangan murni objektif.
 3. Operator menimbang fisik hasil gilingan per jenis material di lapangan dan menginputkan berat riil dalam Kilogram (kg).

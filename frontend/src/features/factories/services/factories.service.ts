@@ -7,6 +7,12 @@ export class FactoriesService {
     return response.data.data;
   }
 
+  /** Daftar lokasi plant (distinct factories.location) dari backend. */
+  static async getLocations(): Promise<string[]> {
+    const response = await apiClient.get('/api/factories/locations');
+    return response.data.data;
+  }
+
   static async getFactoryById(id: string): Promise<Factory> {
     const response = await apiClient.get(`/api/factories/${id}`);
     return response.data.data;

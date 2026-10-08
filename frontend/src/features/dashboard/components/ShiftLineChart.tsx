@@ -15,12 +15,13 @@ const PLANNING_COLOR = '#2563eb';
 
 interface ShiftLineChartProps {
   data: ShiftChartPoint[];
-  height: number;
+  /** Tinggi px; kosong = mengisi tinggi induk (induk harus punya tinggi: lihat .dash-chart-box). */
+  height?: number;
   tooltip: React.ReactElement;
 }
 
 /**
- * Grafik garis harian (dengan shading gradasi): 2 garis (Shift Pagi = primary, Shift Malam = secondary).
+ * Grafik garis harian (dengan shading gradasi): 2 garis (warna dari Site Configuration: --chart-shift-pagi / --chart-shift-malam).
  * Garis putus-putus "Planning Harian" hanya muncul jika data punya `planning_kg` (hari tanpa upload = null → garis terputus).
  */
 export const ShiftLineChart: React.FC<ShiftLineChartProps> = ({ data, height, tooltip }) => (
@@ -32,13 +33,13 @@ export const ShiftLineChart: React.FC<ShiftLineChartProps> = ({ data, height, to
       border: '1.5px solid #e2e8f0',
       boxShadow: '0 2px 8px rgba(0, 0, 0, 0.03)',
       width: '100%',
-      height: `${height}px`,
+      height: height ? `${height}px` : '100%',
     }}
   >
     <ResponsiveContainer width="100%" height="100%">
       <AreaChart data={data} margin={{ top: 16, right: 8, left: -25, bottom: 0 }}>
         <defs>
-          {[['shiftPagi', 'var(--primary-color)'], ['shiftMalam', 'var(--secondary-color)']].map(([id, color]) => (
+          {[['shiftPagi', 'var(--chart-shift-pagi)'], ['shiftMalam', 'var(--chart-shift-malam)']].map(([id, color]) => (
             <linearGradient key={id} id={id} x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor={color} stopOpacity={0.35} />
               <stop offset="100%" stopColor={color} stopOpacity={0.02} />
@@ -76,10 +77,10 @@ export const ShiftLineChart: React.FC<ShiftLineChartProps> = ({ data, height, to
           type="linear"
           dataKey="pagi_kg"
           name="Shift Pagi"
-          stroke="var(--primary-color)"
+          stroke="var(--chart-shift-pagi)"
           fill="url(#shiftPagi)"
           strokeWidth={2.5}
-          dot={{ r: 4.5, fill: 'var(--primary-color)', stroke: '#ffffff', strokeWidth: 1.5 }}
+          dot={{ r: 4.5, fill: 'var(--chart-shift-pagi)', stroke: '#ffffff', strokeWidth: 1.5 }}
           activeDot={{ r: 7 }}
         />
 
@@ -87,10 +88,10 @@ export const ShiftLineChart: React.FC<ShiftLineChartProps> = ({ data, height, to
           type="linear"
           dataKey="malam_kg"
           name="Shift Malam"
-          stroke="var(--secondary-color)"
+          stroke="var(--chart-shift-malam)"
           fill="url(#shiftMalam)"
           strokeWidth={2.5}
-          dot={{ r: 4.5, fill: 'var(--secondary-color)', stroke: '#ffffff', strokeWidth: 1.5 }}
+          dot={{ r: 4.5, fill: 'var(--chart-shift-malam)', stroke: '#ffffff', strokeWidth: 1.5 }}
           activeDot={{ r: 7 }}
         />
 

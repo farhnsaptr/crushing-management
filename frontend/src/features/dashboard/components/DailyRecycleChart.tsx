@@ -48,7 +48,7 @@ export const DailyRecycleChart: React.FC<DailyRecycleChartProps> = ({
 
         {/* Shift Pagi Breakdown */}
         <div style={{ marginBottom: '0.4rem' }}>
-          <div style={{ fontWeight: 800, color: 'var(--primary-color)', marginBottom: '0.15rem', display: 'flex', justifyContent: 'space-between' }}>
+          <div style={{ fontWeight: 800, color: 'var(--chart-shift-pagi)', marginBottom: '0.15rem', display: 'flex', justifyContent: 'space-between' }}>
             <span>Shift Pagi</span>
             <span>{Number(d.pagi_kg).toFixed(2)} kg</span>
           </div>
@@ -66,7 +66,7 @@ export const DailyRecycleChart: React.FC<DailyRecycleChartProps> = ({
 
         {/* Shift Malam Breakdown */}
         <div style={{ marginBottom: '0.4rem' }}>
-          <div style={{ fontWeight: 800, color: 'var(--secondary-color)', marginBottom: '0.15rem', display: 'flex', justifyContent: 'space-between' }}>
+          <div style={{ fontWeight: 800, color: 'var(--chart-shift-malam)', marginBottom: '0.15rem', display: 'flex', justifyContent: 'space-between' }}>
             <span>Shift Malam</span>
             <span>{Number(d.malam_kg).toFixed(2)} kg</span>
           </div>
@@ -82,7 +82,7 @@ export const DailyRecycleChart: React.FC<DailyRecycleChartProps> = ({
           </div>
         </div>
 
-        {/* Summary Section: Total Input, Total Output, Total Waste */}
+        {/* Summary Section: Input (reuse), Scrap, Output (hasil timbang), Gap, Planning */}
         <div
           style={{
             paddingTop: '0.45rem',
@@ -94,16 +94,20 @@ export const DailyRecycleChart: React.FC<DailyRecycleChartProps> = ({
           }}
         >
           <div style={{ fontWeight: 800, display: 'flex', justifyContent: 'space-between', color: '#0f172a' }}>
-            <span>Total Input:</span>
-            <span style={{ fontWeight: 900 }}>{Number(d.total_kg).toFixed(2)} kg</span>
-          </div>
-          <div style={{ fontWeight: 800, display: 'flex', justifyContent: 'space-between', color: '#059669' }}>
-            <span>Total Output:</span>
-            <span style={{ fontWeight: 900 }}>{Number(d.total_output_kg ?? 0).toFixed(2)} kg</span>
+            <span>Input (Reuse):</span>
+            <span style={{ fontWeight: 900 }}>{Number(d.total_input_kg ?? 0).toFixed(2)} kg</span>
           </div>
           <div style={{ fontWeight: 800, display: 'flex', justifyContent: 'space-between', color: '#dc2626' }}>
-            <span>Total Waste:</span>
-            <span style={{ fontWeight: 900 }}>{Number(d.total_waste_kg ?? 0).toFixed(2)} kg</span>
+            <span>Scrap (No-Reuse):</span>
+            <span style={{ fontWeight: 900 }}>{Number(d.total_scrap_kg ?? 0).toFixed(2)} kg</span>
+          </div>
+          <div style={{ fontWeight: 800, display: 'flex', justifyContent: 'space-between', color: '#059669' }}>
+            <span>Output (Hasil Timbang):</span>
+            <span style={{ fontWeight: 900 }}>{Number(d.total_output_kg ?? 0).toFixed(2)} kg</span>
+          </div>
+          <div style={{ fontWeight: 800, display: 'flex', justifyContent: 'space-between', color: '#d97706' }}>
+            <span>Gap:</span>
+            <span style={{ fontWeight: 900 }}>{Number(d.total_gap_kg ?? 0).toFixed(2)} kg</span>
           </div>
           <div style={{ fontWeight: 800, display: 'flex', justifyContent: 'space-between', color: '#2563eb' }}>
             <span>Planning Harian:</span>
@@ -117,10 +121,10 @@ export const DailyRecycleChart: React.FC<DailyRecycleChartProps> = ({
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', width: '100%' }}>
+    <div className="dash-chart">
       {/* Header & Sub-header */}
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
-        <h3 style={{ fontSize: '0.95rem', fontWeight: 900, color: 'var(--text-main, #0f172a)', margin: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.25rem' }}>
+        <h3 style={{ fontSize: '0.85rem', fontWeight: 900, color: 'var(--text-main, #0f172a)', margin: 0 }}>
           Daily Data Recycle Material
         </h3>
         <span style={{ fontSize: '0.75rem', color: 'var(--text-muted, #64748b)', fontWeight: 700 }}>
@@ -128,7 +132,9 @@ export const DailyRecycleChart: React.FC<DailyRecycleChartProps> = ({
         </span>
       </div>
 
-      <ShiftLineChart data={data || []} height={210} tooltip={<CustomTooltip />} />
+      <div className="dash-chart-box">
+        <ShiftLineChart data={data || []} tooltip={<CustomTooltip />} />
+      </div>
     </div>
   );
 };

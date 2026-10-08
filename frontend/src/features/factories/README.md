@@ -33,6 +33,7 @@ factories/
 
 ## API Endpoint yang Dikonsumsi
 - `GET /api/factories` - Mengambil daftar seluruh pabrik.
+- `GET /api/factories/locations` - Daftar lokasi plant; dipakai `hooks/usePlantLocation.ts` (lokasi aktif user, tersimpan di browser).
 - `POST /api/factories` - Menambahkan data pabrik baru.
 - `PUT /api/factories/:id` - Mengubah data pabrik.
 - `DELETE /api/factories/:id` - Menghapus data pabrik.

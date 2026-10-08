@@ -53,13 +53,13 @@ export const SenderDailyChart: React.FC<SenderDailyChartProps> = ({
           </div>
 
           {/* Shift Pagi */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'var(--primary-color)', fontWeight: 800, marginBottom: '0.25rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'var(--chart-shift-pagi)', fontWeight: 800, marginBottom: '0.25rem' }}>
             <span>• Shift Pagi:</span>
             <span>{pagiKg.toFixed(2)} kg <span style={{ fontSize: '0.725rem', color: '#64748b', fontWeight: 600 }}>({pagiPcs} pcs)</span></span>
           </div>
 
           {/* Shift Malam */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'var(--secondary-color)', fontWeight: 800, marginBottom: '0.35rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'var(--chart-shift-malam)', fontWeight: 800, marginBottom: '0.35rem' }}>
             <span>• Shift Malam:</span>
             <span>{malamKg.toFixed(2)} kg <span style={{ fontSize: '0.725rem', color: '#64748b', fontWeight: 600 }}>({malamPcs} pcs)</span></span>
           </div>

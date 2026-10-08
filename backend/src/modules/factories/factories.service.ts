@@ -12,6 +12,14 @@ export class FactoriesService {
     return rows;
   }
 
+  /** Daftar lokasi plant (distinct factories.location) - sumber pilihan lokasi di dashboard & verifikasi. */
+  static async listLocations(): Promise<string[]> {
+    const [rows] = await pool.query<RowDataPacket[]>(
+      'SELECT DISTINCT location FROM factories ORDER BY location ASC'
+    );
+    return rows.map((r) => String(r.location));
+  }
+
   static async getFactoryById(id: string) {
     const [rows] = await pool.query<RowDataPacket[]>(
       'SELECT id, code, name, location, created_at FROM factories WHERE id = ?',

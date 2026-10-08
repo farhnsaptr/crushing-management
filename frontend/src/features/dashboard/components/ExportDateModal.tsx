@@ -5,6 +5,7 @@ import type { PlantLocation } from '../types/dashboard.types';
 interface ExportDateModalProps {
   isOpen: boolean;
   onClose: () => void;
+  locations: PlantLocation[];
   defaultLocation: PlantLocation;
   isExporting: boolean;
   onExport: (startDate: string, endDate: string, location: PlantLocation) => Promise<void>;
@@ -13,6 +14,7 @@ interface ExportDateModalProps {
 export const ExportDateModal: React.FC<ExportDateModalProps> = ({
   isOpen,
   onClose,
+  locations,
   defaultLocation,
   isExporting,
   onExport,
@@ -138,7 +140,7 @@ export const ExportDateModal: React.FC<ExportDateModalProps> = ({
                 border: '1px solid #cbd5e1',
               }}
             >
-              {(['Cibitung', 'Karawang'] as PlantLocation[]).map((loc) => {
+              {locations.map((loc) => {
                 const isSelected = location === loc;
                 return (
                   <button

@@ -9,6 +9,7 @@ Fitur ini menyediakan sistem permohonan dan verifikasi pengiriman material rejec
 
 ## Struktur Modul
 - `pages/SenderRequestsPage.tsx` — Halaman pengajuan pengiriman Part NG baru dan pelacakan riwayat untuk role `pengirim`.
+- `hooks/useCrushingRequests.ts` — Pilihan factory terakhir pengirim disimpan per user di browser (`usePersistedState`) dan dibuang bila sudah tidak ada di daftar factory user.
 - `pages/RequestApprovalPage.tsx` — Halaman verifikasi dan persetujuan pengiriman untuk role `operator`, `admin`, dan `super-admin`.
 - `components/CreateRequestForm.tsx` — Form pembuatan pengiriman Part NG berbasis sistem keranjang 1-click, toggle katalog Grid/List, serta daftar rincian pengiriman interaktif dengan tombol stepper `+`/`-` pcs dan live calculation berat. Responsif berdasarkan lebar area form, bukan lebar layar (≤ 820px, termasuk tablet saat sidebar terbuka): bar filter (search, pabrik, jenis) sticky & tersusun 2 baris, katalog grid 2 kolom dengan tombol stepper ukuran jari, dan rincian pengiriman berubah menjadi bottom cart bar yang membuka sheet rincian + tombol kirim.
 - `components/MyRequestsTable.tsx` — Tabel daftar pengiriman milik pengirim dengan status tracking.

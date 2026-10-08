@@ -1,7 +1,19 @@
 import { Response } from 'express';
 import { AuthenticatedRequest } from '../../middlewares/auth.middleware';
-import { VerificationService } from './verification.service';
+import { VerificationService, VerificationValidationError } from './verification.service';
 import { sendSuccess, sendError } from '../../utils/response.util';
+import { FactoriesService } from '../factories/factories.service';
+
+/** Lokasi wajib & harus ada di data factories; kirim 400 bila tidak valid. */
+async function resolveLocation(value: unknown, res: Response): Promise<string | null> {
+  const location = typeof value === 'string' ? value : '';
+  const valid = await FactoriesService.listLocations();
+  if (!valid.includes(location)) {
+    sendError(res, `Parameter location wajib diisi dengan salah satu: ${valid.join(', ')}`, 400);
+    return null;
+  }
+  return location;
+}
 
 export class VerificationController {
   /**
@@ -12,7 +24,10 @@ export class VerificationController {
       const date = (req.query.date as string) || new Date().toISOString().substring(0, 10);
       const shift = (req.query.shift as string) === 'Malam' ? 'Malam' : 'Pagi';
 
-      const result = await VerificationService.getVerificationDetails(date, shift);
+      const location = await resolveLocation(req.query.location, res);
+      if (!location) return;
+
+      const result = await VerificationService.getVerificationDetails(date, shift, location);
       sendSuccess(res, result, 'Detail verifikasi input & material reuse berhasil diambil');
     } catch (error: any) {
       sendError(res, error.message || 'Gagal mengambil detail verifikasi input', 500);
@@ -31,18 +46,21 @@ export class VerificationController {
         return;
       }
 
+      const location = await resolveLocation(req.body.location, res);
+      if (!location) return;
+
       const userId = req.user?.id || null;
       const userName = req.user?.full_name || req.user?.username || 'Operator';
 
       const result = await VerificationService.saveVerification(
-        { verification_date, shift, notes, items },
+        { verification_date, shift, location, notes, items },
         userId,
         userName
       );
 
       sendSuccess(res, result, 'Data verifikasi input hasil crushing berhasil disimpan & divalidasi');
     } catch (error: any) {
-      sendError(res, error.message || 'Gagal menyimpan data verifikasi input', 500);
+      sendError(res, error.message || 'Gagal menyimpan data verifikasi input', error instanceof VerificationValidationError ? 400 : 500);
     }
   }
 
@@ -54,7 +72,10 @@ export class VerificationController {
       const date = req.query.date as string | undefined;
       const shift = req.query.shift as string | undefined;
 
-      const result = await VerificationService.getDashboardVerificationStatus(date, shift);
+      const location = await resolveLocation(req.query.location, res);
+      if (!location) return;
+
+      const result = await VerificationService.getDashboardVerificationStatus(location, date, shift);
       sendSuccess(res, result, 'Status verifikasi dashboard berhasil diambil');
     } catch (error: any) {
       sendError(res, error.message || 'Gagal mengambil status verifikasi dashboard', 500);

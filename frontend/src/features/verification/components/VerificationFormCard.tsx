@@ -13,6 +13,7 @@ import {
   Info,
   Layers,
   Check,
+  MapPin,
 } from 'lucide-react';
 import type { VerificationDetailResponse, VerificationItem } from '../types/verification.types';
 
@@ -21,6 +22,9 @@ interface VerificationFormCardProps {
   setDate: (date: string) => void;
   shift: 'Pagi' | 'Malam';
   setShift: (shift: 'Pagi' | 'Malam') => void;
+  locations: string[];
+  location: string;
+  setLocation: (location: string) => void;
   notes: string;
   setNotes: (notes: string) => void;
   data: VerificationDetailResponse | null;
@@ -41,6 +45,9 @@ export const VerificationFormCard: React.FC<VerificationFormCardProps> = ({
   setDate,
   shift,
   setShift,
+  locations,
+  location,
+  setLocation,
   notes,
   setNotes,
   data,
@@ -51,7 +58,10 @@ export const VerificationFormCard: React.FC<VerificationFormCardProps> = ({
   onSave,
 }) => {
   const isValidated = data?.is_validated || false;
-  const hasInput = items.length > 0;
+  // Verifikasi hanya bisa dilakukan bila sudah ada minimal satu transaksi reuse (has_input dari backend)
+  const hasInput = data?.has_input ?? false;
+  // Material campuran tanpa input sistem (berat sistem 0) ditampilkan di bagian terpisah; backend sudah mengurutkannya di akhir
+  const firstNoSystemIdx = items.findIndex((it) => it.system_total_weight_kg === 0);
   const headerInfo = data?.header;
 
   return (
@@ -103,7 +113,7 @@ export const VerificationFormCard: React.FC<VerificationFormCardProps> = ({
                 Status Verifikasi: {!hasInput ? 'BELUM ADA INPUT MATERIAL' : isValidated ? 'SUDAH DIVALIDASI' : 'MENUNGGU INPUT HASIL TIMBANGAN'}
               </h3>
               <Badge variant={!hasInput ? 'neutral' : isValidated ? 'success' : 'warning'}>
-                Tanggal {date} — Shift {shift}
+                Tanggal {date} — Shift {shift} — {location}
               </Badge>
             </div>
             <p style={{ fontSize: '0.825rem', color: 'var(--text-muted, #64748b)', margin: '0.25rem 0 0 0' }}>
@@ -136,6 +146,31 @@ export const VerificationFormCard: React.FC<VerificationFormCardProps> = ({
                 outline: 'none',
               }}
             />
+          </div>
+
+          {/* Lokasi Plant (daftar dari backend) */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+            <MapPin size={16} color="var(--text-muted, #64748b)" />
+            <select
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              style={{
+                padding: '0.4rem 0.65rem',
+                borderRadius: '8px',
+                border: '1.5px solid #cbd5e1',
+                backgroundColor: '#ffffff',
+                fontSize: '0.825rem',
+                fontWeight: 700,
+                color: '#0f172a',
+                outline: 'none',
+              }}
+            >
+              {locations.map((loc) => (
+                <option key={loc} value={loc}>
+                  {loc}
+                </option>
+              ))}
+            </select>
           </div>
 
           {/* Shift Button Toggle */}
@@ -209,7 +244,7 @@ export const VerificationFormCard: React.FC<VerificationFormCardProps> = ({
           <div style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>
             Memuat daftar material yang diproses pada tanggal & shift terpilih...
           </div>
-        ) : items.length === 0 ? (
+        ) : !hasInput ? (
           <div style={{ padding: '2.5rem', textAlign: 'center', color: '#64748b', backgroundColor: '#f8fafc', borderRadius: '12px', border: '1px dashed #cbd5e1' }}>
             <Layers size={32} color="#94a3b8" style={{ marginBottom: '0.5rem' }} />
             <p style={{ fontSize: '0.9rem', fontWeight: 700, margin: 0, color: '#475569' }}>
@@ -237,8 +272,15 @@ export const VerificationFormCard: React.FC<VerificationFormCardProps> = ({
                   const hasValue = item.actual_output_kg !== '' && typeof item.actual_output_kg === 'number' && item.actual_output_kg > 0;
 
                   return (
+                    <React.Fragment key={idx}>
+                    {idx === firstNoSystemIdx && (
+                      <tr style={{ backgroundColor: '#f8fafc' }}>
+                        <td colSpan={4} style={{ padding: '0.55rem 1rem', fontSize: '0.8rem', fontWeight: 800, color: '#64748b' }}>
+                          Material campuran lain (tanpa input sistem) — isi bila ada hasil crushing yang perlu dicatat
+                        </td>
+                      </tr>
+                    )}
                     <tr
-                      key={idx}
                       style={{
                         borderBottom: '1px solid #e2e8f0',
                         backgroundColor: hasValue ? 'rgba(0, 141, 81, 0.02)' : 'transparent',
@@ -296,6 +338,7 @@ export const VerificationFormCard: React.FC<VerificationFormCardProps> = ({
                         )}
                       </td>
                     </tr>
+                    </React.Fragment>
                   );
                 })}
               </tbody>
@@ -314,7 +357,7 @@ export const VerificationFormCard: React.FC<VerificationFormCardProps> = ({
               placeholder="Contoh: Kondisi gilingan bersih, output siap dipindahkan ke karung/silo..."
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              disabled={items.length === 0}
+              disabled={!hasInput}
               style={{
                 padding: '0.6rem 0.85rem',
                 borderRadius: '8px',
@@ -332,13 +375,13 @@ export const VerificationFormCard: React.FC<VerificationFormCardProps> = ({
               variant="primary"
               onClick={onSave}
               isLoading={isSaving}
-              disabled={isLoading || items.length === 0}
+              disabled={isLoading || !hasInput}
               leftIcon={<CheckCircle2 size={18} />}
               style={{
                 fontWeight: 900,
                 padding: '0.75rem 2rem',
-                backgroundColor: items.length === 0 ? '#cbd5e1' : 'var(--primary-color, #008d51)',
-                cursor: items.length === 0 ? 'not-allowed' : 'pointer',
+                backgroundColor: !hasInput ? '#cbd5e1' : 'var(--primary-color, #008d51)',
+                cursor: !hasInput ? 'not-allowed' : 'pointer',
                 fontSize: '0.925rem',
               }}
             >

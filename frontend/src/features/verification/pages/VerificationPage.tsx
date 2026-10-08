@@ -10,6 +10,9 @@ export const VerificationPage: React.FC = () => {
     setDate,
     shift,
     setShift,
+    locations,
+    location,
+    setLocation,
     notes,
     setNotes,
     data,
@@ -78,6 +81,9 @@ export const VerificationPage: React.FC = () => {
         setDate={setDate}
         shift={shift}
         setShift={setShift}
+        locations={locations}
+        location={location}
+        setLocation={setLocation}
         notes={notes}
         setNotes={setNotes}
         data={data}

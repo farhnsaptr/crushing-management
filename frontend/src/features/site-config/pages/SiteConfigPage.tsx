@@ -2,6 +2,7 @@ import React from 'react';
 import { useSiteConfigForm } from '../hooks/useSiteConfigForm';
 import { Card } from '../../../components/common/Card';
 import { Input } from '../../../components/common/Input';
+import { ColorField } from '../components/ColorField';
 import { Button } from '../../../components/common/Button';
 import { Toast } from '../../../components/common/Toast';
 import { Image, Type, Save, RotateCcw, Info, AlertTriangle, CheckCircle2, ShieldAlert } from 'lucide-react';
@@ -20,6 +21,10 @@ export const SiteConfigPage: React.FC = () => {
     setLightSecondary,
     lightAccent,
     setLightAccent,
+    chartPagi,
+    setChartPagi,
+    chartMalam,
+    setChartMalam,
     logoPreview,
     backgroundPreview,
     handleLogoFileChange,
@@ -27,6 +32,7 @@ export const SiteConfigPage: React.FC = () => {
     isSubmitting,
     isBrandingDirty,
     isThemeDirty,
+    isChartColorDirty,
     toast,
     setToast,
     handleSaveConfig,
@@ -238,6 +244,30 @@ export const SiteConfigPage: React.FC = () => {
               </div>
             </div>
           </div>
+        </Card>
+
+        {/* SECTION 2b: WARNA GARIS GRAFIK DASHBOARD (terpisah dari Primary/Secondary) */}
+        <Card
+          title="Warna Garis Grafik Dashboard"
+          subtitle="Warna garis Shift Pagi dan Shift Malam pada grafik harian dashboard. Terpisah dari Primary & Secondary. Default: hijau & oranye Sugity"
+          hasUnsavedChanges={isChartColorDirty}
+        >
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+              gap: '1.25rem',
+            }}
+          >
+            <ColorField label="Warna Garis Shift Pagi" value={chartPagi} onChange={setChartPagi} placeholder="#008d51" />
+            <ColorField label="Warna Garis Shift Malam" value={chartMalam} onChange={setChartMalam} placeholder="#E76114" />
+          </div>
+
+          {/* Pratinjau langsung */}
+          <svg viewBox="0 0 300 70" width="100%" height="70" style={{ marginTop: '1rem', maxWidth: '420px' }} aria-label="Pratinjau warna garis grafik">
+            <polyline points="5,50 60,30 120,42 180,18 240,34 295,22" fill="none" stroke={chartPagi} strokeWidth="3" />
+            <polyline points="5,60 60,48 120,56 180,40 240,52 295,44" fill="none" stroke={chartMalam} strokeWidth="3" />
+          </svg>
         </Card>
 
         {/* SECTION 3: SEMANTIC LEGEND STATUS COLORS (FIXED & UNAFFECTED BY ACCENT) */}
