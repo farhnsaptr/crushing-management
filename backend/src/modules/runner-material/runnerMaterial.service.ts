@@ -2,6 +2,7 @@ import { randomUUID } from 'crypto';
 import XLSX from 'xlsx';
 import { pool } from '../../config/database';
 import { RowDataPacket } from 'mysql2';
+import { usesMixedIdentity } from '../materials/effectiveMaterial';
 
 export interface ParsedCsvRowDto {
   date: string;
@@ -73,7 +74,7 @@ function formatStandardDate(val: any): string {
  */
 async function getMasterMaterialsLookup() {
   const [rows] = await pool.query<RowDataPacket[]>(
-    `SELECT m.id, m.material_name, m.recycle_type, x.mixed_name
+    `SELECT m.id, m.material_name, m.recycle_type, x.mixed_name, x.recycle_type AS mixed_recycle_type
      FROM master_materials m
      LEFT JOIN mixed_materials x ON x.id = m.mixed_material_id`
   );
@@ -82,8 +83,9 @@ async function getMasterMaterialsLookup() {
   const byNormalized = new Map<string, { id: string | null; material_name: string }>();
 
   for (const r of rows) {
-    // Material yang sedang dicampur dicatat atas nama campuran (id null: campuran tidak ada di master_materials)
-    const entry = r.mixed_name
+    // Material yang sedang dicampur dicatat atas nama campuran (id null: campuran tidak ada di master_materials),
+    // kecuali anggota no_reuse di campuran reuse: tetap atas nama sendiri agar masuk Scrap
+    const entry = r.mixed_name && usesMixedIdentity(r.recycle_type, r.mixed_recycle_type)
       ? { id: null, material_name: r.mixed_name as string }
       : { id: r.id as string, material_name: r.material_name as string };
     byId.set(r.id, entry);
