@@ -32,6 +32,9 @@ export interface SaveVerificationPayloadDto {
   }>;
 }
 
+/** Error validasi input (dipetakan ke HTTP 400 oleh controller). */
+export class VerificationValidationError extends Error {}
+
 export class VerificationService {
   /**
    * Get verification status & aggregated system weights per reuse material for date & shift.
@@ -137,6 +140,31 @@ export class VerificationService {
       materialMap.set(name, entry);
     }
 
+    // Transaksi reuse pada tanggal/shift/lokasi ini wajib ada sebelum verifikasi (juga dicek saat simpan)
+    const hasTransactions = ngRows.length > 0 || runnerRows.length > 0;
+
+    // Semua material campuran reuse selalu ditampilkan (berat sistem 0) agar operator bisa mencatat hasil
+    // crushing material yang tidak ada di input sistem. Hanya campuran: material biasa tidak ditambahkan.
+    if (hasTransactions) {
+      const [mixedRows] = await pool.query<RowDataPacket[]>(
+        `SELECT mixed_name FROM mixed_materials WHERE recycle_type = 'reuse' ORDER BY mixed_name ASC`
+      );
+      for (const r of mixedRows) {
+        if (materialMap.has(r.mixed_name)) continue;
+        materialMap.set(r.mixed_name, {
+          material_id: null,
+          material_name: r.mixed_name,
+          system_ng_weight_kg: 0,
+          system_runner_weight_kg: 0,
+          system_total_weight_kg: 0,
+          box_count: 0,
+          kg_per_box: 0,
+          actual_output_kg: 0,
+          crushing_waste_kg: 0,
+        });
+      }
+    }
+
     // 4. If existing verification items exist in DB, merge actual_output_kg
     if (existingHeader) {
       const [savedItems] = await pool.query<RowDataPacket[]>(
@@ -188,6 +216,8 @@ export class VerificationService {
       };
     });
 
+    items.sort((a, b) => Number(b.system_total_weight_kg > 0) - Number(a.system_total_weight_kg > 0) || a.material_name.localeCompare(b.material_name));
+
     const totalSystemWeight = Number(items.reduce((acc, curr) => acc + curr.system_total_weight_kg, 0).toFixed(2));
     const totalActualOutput = Number(items.reduce((acc, curr) => acc + curr.actual_output_kg, 0).toFixed(2));
     const totalCrushingWaste = Number(items.reduce((acc, curr) => acc + curr.crushing_waste_kg, 0).toFixed(2));
@@ -196,7 +226,7 @@ export class VerificationService {
       date: cleanDate,
       shift: cleanShift,
       location,
-      has_input: items.length > 0,
+      has_input: hasTransactions,
       is_validated: existingHeader ? existingHeader.status === 'validated' : false,
       header: existingHeader
         ? {
@@ -237,12 +267,18 @@ export class VerificationService {
     const cleanDate = verification_date.trim();
     const cleanShift = shift === 'Malam' ? 'Malam' : 'Pagi';
 
+    if ((await this.countReuseTransactions(cleanDate, cleanShift, location)) === 0) {
+      throw new VerificationValidationError(
+        `Belum ada transaksi material Reuse pada ${cleanDate} (Shift ${cleanShift}, ${location}). Lakukan input Part NG / Runner terlebih dahulu.`
+      );
+    }
+
     // 1. Calculate totals without hard-blocking when actual_output_kg exceeds system input
     let totalSysWeight = 0;
     let totalActOutput = 0;
     let totalWaste = 0;
 
-    const processedItems = items.map((item) => {
+    const processedItems = items.flatMap((item) => {
       const sysNg = Number(item.system_ng_weight_kg) || 0;
       const sysRun = Number(item.system_runner_weight_kg) || 0;
       const sysTot = Number((sysNg + sysRun).toFixed(2));
@@ -251,11 +287,14 @@ export class VerificationService {
       // Safe Waste calculation: if actual output exceeds system input, waste is gracefully clamped at 0
       const waste = Number(Math.max(0, sysTot - actOut).toFixed(2));
 
+      // Baris tanpa berat sistem & tanpa hasil timbang (mis. campuran yang tidak dipakai) tidak disimpan
+      if (sysTot === 0 && actOut === 0) return [];
+
       totalSysWeight += sysTot;
       totalActOutput += actOut;
       totalWaste += waste;
 
-      return {
+      return [{
         material_id: item.material_id || null,
         material_name: item.material_name.trim(),
         system_ng_weight_kg: sysNg,
@@ -265,7 +304,7 @@ export class VerificationService {
         crushing_waste_kg: waste,
         box_count: Number(item.box_count) || 0,
         kg_per_box: Number(item.kg_per_box) || 0,
-      };
+      }];
     });
 
     totalSysWeight = Number(totalSysWeight.toFixed(2));
@@ -366,14 +405,8 @@ export class VerificationService {
     };
   }
 
-  /**
-   * Get verification status indicator for Dashboard.
-   */
-  static async getDashboardVerificationStatus(location: string, dateStr?: string, shift?: string) {
-    const targetDate = dateStr || new Date().toISOString().substring(0, 10);
-    const targetShift = shift === 'Malam' ? 'Malam' : 'Pagi';
-
-    // 1. Check if there are any input transactions (NG or Runner) for this date & shift
+  /** Jumlah transaksi reuse (NG + runner) pada tanggal, shift, dan lokasi tsb. */
+  private static async countReuseTransactions(date: string, shift: string, location: string): Promise<number> {
     const [txCountRows] = await pool.query<RowDataPacket[]>(
       `SELECT 
         (SELECT COUNT(*) FROM ng_transactions t
@@ -389,10 +422,21 @@ export class VerificationService {
          WHERE DATE(rmt.transaction_date) = ? AND rmt.shift = ? AND fc.location = ?
            AND (mm.recycle_type = 'reuse' OR (mm.recycle_type IS NULL AND LOWER(rmt.material_name_snapshot) NOT LIKE '%no reuse%')))
         AS total_reuse_transactions`,
-      [targetDate, targetShift, location, targetDate, targetShift, location]
+      [date, shift, location, date, shift, location]
     );
 
-    const totalReuseTx = Number(txCountRows[0]?.total_reuse_transactions) || 0;
+    return Number(txCountRows[0]?.total_reuse_transactions) || 0;
+  }
+
+  /**
+   * Get verification status indicator for Dashboard.
+   */
+  static async getDashboardVerificationStatus(location: string, dateStr?: string, shift?: string) {
+    const targetDate = dateStr || new Date().toISOString().substring(0, 10);
+    const targetShift = shift === 'Malam' ? 'Malam' : 'Pagi';
+
+    // 1. Check if there are any input transactions (NG or Runner) for this date & shift
+    const totalReuseTx = await this.countReuseTransactions(targetDate, targetShift, location);
 
     // 2. Check verification header record in input_verifications
     const [rows] = await pool.query<RowDataPacket[]>(

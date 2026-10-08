@@ -87,7 +87,7 @@ export const DashboardMetricCards: React.FC<DashboardMetricCardsProps> = ({ summ
       />
       <MetricCard
         label="Gap :"
-        badge="Sistem − Timbang"
+        badge="Selisih Timbang"
         badgeColor="#f59e0b"
         value={fmt(gapKg)}
         valueColor={gapKg === 0 ? '#10b981' : '#ef4444'}

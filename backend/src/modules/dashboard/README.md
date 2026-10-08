@@ -10,7 +10,7 @@ Modul ini menyediakan API agregasi statistik, visualisasi grafik harian daur ula
 ## Endpoints
 
 ### 1. `GET /api/dashboard/summary`
-Mengembalikan KPI per bulan & lokasi: `scrap_kg` (material no-reuse NG + runner, menurut jenis recycle efektif termasuk material campur), `input_kg` (material reuse NG + runner), `output_kg` (total hasil timbang verifikasi `validated` di lokasi tsb), `gap_kg` (berat sistem − hasil timbang, hanya shift tervalidasi; negatif = timbangan lebih berat), dan `input_pcs`. Runner tanpa `factory_id` tidak dihitung. `daily-chart` memakai definisi yang sama per hari/shift (`*_input_kg`, `*_scrap_kg`, `*_output_kg`, `*_gap_kg`); Export Excel menyambung verifikasi per lokasi.
+Mengembalikan KPI per bulan & lokasi: `scrap_kg` (material no-reuse NG + runner, menurut jenis recycle efektif termasuk material campur), `input_kg` (material reuse NG + runner), `output_kg` (total hasil timbang verifikasi `validated` di lokasi tsb), `gap_kg` (jumlah `crushing_waste_kg` verifikasi tervalidasi = kekurangan per material `max(0, sistem − timbang)`; tidak pernah minus, kelebihan timbangan tidak dihitung; Scrap + Gap = Waste di sistem lama), dan `input_pcs`. Runner tanpa `factory_id` tidak dihitung. `daily-chart` memakai definisi yang sama per hari/shift (`*_input_kg`, `*_scrap_kg`, `*_output_kg`, `*_gap_kg`); Export Excel menyambung verifikasi per lokasi.
 - **Query Params**: `year`, `month`, `location` (`Cibitung` | `Karawang`)
 
 ### 2. `GET /api/dashboard/daily-chart`
@@ -28,6 +28,6 @@ Mengembalikan daftar Part NG Terbanyak (Top 5).
 
 ### 5. `GET /api/dashboard/export`
 Mendownload laporan spreadsheet Excel (.xlsx) yang berisi 2 worksheet:
-1. **Transaksi NG**: Berisi data riwayat transaksi NG dengan kolom huruf kapital (`TANGGAL`, `SHIFT`, `SEBANGO`, `PART NAME`, `PART NUMBER`, `MATERIAL`, `MODEL`, `BERAT PART`, `QTY PER PCS`, `ALLOWANCE`, `INPUT`, `OUTPUT`). Nilai `OUTPUT` mengambil nilai aktual hasil verifikasi/validasi operator per shift & material.
-2. **Transaksi Runner**: Berisi data riwayat transaksi Runner per material dengan kolom huruf kapital (`TANGGAL`, `SHIFT`, `NAMA MATERIAL`, `QTY PER PCS`, `INPUT`, `OUTPUT`, `BATCH / SUMBER`). Nilai `OUTPUT` mengambil nilai aktual hasil verifikasi/validasi operator.
+1. **Transaksi NG**: Berisi data riwayat transaksi NG dengan kolom huruf kapital (`TANGGAL`, `SHIFT`, `SEBANGO`, `PART NAME`, `PART NUMBER`, `MATERIAL`, `REUSE/NO REUSE`, `MODEL`, `BERAT PART`, `QTY PER PCS`, `ALLOWANCE`, `INPUT`, `OUTPUT`). Nilai `OUTPUT` mengambil nilai aktual hasil verifikasi/validasi operator per shift & material.
+2. **Transaksi Runner**: Berisi data riwayat transaksi Runner per material dengan kolom huruf kapital (`TANGGAL`, `SHIFT`, `NAMA MATERIAL`, `REUSE/NO REUSE`, `QTY PER PCS`, `INPUT`, `OUTPUT`, `BATCH / SUMBER`). Nilai `OUTPUT` mengambil nilai aktual hasil verifikasi/validasi operator.
 - **Query Params**: `start_date`, `end_date`, `location` (`Cibitung` | `Karawang`)

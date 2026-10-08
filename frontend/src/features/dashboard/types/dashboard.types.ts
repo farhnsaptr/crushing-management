@@ -8,7 +8,7 @@ export interface DashboardSummaryStats {
   scrap_kg: number; // material no-reuse (NG + runner)
   input_kg: number; // material reuse (NG + runner)
   output_kg: number; // hasil timbang verifikasi operator
-  gap_kg: number; // berat sistem - hasil timbang (shift tervalidasi)
+  gap_kg: number; // jumlah kekurangan per material (shift tervalidasi), tidak pernah minus
   input_pcs: number;
 }
 

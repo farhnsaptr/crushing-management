@@ -1,6 +1,6 @@
 import { Response } from 'express';
 import { AuthenticatedRequest } from '../../middlewares/auth.middleware';
-import { VerificationService } from './verification.service';
+import { VerificationService, VerificationValidationError } from './verification.service';
 import { sendSuccess, sendError } from '../../utils/response.util';
 import { FactoriesService } from '../factories/factories.service';
 
@@ -60,7 +60,7 @@ export class VerificationController {
 
       sendSuccess(res, result, 'Data verifikasi input hasil crushing berhasil disimpan & divalidasi');
     } catch (error: any) {
-      sendError(res, error.message || 'Gagal menyimpan data verifikasi input', 500);
+      sendError(res, error.message || 'Gagal menyimpan data verifikasi input', error instanceof VerificationValidationError ? 400 : 500);
     }
   }
 

@@ -9,7 +9,8 @@ export class DashboardService {
    * - scrap_kg  : material no-reuse (NG + runner) menurut jenis recycle efektif (termasuk material campur)
    * - input_kg  : material reuse (NG + runner)
    * - output_kg : hasil timbang verifikasi operator (status validated) di lokasi tsb
-   * - gap_kg    : berat sistem - hasil timbang, hanya untuk shift yang sudah divalidasi (negatif = timbangan lebih berat)
+   * - gap_kg    : jumlah kekurangan per material (max(0, berat sistem - hasil timbang)) pada shift yang sudah divalidasi;
+   *               kelebihan timbangan tidak membuat Gap minus (sama dengan komponen crushing dari 'Waste' lama)
    * Runner tanpa factory (factory_id NULL) tidak dihitung.
    */
   static async getSummaryStats(year?: number, month?: number, location: string = 'Cibitung') {
@@ -43,7 +44,7 @@ export class DashboardService {
 
     const [verRows] = await pool.query<RowDataPacket[]>(
       `SELECT
-        COALESCE(SUM(total_system_weight_kg), 0) AS verified_system_kg,
+        COALESCE(SUM(total_crushing_waste_kg), 0) AS verified_gap_kg,
         COALESCE(SUM(total_actual_output_kg), 0) AS verified_output_kg
        FROM input_verifications
        WHERE YEAR(verification_date) = ? AND MONTH(verification_date) = ? AND status = 'validated' AND location = ?`,
@@ -52,7 +53,7 @@ export class DashboardService {
 
     const scrapKg = (Number(ngRows[0]?.scrap_kg) || 0) + (Number(runnerRows[0]?.scrap_kg) || 0);
     const inputKg = (Number(ngRows[0]?.reuse_kg) || 0) + (Number(runnerRows[0]?.reuse_kg) || 0);
-    const verifiedSystemKg = Number(verRows[0]?.verified_system_kg) || 0;
+    const gapKg = Number(verRows[0]?.verified_gap_kg) || 0;
     const outputKg = Number(verRows[0]?.verified_output_kg) || 0;
 
     return {
@@ -62,7 +63,7 @@ export class DashboardService {
       scrap_kg: parseFloat(scrapKg.toFixed(2)),
       input_kg: parseFloat(inputKg.toFixed(2)),
       output_kg: parseFloat(outputKg.toFixed(2)),
-      gap_kg: parseFloat((verifiedSystemKg - outputKg).toFixed(2)),
+      gap_kg: parseFloat(gapKg.toFixed(2)),
       input_pcs: Number(ngRows[0]?.total_pcs) || 0,
     };
   }
@@ -113,7 +114,7 @@ export class DashboardService {
       `SELECT 
         DAY(verification_date) AS day_num,
         shift,
-        SUM(total_system_weight_kg) AS verified_system_kg,
+        SUM(total_crushing_waste_kg) AS verified_gap_kg,
         SUM(total_actual_output_kg) AS verified_output_kg
        FROM input_verifications
        WHERE YEAR(verification_date) = ? AND MONTH(verification_date) = ? AND status = 'validated' AND location = ?
@@ -153,9 +154,9 @@ export class DashboardService {
       pagi_no_reuse_kg: number;
       malam_reuse_kg: number;
       malam_no_reuse_kg: number;
-      pagi_ver_sys: number;
+      pagi_ver_gap: number;
       pagi_ver_out: number;
-      malam_ver_sys: number;
+      malam_ver_gap: number;
       malam_ver_out: number;
     }>();
 
@@ -171,9 +172,9 @@ export class DashboardService {
         pagi_no_reuse_kg: 0,
         malam_reuse_kg: 0,
         malam_no_reuse_kg: 0,
-        pagi_ver_sys: 0,
+        pagi_ver_gap: 0,
         pagi_ver_out: 0,
-        malam_ver_sys: 0,
+        malam_ver_gap: 0,
         malam_ver_out: 0,
       });
     }
@@ -226,14 +227,14 @@ export class DashboardService {
       const dayNum = Number(r.day_num);
       const entry = dayMap.get(dayNum);
       if (!entry) continue;
-      const verSys = Number(r.verified_system_kg) || 0;
+      const verGap = Number(r.verified_gap_kg) || 0;
       const verOut = Number(r.verified_output_kg) || 0;
 
       if (r.shift === 'Pagi') {
-        entry.pagi_ver_sys += verSys;
+        entry.pagi_ver_gap += verGap;
         entry.pagi_ver_out += verOut;
       } else if (r.shift === 'Malam') {
-        entry.malam_ver_sys += verSys;
+        entry.malam_ver_gap += verGap;
         entry.malam_ver_out += verOut;
       }
     }
@@ -250,15 +251,15 @@ export class DashboardService {
       const malamKg = Number((malamNg + malamRunner).toFixed(2));
       const totalKg = Number((pagiKg + malamKg).toFixed(2));
 
-      // Input (reuse), Scrap (no-reuse), Output (hasil timbang), Gap (sistem - timbang, shift tervalidasi) per shift & total
+      // Input (reuse), Scrap (no-reuse), Output (hasil timbang), Gap (jumlah kekurangan per material, shift tervalidasi; tidak pernah minus) per shift & total
       const pagiInput = Number(data.pagi_reuse_kg.toFixed(2));
       const malamInput = Number(data.malam_reuse_kg.toFixed(2));
       const pagiScrap = Number(data.pagi_no_reuse_kg.toFixed(2));
       const malamScrap = Number(data.malam_no_reuse_kg.toFixed(2));
       const pagiOutput = Number(data.pagi_ver_out.toFixed(2));
       const malamOutput = Number(data.malam_ver_out.toFixed(2));
-      const pagiGap = Number((data.pagi_ver_sys - data.pagi_ver_out).toFixed(2));
-      const malamGap = Number((data.malam_ver_sys - data.malam_ver_out).toFixed(2));
+      const pagiGap = Number(data.pagi_ver_gap.toFixed(2));
+      const malamGap = Number(data.malam_ver_gap.toFixed(2));
 
       return {
         day: dayStr,
@@ -399,6 +400,7 @@ export class DashboardService {
         t.part_name_snapshot AS part_name,
         t.part_number_snapshot AS part_number,
         COALESCE(t.material_name_snapshot, mm.material_name, mp.material, '-') AS material,
+        t.recycle_type_snapshot AS recycle_type,
         t.model_snapshot AS model,
         t.berat_part_gr_snapshot AS berat_part,
         t.quantity_pcs AS qty_per_pcs,
@@ -445,6 +447,7 @@ export class DashboardService {
         DATE_FORMAT(rmt.transaction_date, '%Y-%m-%d') AS tanggal,
         rmt.shift AS shift,
         COALESCE(mm.material_name, rmt.material_name_snapshot) AS material_name,
+        CASE WHEN mm.recycle_type = 'no_reuse' OR LOWER(rmt.material_name_snapshot) LIKE '%no reuse%' THEN 'no_reuse' ELSE 'reuse' END AS recycle_type,
         rmt.total_pcs AS qty_per_pcs,
         COALESCE(cri.weight_kg, rmt.total_runner_weight_kg) AS input_pengirim,
         COALESCE(cri.verified_weight_kg, rmt.total_runner_weight_kg) AS actual_pengirim,
@@ -493,6 +496,7 @@ export class DashboardService {
       'PART NAME',
       'PART NUMBER',
       'MATERIAL',
+      'REUSE/NO REUSE',
       'MODEL',
       'BERAT PART (GR)',
       'QTY PER PCS',
@@ -511,6 +515,7 @@ export class DashboardService {
       r.part_name,
       r.part_number,
       r.material || '-',
+      r.recycle_type === 'no_reuse' ? 'NO REUSE' : 'REUSE',
       r.model,
       Number(r.berat_part),
       Number(r.qty_per_pcs),
@@ -530,6 +535,7 @@ export class DashboardService {
       { wch: 32 }, // PART NAME
       { wch: 22 }, // PART NUMBER
       { wch: 24 }, // MATERIAL
+      { wch: 16 }, // REUSE/NO REUSE
       { wch: 12 }, // MODEL
       { wch: 16 }, // BERAT PART (GR)
       { wch: 14 }, // QTY PER PCS
@@ -547,6 +553,7 @@ export class DashboardService {
       'TANGGAL',
       'SHIFT',
       'NAMA MATERIAL',
+      'REUSE/NO REUSE',
       'QTY PER PCS',
       'INPUT PENGIRIM',
       'ACTUAL PENGIRIM',
@@ -560,6 +567,7 @@ export class DashboardService {
       r.tanggal,
       r.shift,
       r.material_name || '-',
+      r.recycle_type === 'no_reuse' ? 'NO REUSE' : 'REUSE',
       Number(r.qty_per_pcs || 0),
       Number(Number(r.input_pengirim || 0).toFixed(2)),
       Number(Number(r.actual_pengirim || 0).toFixed(2)),
@@ -574,6 +582,7 @@ export class DashboardService {
       { wch: 14 }, // TANGGAL
       { wch: 10 }, // SHIFT
       { wch: 24 }, // NAMA MATERIAL
+      { wch: 16 }, // REUSE/NO REUSE
       { wch: 14 }, // QTY PER PCS
       { wch: 18 }, // INPUT PENGIRIM
       { wch: 18 }, // ACTUAL PENGIRIM
