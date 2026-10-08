@@ -14,6 +14,7 @@ Modul ini mengelola master data pabrik/lokasi operasional PT Sugity Creatives.
 | Method | Endpoint | Access | Deskripsi |
 |---|---|---|---|
 | `GET` | `/api/factories` | Authenticated | Ambil daftar seluruh pabrik |
+| `GET` | `/api/factories/locations` | Authenticated | Daftar lokasi plant (distinct `factories.location`), dipakai pilihan lokasi dashboard & verifikasi |
 | `GET` | `/api/factories/:id` | Authenticated | Ambil detail pabrik berdasarkan ID |
 | `POST` | `/api/factories` | Admin Only | Tambah data pabrik baru |
 | `PUT` | `/api/factories/:id` | Admin Only | Update data pabrik |

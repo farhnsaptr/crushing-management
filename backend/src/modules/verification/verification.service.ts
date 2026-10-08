@@ -1,6 +1,7 @@
 import { randomUUID } from 'crypto';
 import { pool } from '../../config/database';
 import { RowDataPacket } from 'mysql2';
+import { RUNNER_MATERIAL_JOIN_SQL } from '../materials/runnerMaterialJoin';
 
 export interface VerificationItemDto {
   material_id?: string | null;
@@ -17,6 +18,7 @@ export interface VerificationItemDto {
 export interface SaveVerificationPayloadDto {
   verification_date: string;
   shift: 'Pagi' | 'Malam';
+  location: string;
   notes?: string;
   items: Array<{
     material_id?: string | null;
@@ -34,14 +36,14 @@ export class VerificationService {
   /**
    * Get verification status & aggregated system weights per reuse material for date & shift.
    */
-  static async getVerificationDetails(dateStr: string, shift: 'Pagi' | 'Malam') {
+  static async getVerificationDetails(dateStr: string, shift: 'Pagi' | 'Malam', location: string) {
     const cleanDate = dateStr.trim();
     const cleanShift = shift === 'Malam' ? 'Malam' : 'Pagi';
 
     // 1. Check existing header record in input_verifications
     const [headerRows] = await pool.query<RowDataPacket[]>(
-      `SELECT * FROM input_verifications WHERE verification_date = ? AND shift = ?`,
-      [cleanDate, cleanShift]
+      `SELECT * FROM input_verifications WHERE verification_date = ? AND shift = ? AND location = ?`,
+      [cleanDate, cleanShift, location]
     );
 
     const existingHeader = headerRows[0] || null;
@@ -54,11 +56,13 @@ export class VerificationService {
         SUM(t.weight_kg) AS total_ng_kg
        FROM ng_transactions t
        JOIN master_parts mp ON t.master_part_id = mp.id
+       JOIN machines mc ON mp.machine_id = mc.id
+       JOIN factories fc ON mc.factory_id = fc.id
        LEFT JOIN master_materials mm ON mp.material_id = mm.id
-       WHERE DATE(t.transaction_date) = ? AND t.shift = ?
+       WHERE DATE(t.transaction_date) = ? AND t.shift = ? AND fc.location = ?
          AND t.recycle_type_snapshot = 'reuse'
        GROUP BY 1, 2`,
-      [cleanDate, cleanShift]
+      [cleanDate, cleanShift, location]
     );
 
     // 3. Fetch Part Runner reuse material transactions
@@ -68,11 +72,12 @@ export class VerificationService {
         COALESCE(mm.material_name, rmt.material_name_snapshot, 'Unassigned Material') AS material_name,
         SUM(rmt.total_runner_weight_kg) AS total_runner_kg
        FROM runner_material_transactions rmt
-       LEFT JOIN v_all_materials mm ON (rmt.material_id = mm.id OR rmt.material_name_snapshot = mm.material_name)
-       WHERE DATE(rmt.transaction_date) = ? AND rmt.shift = ?
+       JOIN factories fc ON rmt.factory_id = fc.id
+       ${RUNNER_MATERIAL_JOIN_SQL}
+       WHERE DATE(rmt.transaction_date) = ? AND rmt.shift = ? AND fc.location = ?
          AND (mm.recycle_type = 'reuse' OR (mm.recycle_type IS NULL AND LOWER(rmt.material_name_snapshot) NOT LIKE '%no reuse%'))
        GROUP BY 1, 2`,
-      [cleanDate, cleanShift]
+      [cleanDate, cleanShift, location]
     );
 
     // Group materials in map
@@ -190,6 +195,7 @@ export class VerificationService {
     return {
       date: cleanDate,
       shift: cleanShift,
+      location,
       has_input: items.length > 0,
       is_validated: existingHeader ? existingHeader.status === 'validated' : false,
       header: existingHeader
@@ -223,9 +229,9 @@ export class VerificationService {
     userId?: string | null,
     userName?: string | null
   ) {
-    const { verification_date, shift, notes, items } = payload;
-    if (!verification_date || !shift) {
-      throw new Error('Tanggal dan Shift verifikasi wajib diisi.');
+    const { verification_date, shift, location, notes, items } = payload;
+    if (!verification_date || !shift || !location) {
+      throw new Error('Tanggal, Shift, dan Lokasi verifikasi wajib diisi.');
     }
 
     const cleanDate = verification_date.trim();
@@ -268,8 +274,8 @@ export class VerificationService {
 
     // 2. Check existing header
     const [existing] = await pool.query<RowDataPacket[]>(
-      `SELECT id FROM input_verifications WHERE verification_date = ? AND shift = ?`,
-      [cleanDate, cleanShift]
+      `SELECT id FROM input_verifications WHERE verification_date = ? AND shift = ? AND location = ?`,
+      [cleanDate, cleanShift, location]
     );
 
     let verificationId: string;
@@ -303,12 +309,13 @@ export class VerificationService {
       verificationId = randomUUID();
       await pool.query(
         `INSERT INTO input_verifications
-         (id, verification_date, shift, status, total_system_weight_kg, total_actual_output_kg, total_crushing_waste_kg, notes, validated_by, validated_by_name_snapshot, validated_at)
-         VALUES (?, ?, ?, 'validated', ?, ?, ?, ?, ?, ?, ?)`,
+         (id, verification_date, shift, location, status, total_system_weight_kg, total_actual_output_kg, total_crushing_waste_kg, notes, validated_by, validated_by_name_snapshot, validated_at)
+         VALUES (?, ?, ?, ?, 'validated', ?, ?, ?, ?, ?, ?, ?)`,
         [
           verificationId,
           cleanDate,
           cleanShift,
+          location,
           totalSysWeight,
           totalActOutput,
           totalWaste,
@@ -349,6 +356,7 @@ export class VerificationService {
       id: verificationId,
       verification_date: cleanDate,
       shift: cleanShift,
+      location,
       status: 'validated',
       total_system_weight_kg: totalSysWeight,
       total_actual_output_kg: totalActOutput,
@@ -361,7 +369,7 @@ export class VerificationService {
   /**
    * Get verification status indicator for Dashboard.
    */
-  static async getDashboardVerificationStatus(dateStr?: string, shift?: string) {
+  static async getDashboardVerificationStatus(location: string, dateStr?: string, shift?: string) {
     const targetDate = dateStr || new Date().toISOString().substring(0, 10);
     const targetShift = shift === 'Malam' ? 'Malam' : 'Pagi';
 
@@ -369,23 +377,27 @@ export class VerificationService {
     const [txCountRows] = await pool.query<RowDataPacket[]>(
       `SELECT 
         (SELECT COUNT(*) FROM ng_transactions t
-         WHERE DATE(t.transaction_date) = ? AND t.shift = ?
+         JOIN master_parts mp ON t.master_part_id = mp.id
+         JOIN machines mc ON mp.machine_id = mc.id
+         JOIN factories fc ON mc.factory_id = fc.id
+         WHERE DATE(t.transaction_date) = ? AND t.shift = ? AND fc.location = ?
            AND t.recycle_type_snapshot = 'reuse')
         +
         (SELECT COUNT(*) FROM runner_material_transactions rmt 
-         LEFT JOIN v_all_materials mm ON (rmt.material_id = mm.id OR rmt.material_name_snapshot = mm.material_name) 
-         WHERE DATE(rmt.transaction_date) = ? AND rmt.shift = ? 
+         JOIN factories fc ON rmt.factory_id = fc.id
+         ${RUNNER_MATERIAL_JOIN_SQL}
+         WHERE DATE(rmt.transaction_date) = ? AND rmt.shift = ? AND fc.location = ?
            AND (mm.recycle_type = 'reuse' OR (mm.recycle_type IS NULL AND LOWER(rmt.material_name_snapshot) NOT LIKE '%no reuse%')))
         AS total_reuse_transactions`,
-      [targetDate, targetShift, targetDate, targetShift]
+      [targetDate, targetShift, location, targetDate, targetShift, location]
     );
 
     const totalReuseTx = Number(txCountRows[0]?.total_reuse_transactions) || 0;
 
     // 2. Check verification header record in input_verifications
     const [rows] = await pool.query<RowDataPacket[]>(
-      `SELECT * FROM input_verifications WHERE verification_date = ? AND shift = ?`,
-      [targetDate, targetShift]
+      `SELECT * FROM input_verifications WHERE verification_date = ? AND shift = ? AND location = ?`,
+      [targetDate, targetShift, location]
     );
 
     if (totalReuseTx === 0) {

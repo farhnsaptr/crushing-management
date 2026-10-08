@@ -6,12 +6,14 @@ import type {
   VerificationItem,
 } from '../types/verification.types';
 import { extractErrorMessage } from '../../../services/api.client';
+import { usePlantLocation } from '../../factories/hooks/usePlantLocation';
 
 export const useVerification = (initialDate?: string, initialShift?: 'Pagi' | 'Malam') => {
   const autoShiftDate = getAutoShiftAndDate();
 
   const [date, setDate] = useState<string>(initialDate || autoShiftDate.date);
   const [shift, setShift] = useState<'Pagi' | 'Malam'>(initialShift || autoShiftDate.shift);
+  const { locations, location, setLocation } = usePlantLocation();
   const [notes, setNotes] = useState<string>('');
 
   const [data, setData] = useState<VerificationDetailResponse | null>(null);
@@ -21,9 +23,10 @@ export const useVerification = (initialDate?: string, initialShift?: 'Pagi' | 'M
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
 
   const fetchDetails = useCallback(async () => {
+    if (!location) return; // menunggu daftar lokasi dari backend
     setIsLoading(true);
     try {
-      const res = await VerificationService.getVerificationDetails(date, shift);
+      const res = await VerificationService.getVerificationDetails(date, shift, location);
       setData(res);
       const mappedItems = (res.items || []).map((it) => ({
         ...it,
@@ -42,7 +45,7 @@ export const useVerification = (initialDate?: string, initialShift?: 'Pagi' | 'M
     } finally {
       setIsLoading(false);
     }
-  }, [date, shift]);
+  }, [date, shift, location]);
 
   useEffect(() => {
     fetchDetails();
@@ -73,6 +76,7 @@ export const useVerification = (initialDate?: string, initialShift?: 'Pagi' | 'M
       const payload = {
         verification_date: date,
         shift,
+        location,
         notes,
         items: items.map((item) => {
           const numKg = typeof item.actual_output_kg === 'number'
@@ -92,7 +96,7 @@ export const useVerification = (initialDate?: string, initialShift?: 'Pagi' | 'M
 
       await VerificationService.saveVerification(payload);
       setToast({
-        message: `Pekerjaan Tanggal ${date} (${shift}) berhasil divalidasi oleh Operator!`,
+        message: `Pekerjaan Tanggal ${date} (${shift}, ${location}) berhasil divalidasi oleh Operator!`,
         type: 'success',
       });
       await fetchDetails();
@@ -122,6 +126,9 @@ export const useVerification = (initialDate?: string, initialShift?: 'Pagi' | 'M
     setDate,
     shift,
     setShift,
+    locations,
+    location,
+    setLocation,
     notes,
     setNotes,
     data,

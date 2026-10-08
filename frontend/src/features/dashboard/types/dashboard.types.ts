@@ -1,12 +1,14 @@
-export type PlantLocation = 'Cibitung' | 'Karawang';
+/** Nama lokasi plant (nilai dari backend: factories.location). */
+export type PlantLocation = string;
 
 export interface DashboardSummaryStats {
   year: number;
   month: number;
   location: PlantLocation;
-  input_kg: number;
-  output_kg: number;
-  waste_kg: number;
+  scrap_kg: number; // material no-reuse (NG + runner)
+  input_kg: number; // material reuse (NG + runner)
+  output_kg: number; // hasil timbang verifikasi operator
+  gap_kg: number; // berat sistem - hasil timbang (shift tervalidasi)
   input_pcs: number;
 }
 
@@ -27,15 +29,21 @@ export interface DailyRecycleChartItem {
   malam_runner_kg?: number;
   pagi_kg: number;
   malam_kg: number;
+  pagi_input_kg?: number;
+  pagi_scrap_kg?: number;
   pagi_output_kg?: number;
-  pagi_waste_kg?: number;
+  pagi_gap_kg?: number;
+  malam_input_kg?: number;
+  malam_scrap_kg?: number;
   malam_output_kg?: number;
-  malam_waste_kg?: number;
+  malam_gap_kg?: number;
   pagi_pcs?: number;
   malam_pcs?: number;
   total_kg: number;
+  total_input_kg?: number;
+  total_scrap_kg?: number;
   total_output_kg?: number;
-  total_waste_kg?: number;
+  total_gap_kg?: number;
   /** Planning Harian (allowance dari upload data produksi); null = data produksi hari itu belum diupload. */
   planning_kg?: number | null;
 }

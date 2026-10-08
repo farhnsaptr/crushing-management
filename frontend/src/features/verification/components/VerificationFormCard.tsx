@@ -13,6 +13,7 @@ import {
   Info,
   Layers,
   Check,
+  MapPin,
 } from 'lucide-react';
 import type { VerificationDetailResponse, VerificationItem } from '../types/verification.types';
 
@@ -21,6 +22,9 @@ interface VerificationFormCardProps {
   setDate: (date: string) => void;
   shift: 'Pagi' | 'Malam';
   setShift: (shift: 'Pagi' | 'Malam') => void;
+  locations: string[];
+  location: string;
+  setLocation: (location: string) => void;
   notes: string;
   setNotes: (notes: string) => void;
   data: VerificationDetailResponse | null;
@@ -41,6 +45,9 @@ export const VerificationFormCard: React.FC<VerificationFormCardProps> = ({
   setDate,
   shift,
   setShift,
+  locations,
+  location,
+  setLocation,
   notes,
   setNotes,
   data,
@@ -103,7 +110,7 @@ export const VerificationFormCard: React.FC<VerificationFormCardProps> = ({
                 Status Verifikasi: {!hasInput ? 'BELUM ADA INPUT MATERIAL' : isValidated ? 'SUDAH DIVALIDASI' : 'MENUNGGU INPUT HASIL TIMBANGAN'}
               </h3>
               <Badge variant={!hasInput ? 'neutral' : isValidated ? 'success' : 'warning'}>
-                Tanggal {date} — Shift {shift}
+                Tanggal {date} — Shift {shift} — {location}
               </Badge>
             </div>
             <p style={{ fontSize: '0.825rem', color: 'var(--text-muted, #64748b)', margin: '0.25rem 0 0 0' }}>
@@ -136,6 +143,31 @@ export const VerificationFormCard: React.FC<VerificationFormCardProps> = ({
                 outline: 'none',
               }}
             />
+          </div>
+
+          {/* Lokasi Plant (daftar dari backend) */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+            <MapPin size={16} color="var(--text-muted, #64748b)" />
+            <select
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              style={{
+                padding: '0.4rem 0.65rem',
+                borderRadius: '8px',
+                border: '1.5px solid #cbd5e1',
+                backgroundColor: '#ffffff',
+                fontSize: '0.825rem',
+                fontWeight: 700,
+                color: '#0f172a',
+                outline: 'none',
+              }}
+            >
+              {locations.map((loc) => (
+                <option key={loc} value={loc}>
+                  {loc}
+                </option>
+              ))}
+            </select>
           </div>
 
           {/* Shift Button Toggle */}

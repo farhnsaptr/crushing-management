@@ -6,6 +6,7 @@ Modul ini mengelola validasi input vs output hasil penggilingan (crushing) per t
 1. **Aggregasi Sistem (`GET /api/verification/details?date=YYYY-MM-DD&shift=Pagi|Malam`)**:
    - Mengambil akumulasi berat Part NG dan Part Runner per material reuse pada tanggal dan shift terkait.
    - Mengembalikan daftar material dan status apakah shift tersebut telah divalidasi.
+   - **Per lokasi**: verifikasi unik per (`date`, `shift`, `location`). Parameter `location` wajib (nilai dari `GET /api/factories/locations`); berat sistem hanya dari transaksi lokasi tsb (NG lewat part→mesin→factory, runner lewat `factory_id`; runner tanpa factory tidak dihitung).
 2. **Penyimpanan Validasi (`POST /api/verification`)**:
    - Menerima payload berat output aktual langsung dalam satuan Kg (`actual_output_kg`).
    - Menyimpan data validasi ke tabel header `input_verifications` dan tabel rincian `input_verification_items`.

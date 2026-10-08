@@ -1,20 +1,27 @@
 import { pool } from '../../config/database';
 import { RowDataPacket } from 'mysql2';
 import * as XLSX from 'xlsx';
+import { RUNNER_MATERIAL_JOIN_SQL } from '../materials/runnerMaterialJoin';
 
 export class DashboardService {
+  /**
+   * KPI dashboard per bulan & lokasi:
+   * - scrap_kg  : material no-reuse (NG + runner) menurut jenis recycle efektif (termasuk material campur)
+   * - input_kg  : material reuse (NG + runner)
+   * - output_kg : hasil timbang verifikasi operator (status validated) di lokasi tsb
+   * - gap_kg    : berat sistem - hasil timbang, hanya untuk shift yang sudah divalidasi (negatif = timbangan lebih berat)
+   * Runner tanpa factory (factory_id NULL) tidak dihitung.
+   */
   static async getSummaryStats(year?: number, month?: number, location: string = 'Cibitung') {
     const now = new Date();
     const qYear = year || now.getFullYear();
     const qMonth = month || now.getMonth() + 1;
 
-    // 1. Fetch Part NG totals (Input, Output Reuse, Waste No-Reuse)
     const [ngRows] = await pool.query<RowDataPacket[]>(
-      `SELECT 
-        COALESCE(SUM(t.weight_kg), 0) AS total_input_kg,
-        COALESCE(SUM(t.quantity_pcs), 0) AS total_input_pcs,
-        COALESCE(SUM(CASE WHEN t.recycle_type_snapshot = 'reuse' THEN t.weight_kg ELSE 0 END), 0) AS total_output_kg,
-        COALESCE(SUM(CASE WHEN t.recycle_type_snapshot = 'no_reuse' THEN t.weight_kg ELSE 0 END), 0) AS total_waste_kg
+      `SELECT
+        COALESCE(SUM(t.quantity_pcs), 0) AS total_pcs,
+        COALESCE(SUM(CASE WHEN t.recycle_type_snapshot = 'reuse' THEN t.weight_kg ELSE 0 END), 0) AS reuse_kg,
+        COALESCE(SUM(CASE WHEN t.recycle_type_snapshot = 'no_reuse' THEN t.weight_kg ELSE 0 END), 0) AS scrap_kg
        FROM ng_transactions t
        JOIN master_parts mp ON t.master_part_id = mp.id
        JOIN machines mc ON mp.machine_id = mc.id
@@ -23,61 +30,40 @@ export class DashboardService {
       [qYear, qMonth, location]
     );
 
-    // 2. Fetch Part Runner totals (Input, Output Reuse, Waste No-Reuse)
     const [runnerRows] = await pool.query<RowDataPacket[]>(
-      `SELECT 
-        COALESCE(SUM(rmt.total_runner_weight_kg), 0) AS total_input_kg,
-        COALESCE(SUM(CASE WHEN mm.recycle_type = 'reuse' OR (mm.recycle_type IS NULL AND LOWER(rmt.material_name_snapshot) NOT LIKE '%no reuse%') THEN rmt.total_runner_weight_kg ELSE 0 END), 0) AS total_output_kg,
-        COALESCE(SUM(CASE WHEN mm.recycle_type = 'no_reuse' OR LOWER(rmt.material_name_snapshot) LIKE '%no reuse%' THEN rmt.total_runner_weight_kg ELSE 0 END), 0) AS total_waste_kg
+      `SELECT
+        COALESCE(SUM(CASE WHEN mm.recycle_type = 'reuse' OR (mm.recycle_type IS NULL AND LOWER(rmt.material_name_snapshot) NOT LIKE '%no reuse%') THEN rmt.total_runner_weight_kg ELSE 0 END), 0) AS reuse_kg,
+        COALESCE(SUM(CASE WHEN mm.recycle_type = 'no_reuse' OR LOWER(rmt.material_name_snapshot) LIKE '%no reuse%' THEN rmt.total_runner_weight_kg ELSE 0 END), 0) AS scrap_kg
        FROM runner_material_transactions rmt
-       LEFT JOIN v_all_materials mm ON (rmt.material_id = mm.id OR rmt.material_name_snapshot = mm.material_name)
-       WHERE YEAR(rmt.transaction_date) = ? AND MONTH(rmt.transaction_date) = ?`,
-      [qYear, qMonth]
+       JOIN factories fc ON rmt.factory_id = fc.id
+       ${RUNNER_MATERIAL_JOIN_SQL}
+       WHERE YEAR(rmt.transaction_date) = ? AND MONTH(rmt.transaction_date) = ? AND fc.location = ?`,
+      [qYear, qMonth, location]
     );
 
-    // 3. Fetch validated verifications totals (System Weight, Actual Output, Crushing Waste Loss)
     const [verRows] = await pool.query<RowDataPacket[]>(
-      `SELECT 
+      `SELECT
         COALESCE(SUM(total_system_weight_kg), 0) AS verified_system_kg,
-        COALESCE(SUM(total_actual_output_kg), 0) AS verified_output_kg,
-        COALESCE(SUM(total_crushing_waste_kg), 0) AS verified_waste_kg
+        COALESCE(SUM(total_actual_output_kg), 0) AS verified_output_kg
        FROM input_verifications
-       WHERE YEAR(verification_date) = ? AND MONTH(verification_date) = ? AND status = 'validated'`,
-      [qYear, qMonth]
+       WHERE YEAR(verification_date) = ? AND MONTH(verification_date) = ? AND status = 'validated' AND location = ?`,
+      [qYear, qMonth, location]
     );
 
-    const ngInputKg = Number(ngRows[0]?.total_input_kg) || 0;
-    const ngInputPcs = Number(ngRows[0]?.total_input_pcs) || 0;
-    const ngReuseKg = Number(ngRows[0]?.total_output_kg) || 0;
-    const ngNoReuseWasteKg = Number(ngRows[0]?.total_waste_kg) || 0;
-
-    const runnerInputKg = Number(runnerRows[0]?.total_input_kg) || 0;
-    const runnerReuseKg = Number(runnerRows[0]?.total_output_kg) || 0;
-    const runnerNoReuseWasteKg = Number(runnerRows[0]?.total_waste_kg) || 0;
-
+    const scrapKg = (Number(ngRows[0]?.scrap_kg) || 0) + (Number(runnerRows[0]?.scrap_kg) || 0);
+    const inputKg = (Number(ngRows[0]?.reuse_kg) || 0) + (Number(runnerRows[0]?.reuse_kg) || 0);
     const verifiedSystemKg = Number(verRows[0]?.verified_system_kg) || 0;
-    const verifiedOutputKg = Number(verRows[0]?.verified_output_kg) || 0;
-    const verifiedWasteKg = Number(verRows[0]?.verified_waste_kg) || 0;
-
-    const totalInputKg = ngInputKg + runnerInputKg;
-    const totalSystemReuseKg = ngReuseKg + runnerReuseKg;
-    const totalNoReuseWasteKg = ngNoReuseWasteKg + runnerNoReuseWasteKg;
-
-    // Calculate unverified reuse weight (reuse weight from shifts not yet validated)
-    const unverifiedReuseKg = Math.max(0, totalSystemReuseKg - verifiedSystemKg);
-
-    // Final KPI Card Values (Output反映 actual box count, Waste reflects no-reuse + crushing waste loss)
-    const finalOutputKg = unverifiedReuseKg + verifiedOutputKg;
-    const finalWasteKg = totalNoReuseWasteKg + verifiedWasteKg;
+    const outputKg = Number(verRows[0]?.verified_output_kg) || 0;
 
     return {
       year: qYear,
       month: qMonth,
       location,
-      input_kg: parseFloat(totalInputKg.toFixed(2)),
-      output_kg: parseFloat(finalOutputKg.toFixed(2)),
-      waste_kg: parseFloat(finalWasteKg.toFixed(2)),
-      input_pcs: ngInputPcs,
+      scrap_kg: parseFloat(scrapKg.toFixed(2)),
+      input_kg: parseFloat(inputKg.toFixed(2)),
+      output_kg: parseFloat(outputKg.toFixed(2)),
+      gap_kg: parseFloat((verifiedSystemKg - outputKg).toFixed(2)),
+      input_pcs: Number(ngRows[0]?.total_pcs) || 0,
     };
   }
 
@@ -114,10 +100,9 @@ export class DashboardService {
         SUM(CASE WHEN mm.recycle_type = 'reuse' OR (mm.recycle_type IS NULL AND LOWER(rmt.material_name_snapshot) NOT LIKE '%no reuse%') THEN rmt.total_runner_weight_kg ELSE 0 END) AS reuse_kg,
         SUM(CASE WHEN mm.recycle_type = 'no_reuse' OR LOWER(rmt.material_name_snapshot) LIKE '%no reuse%' THEN rmt.total_runner_weight_kg ELSE 0 END) AS no_reuse_waste_kg
        FROM runner_material_transactions rmt
-       LEFT JOIN v_all_materials mm ON (rmt.material_id = mm.id OR rmt.material_name_snapshot = mm.material_name)
-       LEFT JOIN factories fc ON rmt.factory_id = fc.id
-       WHERE YEAR(rmt.transaction_date) = ? AND MONTH(rmt.transaction_date) = ?
-         AND (rmt.factory_id IS NULL OR fc.location = ?)
+       JOIN factories fc ON rmt.factory_id = fc.id
+       ${RUNNER_MATERIAL_JOIN_SQL}
+       WHERE YEAR(rmt.transaction_date) = ? AND MONTH(rmt.transaction_date) = ? AND fc.location = ?
        GROUP BY DAY(rmt.transaction_date), rmt.shift
        ORDER BY day_num ASC`,
       [qYear, qMonth, location]
@@ -129,13 +114,12 @@ export class DashboardService {
         DAY(verification_date) AS day_num,
         shift,
         SUM(total_system_weight_kg) AS verified_system_kg,
-        SUM(total_actual_output_kg) AS verified_output_kg,
-        SUM(total_crushing_waste_kg) AS verified_waste_kg
+        SUM(total_actual_output_kg) AS verified_output_kg
        FROM input_verifications
-       WHERE YEAR(verification_date) = ? AND MONTH(verification_date) = ? AND status = 'validated'
+       WHERE YEAR(verification_date) = ? AND MONTH(verification_date) = ? AND status = 'validated' AND location = ?
        GROUP BY DAY(verification_date), shift
        ORDER BY day_num ASC`,
-      [qYear, qMonth]
+      [qYear, qMonth, location]
     );
 
     // 4. Planning Harian: SUM allowance dari data produksi yang sudah diupload (production_analytics_items).
@@ -171,10 +155,8 @@ export class DashboardService {
       malam_no_reuse_kg: number;
       pagi_ver_sys: number;
       pagi_ver_out: number;
-      pagi_ver_waste: number;
       malam_ver_sys: number;
       malam_ver_out: number;
-      malam_ver_waste: number;
     }>();
 
     for (let d = 1; d <= daysInMonth; d++) {
@@ -191,10 +173,8 @@ export class DashboardService {
         malam_no_reuse_kg: 0,
         pagi_ver_sys: 0,
         pagi_ver_out: 0,
-        pagi_ver_waste: 0,
         malam_ver_sys: 0,
         malam_ver_out: 0,
-        malam_ver_waste: 0,
       });
     }
 
@@ -248,16 +228,13 @@ export class DashboardService {
       if (!entry) continue;
       const verSys = Number(r.verified_system_kg) || 0;
       const verOut = Number(r.verified_output_kg) || 0;
-      const verWaste = Number(r.verified_waste_kg) || 0;
 
       if (r.shift === 'Pagi') {
         entry.pagi_ver_sys += verSys;
         entry.pagi_ver_out += verOut;
-        entry.pagi_ver_waste += verWaste;
       } else if (r.shift === 'Malam') {
         entry.malam_ver_sys += verSys;
         entry.malam_ver_out += verOut;
-        entry.malam_ver_waste += verWaste;
       }
     }
 
@@ -273,17 +250,15 @@ export class DashboardService {
       const malamKg = Number((malamNg + malamRunner).toFixed(2));
       const totalKg = Number((pagiKg + malamKg).toFixed(2));
 
-      // Output & Waste per shift & total
-      const pagiUnverReuse = Math.max(0, data.pagi_reuse_kg - data.pagi_ver_sys);
-      const pagiOutput = Number((pagiUnverReuse + data.pagi_ver_out).toFixed(2));
-      const pagiWaste = Number((data.pagi_no_reuse_kg + data.pagi_ver_waste).toFixed(2));
-
-      const malamUnverReuse = Math.max(0, data.malam_reuse_kg - data.malam_ver_sys);
-      const malamOutput = Number((malamUnverReuse + data.malam_ver_out).toFixed(2));
-      const malamWaste = Number((data.malam_no_reuse_kg + data.malam_ver_waste).toFixed(2));
-
-      const totalOutputKg = Number((pagiOutput + malamOutput).toFixed(2));
-      const totalWasteKg = Number((pagiWaste + malamWaste).toFixed(2));
+      // Input (reuse), Scrap (no-reuse), Output (hasil timbang), Gap (sistem - timbang, shift tervalidasi) per shift & total
+      const pagiInput = Number(data.pagi_reuse_kg.toFixed(2));
+      const malamInput = Number(data.malam_reuse_kg.toFixed(2));
+      const pagiScrap = Number(data.pagi_no_reuse_kg.toFixed(2));
+      const malamScrap = Number(data.malam_no_reuse_kg.toFixed(2));
+      const pagiOutput = Number(data.pagi_ver_out.toFixed(2));
+      const malamOutput = Number(data.malam_ver_out.toFixed(2));
+      const pagiGap = Number((data.pagi_ver_sys - data.pagi_ver_out).toFixed(2));
+      const malamGap = Number((data.malam_ver_sys - data.malam_ver_out).toFixed(2));
 
       return {
         day: dayStr,
@@ -294,15 +269,21 @@ export class DashboardService {
         malam_runner_kg: malamRunner,
         pagi_kg: pagiKg,
         malam_kg: malamKg,
+        pagi_input_kg: pagiInput,
+        pagi_scrap_kg: pagiScrap,
         pagi_output_kg: pagiOutput,
-        pagi_waste_kg: pagiWaste,
+        pagi_gap_kg: pagiGap,
+        malam_input_kg: malamInput,
+        malam_scrap_kg: malamScrap,
         malam_output_kg: malamOutput,
-        malam_waste_kg: malamWaste,
+        malam_gap_kg: malamGap,
         pagi_pcs: data.pagi_pcs,
         malam_pcs: data.malam_pcs,
         total_kg: totalKg,
-        total_output_kg: totalOutputKg,
-        total_waste_kg: totalWasteKg,
+        total_input_kg: Number((pagiInput + malamInput).toFixed(2)),
+        total_scrap_kg: Number((pagiScrap + malamScrap).toFixed(2)),
+        total_output_kg: Number((pagiOutput + malamOutput).toFixed(2)),
+        total_gap_kg: Number((pagiGap + malamGap).toFixed(2)),
         total_pcs: data.pagi_pcs + data.malam_pcs,
         planning_kg: planningMap.get(dayNum) ?? null,
       };
@@ -447,7 +428,7 @@ export class DashboardService {
        JOIN factories fc ON mc.factory_id = fc.id
        LEFT JOIN master_materials mm ON mp.material_id = mm.id
        LEFT JOIN crushing_request_items cri ON (t.request_id IS NOT NULL AND cri.request_id = t.request_id AND cri.master_part_id = t.master_part_id)
-       LEFT JOIN input_verifications iv ON (iv.verification_date = t.transaction_date AND iv.shift = t.shift)
+       LEFT JOIN input_verifications iv ON (iv.verification_date = t.transaction_date AND iv.shift = t.shift AND iv.location = fc.location)
        LEFT JOIN input_verification_items ivi ON (
          ivi.verification_id = iv.id
          AND ivi.material_name_snapshot = COALESCE(t.material_name_snapshot, mm.material_name, mp.material)
@@ -486,10 +467,10 @@ export class DashboardService {
         END AS waste_kg,
         COALESCE(rmt.import_batch_ref, '-') AS batch_ref
        FROM runner_material_transactions rmt
-       LEFT JOIN v_all_materials mm ON (rmt.material_id = mm.id OR rmt.material_name_snapshot = mm.material_name)
-       LEFT JOIN factories fc ON rmt.factory_id = fc.id
+       JOIN factories fc ON rmt.factory_id = fc.id
+       ${RUNNER_MATERIAL_JOIN_SQL}
        LEFT JOIN crushing_request_items cri ON (rmt.request_id IS NOT NULL AND cri.request_id = rmt.request_id AND cri.item_type = 'runner_ng' AND (cri.material_id = rmt.material_id OR cri.material_name_snapshot = rmt.material_name_snapshot))
-       LEFT JOIN input_verifications iv ON (iv.verification_date = rmt.transaction_date AND iv.shift = rmt.shift)
+       LEFT JOIN input_verifications iv ON (iv.verification_date = rmt.transaction_date AND iv.shift = rmt.shift AND iv.location = fc.location)
        LEFT JOIN input_verification_items ivi ON (
          ivi.verification_id = iv.id AND (
            (rmt.material_id IS NOT NULL AND ivi.material_id = rmt.material_id)
@@ -497,7 +478,7 @@ export class DashboardService {
          )
        )
        WHERE rmt.transaction_date BETWEEN ? AND ?
-         AND (rmt.factory_id IS NULL OR fc.location = ?)
+         AND fc.location = ?
        ORDER BY rmt.transaction_date ASC, rmt.created_at ASC`,
       [qStart, qEnd, location]
     );

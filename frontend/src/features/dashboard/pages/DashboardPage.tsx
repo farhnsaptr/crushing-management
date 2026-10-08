@@ -11,7 +11,6 @@ import { DepartmentParetoTable } from '../components/DepartmentParetoTable';
 import { SenderDashboardView } from '../components/SenderDashboardView';
 import { ExportDateModal } from '../components/ExportDateModal';
 import { VerificationModal } from '../../verification/components/VerificationModal';
-import type { PlantLocation } from '../types/dashboard.types';
 import {
   FileSpreadsheet,
   MapPin,
@@ -37,6 +36,7 @@ export const DashboardPage: React.FC = () => {
     setSelectedMonth,
     selectedYear,
     setSelectedYear,
+    locations,
     selectedLocation,
     setSelectedLocation,
     summaryStats,
@@ -164,7 +164,7 @@ export const DashboardPage: React.FC = () => {
               border: '1px solid #cbd5e1',
             }}
           >
-            {(['Cibitung', 'Karawang'] as PlantLocation[]).map((loc) => {
+            {locations.map((loc) => {
               const isSelected = selectedLocation === loc;
               return (
                 <button
@@ -448,6 +448,7 @@ export const DashboardPage: React.FC = () => {
       <ExportDateModal
         isOpen={isExportModalOpen}
         onClose={() => setIsExportModalOpen(false)}
+        locations={locations}
         defaultLocation={selectedLocation}
         isExporting={isExporting}
         onExport={handleExportExcel}

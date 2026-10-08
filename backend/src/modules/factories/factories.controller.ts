@@ -13,6 +13,14 @@ export class FactoriesController {
     }
   }
 
+  static async listLocations(_req: Request, res: Response): Promise<void> {
+    try {
+      sendSuccess(res, await FactoriesService.listLocations(), 'Locations retrieved successfully');
+    } catch (error: any) {
+      sendError(res, error.message || 'Failed to retrieve locations', 500);
+    }
+  }
+
   static async getById(req: Request, res: Response): Promise<void> {
     try {
       const id = String(req.params.id);

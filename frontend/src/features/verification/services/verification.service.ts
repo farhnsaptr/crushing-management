@@ -11,11 +11,12 @@ export class VerificationService {
    */
   static async getVerificationDetails(
     date: string,
-    shift: 'Pagi' | 'Malam'
+    shift: 'Pagi' | 'Malam',
+    location: string
   ): Promise<VerificationDetailResponse> {
     const response = await apiClient.get<{ success: boolean; data: VerificationDetailResponse }>(
       '/api/verifications/details',
-      { params: { date, shift } }
+      { params: { date, shift, location } }
     );
     return response.data.data;
   }
@@ -35,12 +36,13 @@ export class VerificationService {
    * Gets verification reminder status for Dashboard indicator.
    */
   static async getDashboardStatus(
+    location: string,
     date?: string,
     shift?: string
   ): Promise<VerificationDashboardStatusResponse> {
     const response = await apiClient.get<{ success: boolean; data: VerificationDashboardStatusResponse }>(
       '/api/verifications/status',
-      { params: { date, shift } }
+      { params: { date, shift, location } }
     );
     return response.data.data;
   }

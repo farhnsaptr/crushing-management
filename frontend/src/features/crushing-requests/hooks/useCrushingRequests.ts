@@ -11,6 +11,7 @@ import type { Factory } from '../../factories/types/factories.types';
 import type { ToastState } from '../../../components/common/Toast';
 import { getAutoShiftAndDate } from '../../../config/shift.config';
 import { extractErrorMessage } from '../../../services/api.client';
+import { usePersistedState } from '../../../hooks/usePersistedState';
 
 export function useCrushingRequests() {
   const { user } = useAuth();
@@ -45,7 +46,9 @@ export function useCrushingRequests() {
   const [partSearchQuery, setPartSearchQuery] = useState<string>('');
   // Factory yang boleh dilihat user (backend sudah memfilter sesuai penugasan); '' = Semua Pabrik
   const [factoryOptions, setFactoryOptions] = useState<Factory[]>([]);
-  const [selectedFactoryId, setSelectedFactoryId] = useState<string>('');
+  // Pilihan factory terakhir disimpan per user di browser; dipakai hanya bila masih ada di daftar factory user
+  const [storedFactoryId, setSelectedFactoryId] = usePersistedState<string>(user ? `pref:${user.id}:sender_factory_id` : null, '');
+  const selectedFactoryId = factoryOptions.some((f) => f.id === storedFactoryId) ? storedFactoryId : '';
 
   // History State
   const [historyRequests, setHistoryRequests] = useState<CrushingRequest[]>([]);
@@ -156,7 +159,7 @@ export function useCrushingRequests() {
         if (list?.length === 1) setSelectedFactoryId(list[0].id);
       })
       .catch((err) => console.error('Failed to load factories for sender:', err));
-  }, [user?.id]);
+  }, [user?.id, setSelectedFactoryId]);
 
   // Fetch Parts for the selected factory (backend still locks pengirim to assigned factory)
   const fetchParts = useCallback(async () => {

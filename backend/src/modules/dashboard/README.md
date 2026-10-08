@@ -10,7 +10,7 @@ Modul ini menyediakan API agregasi statistik, visualisasi grafik harian daur ula
 ## Endpoints
 
 ### 1. `GET /api/dashboard/summary`
-Mengembalikan total statistik KPI: `input_kg`, `output_kg`, `waste_kg`, dan `input_pcs`.
+Mengembalikan KPI per bulan & lokasi: `scrap_kg` (material no-reuse NG + runner, menurut jenis recycle efektif termasuk material campur), `input_kg` (material reuse NG + runner), `output_kg` (total hasil timbang verifikasi `validated` di lokasi tsb), `gap_kg` (berat sistem − hasil timbang, hanya shift tervalidasi; negatif = timbangan lebih berat), dan `input_pcs`. Runner tanpa `factory_id` tidak dihitung. `daily-chart` memakai definisi yang sama per hari/shift (`*_input_kg`, `*_scrap_kg`, `*_output_kg`, `*_gap_kg`); Export Excel menyambung verifikasi per lokasi.
 - **Query Params**: `year`, `month`, `location` (`Cibitung` | `Karawang`)
 
 ### 2. `GET /api/dashboard/daily-chart`

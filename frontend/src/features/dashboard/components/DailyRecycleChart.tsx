@@ -82,7 +82,7 @@ export const DailyRecycleChart: React.FC<DailyRecycleChartProps> = ({
           </div>
         </div>
 
-        {/* Summary Section: Total Input, Total Output, Total Waste */}
+        {/* Summary Section: Input (reuse), Scrap, Output (hasil timbang), Gap, Planning */}
         <div
           style={{
             paddingTop: '0.45rem',
@@ -94,16 +94,20 @@ export const DailyRecycleChart: React.FC<DailyRecycleChartProps> = ({
           }}
         >
           <div style={{ fontWeight: 800, display: 'flex', justifyContent: 'space-between', color: '#0f172a' }}>
-            <span>Total Input:</span>
-            <span style={{ fontWeight: 900 }}>{Number(d.total_kg).toFixed(2)} kg</span>
-          </div>
-          <div style={{ fontWeight: 800, display: 'flex', justifyContent: 'space-between', color: '#059669' }}>
-            <span>Total Output:</span>
-            <span style={{ fontWeight: 900 }}>{Number(d.total_output_kg ?? 0).toFixed(2)} kg</span>
+            <span>Input (Reuse):</span>
+            <span style={{ fontWeight: 900 }}>{Number(d.total_input_kg ?? 0).toFixed(2)} kg</span>
           </div>
           <div style={{ fontWeight: 800, display: 'flex', justifyContent: 'space-between', color: '#dc2626' }}>
-            <span>Total Waste:</span>
-            <span style={{ fontWeight: 900 }}>{Number(d.total_waste_kg ?? 0).toFixed(2)} kg</span>
+            <span>Scrap (No-Reuse):</span>
+            <span style={{ fontWeight: 900 }}>{Number(d.total_scrap_kg ?? 0).toFixed(2)} kg</span>
+          </div>
+          <div style={{ fontWeight: 800, display: 'flex', justifyContent: 'space-between', color: '#059669' }}>
+            <span>Output (Hasil Timbang):</span>
+            <span style={{ fontWeight: 900 }}>{Number(d.total_output_kg ?? 0).toFixed(2)} kg</span>
+          </div>
+          <div style={{ fontWeight: 800, display: 'flex', justifyContent: 'space-between', color: '#d97706' }}>
+            <span>Gap:</span>
+            <span style={{ fontWeight: 900 }}>{Number(d.total_gap_kg ?? 0).toFixed(2)} kg</span>
           </div>
           <div style={{ fontWeight: 800, display: 'flex', justifyContent: 'space-between', color: '#2563eb' }}>
             <span>Planning Harian:</span>
