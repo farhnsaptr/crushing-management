@@ -7,6 +7,7 @@ Modul ini digunakan oleh Super-Administrator untuk melakukan kustomisasi identit
 ## Fitur Utama
 1. **Branding & Identitas**: Mengatur judul browser tab, upload icon/logo web dengan pratinjau langsung, dan upload background login.
 2. **Live Color Picker**: Mengubah 3 variabel warna tema (Primary, Secondary, Accent).
+   - **Warna Garis Grafik Dashboard**: kartu terpisah untuk warna garis Shift Pagi dan Shift Malam (key `chart_shift_pagi_color` / `chart_shift_malam_color`), dengan pratinjau garis. Diterapkan lewat CSS variable `--chart-shift-pagi` / `--chart-shift-malam` (diset `ThemeContext`) dan dipakai grafik dashboard admin maupun pengirim. Default hijau & oranye Sugity; "Reset Default" mengembalikannya.
 3. **Instant Preview**: Warna tema langsung teraplikasikan secara real-time pada CSS variables `:root` dan `.dark`.
 4. **Reset Default Sugity**: Mengembalikan identitas dan warna ke standar default PT Sugity Creatives (`#008d51`, `#E76114`, `#037233`).
 5. **Persistensi Database**: Menyimpan konfigurasi ke backend via `PUT /api/site-config`.

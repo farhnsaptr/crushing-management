@@ -48,7 +48,7 @@ export const DailyRecycleChart: React.FC<DailyRecycleChartProps> = ({
 
         {/* Shift Pagi Breakdown */}
         <div style={{ marginBottom: '0.4rem' }}>
-          <div style={{ fontWeight: 800, color: 'var(--primary-color)', marginBottom: '0.15rem', display: 'flex', justifyContent: 'space-between' }}>
+          <div style={{ fontWeight: 800, color: 'var(--chart-shift-pagi)', marginBottom: '0.15rem', display: 'flex', justifyContent: 'space-between' }}>
             <span>Shift Pagi</span>
             <span>{Number(d.pagi_kg).toFixed(2)} kg</span>
           </div>
@@ -66,7 +66,7 @@ export const DailyRecycleChart: React.FC<DailyRecycleChartProps> = ({
 
         {/* Shift Malam Breakdown */}
         <div style={{ marginBottom: '0.4rem' }}>
-          <div style={{ fontWeight: 800, color: 'var(--secondary-color)', marginBottom: '0.15rem', display: 'flex', justifyContent: 'space-between' }}>
+          <div style={{ fontWeight: 800, color: 'var(--chart-shift-malam)', marginBottom: '0.15rem', display: 'flex', justifyContent: 'space-between' }}>
             <span>Shift Malam</span>
             <span>{Number(d.malam_kg).toFixed(2)} kg</span>
           </div>

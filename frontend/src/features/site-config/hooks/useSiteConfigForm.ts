@@ -4,6 +4,10 @@ import { useTheme } from '../../../context/ThemeContext';
 import type { ToastMessage } from '../../../components/common/Toast';
 import { extractErrorMessage } from '../../../services/api.client';
 
+// Default warna garis grafik dashboard: hijau & oranye Sugity (sama dengan default primary & secondary)
+const DEFAULT_CHART_PAGI = '#008d51';
+const DEFAULT_CHART_MALAM = '#E76114';
+
 export const useSiteConfigForm = () => {
   const { updateThemeColors, fetchThemeConfig } = useTheme();
 
@@ -15,6 +19,8 @@ export const useSiteConfigForm = () => {
     lightPrimary: '#008d51',
     lightSecondary: '#E76114',
     lightAccent: '#037233',
+    chartPagi: DEFAULT_CHART_PAGI,
+    chartMalam: DEFAULT_CHART_MALAM,
   });
 
   // Current Form State
@@ -25,6 +31,8 @@ export const useSiteConfigForm = () => {
   const [lightPrimary, setLightPrimary] = useState<string>('#008d51');
   const [lightSecondary, setLightSecondary] = useState<string>('#E76114');
   const [lightAccent, setLightAccent] = useState<string>('#037233');
+  const [chartPagi, setChartPagi] = useState<string>(DEFAULT_CHART_PAGI);
+  const [chartMalam, setChartMalam] = useState<string>(DEFAULT_CHART_MALAM);
 
   // File objects & Instant Live Preview URLs
   const [logoFile, setLogoFile] = useState<File | null>(null);
@@ -47,6 +55,8 @@ export const useSiteConfigForm = () => {
       const loadedPrimary = config.theme_light_primary || '#008d51';
       const loadedSecondary = config.theme_light_secondary || '#E76114';
       const loadedAccent = config.theme_light_accent || '#037233';
+      const loadedChartPagi = config.chart_shift_pagi_color || DEFAULT_CHART_PAGI;
+      const loadedChartMalam = config.chart_shift_malam_color || DEFAULT_CHART_MALAM;
 
       setInitialState({
         siteTitle: loadedTitle,
@@ -55,6 +65,8 @@ export const useSiteConfigForm = () => {
         lightPrimary: loadedPrimary,
         lightSecondary: loadedSecondary,
         lightAccent: loadedAccent,
+        chartPagi: loadedChartPagi,
+        chartMalam: loadedChartMalam,
       });
 
       setSiteTitle(loadedTitle);
@@ -63,6 +75,8 @@ export const useSiteConfigForm = () => {
       setLightPrimary(loadedPrimary);
       setLightSecondary(loadedSecondary);
       setLightAccent(loadedAccent);
+      setChartPagi(loadedChartPagi);
+      setChartMalam(loadedChartMalam);
 
       setLogoFile(null);
       setLogoPreview('');
@@ -129,6 +143,8 @@ export const useSiteConfigForm = () => {
         { key: 'theme_dark_primary', value: lightPrimary },
         { key: 'theme_dark_secondary', value: lightSecondary },
         { key: 'theme_dark_accent', value: lightAccent },
+        { key: 'chart_shift_pagi_color', value: chartPagi },
+        { key: 'chart_shift_malam_color', value: chartMalam },
       ];
 
       await SiteConfigService.updateConfig(items);
@@ -143,6 +159,8 @@ export const useSiteConfigForm = () => {
         theme_dark_primary: lightPrimary,
         theme_dark_secondary: lightSecondary,
         theme_dark_accent: lightAccent,
+        chart_shift_pagi_color: chartPagi,
+        chart_shift_malam_color: chartMalam,
       });
 
       await fetchThemeConfig();
@@ -154,6 +172,8 @@ export const useSiteConfigForm = () => {
         lightPrimary,
         lightSecondary,
         lightAccent,
+        chartPagi,
+        chartMalam,
       });
 
       setLogoFile(null);
@@ -184,6 +204,8 @@ export const useSiteConfigForm = () => {
     setLightPrimary('#008d51');
     setLightSecondary('#E76114');
     setLightAccent('#037233');
+    setChartPagi(DEFAULT_CHART_PAGI);
+    setChartMalam(DEFAULT_CHART_MALAM);
 
     setLogoFile(null);
     setLogoPreview('');
@@ -204,7 +226,9 @@ export const useSiteConfigForm = () => {
     lightSecondary !== initialState.lightSecondary ||
     lightAccent !== initialState.lightAccent;
 
-  const isFormDirty = isBrandingDirty || isThemeDirty;
+  const isChartColorDirty = chartPagi !== initialState.chartPagi || chartMalam !== initialState.chartMalam;
+
+  const isFormDirty = isBrandingDirty || isThemeDirty || isChartColorDirty;
 
   return {
     siteTitle,
@@ -219,6 +243,10 @@ export const useSiteConfigForm = () => {
     setLightSecondary,
     lightAccent,
     setLightAccent,
+    chartPagi,
+    setChartPagi,
+    chartMalam,
+    setChartMalam,
     logoPreview,
     backgroundPreview,
     handleLogoFileChange,
@@ -227,6 +255,7 @@ export const useSiteConfigForm = () => {
     isSubmitting,
     isBrandingDirty,
     isThemeDirty,
+    isChartColorDirty,
     isFormDirty,
     toast,
     setToast,

@@ -44,6 +44,8 @@ export class SiteConfigService {
       'theme_dark_primary',
       'theme_dark_secondary',
       'theme_dark_accent',
+      'chart_shift_pagi_color',
+      'chart_shift_malam_color',
     ]);
 
     const stringKeys = new Set([

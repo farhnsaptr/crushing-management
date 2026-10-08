@@ -6,6 +6,7 @@ Modul ini mengelola konfigurasi variabel branding visual (Site Title, Logo, Back
 
 ## Deskripsi & Logic
 1. **Aturan Skema Database (`init.sql`)**:
+   - Warna garis grafik dashboard punya key sendiri, terpisah dari Primary/Secondary: `chart_shift_pagi_color` dan `chart_shift_malam_color` (hex; default `#008d51` hijau & `#E76114` oranye Sugity, ada di `seed.sql`; bila key belum ada di database frontend memakai default yang sama, jadi tidak perlu migrasi).
    - Kolom `key` pada tabel `site_config` menyimpan key identitas (`site_title`, `site_logo`, `site_background`) dan key palet warna (`theme_light_primary`, `theme_light_secondary`, `theme_light_accent`, `theme_dark_primary`, `theme_dark_secondary`, `theme_dark_accent`).
 2. **Validasi Backend (`SiteConfigService.updateConfig`)**:
    - Backend memverifikasi format string hex color dengan Regex `/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/` untuk key palet warna.
