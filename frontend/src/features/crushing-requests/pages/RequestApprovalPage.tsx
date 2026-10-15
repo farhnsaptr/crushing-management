@@ -1,11 +1,14 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useRequestApproval } from '../hooks/useRequestApproval';
 import { PendingApprovalTable } from '../components/PendingApprovalTable';
 import { RequestDetailModal } from '../components/RequestDetailModal';
+import { Button } from '../../../components/common/Button';
 import { Toast } from '../../../components/common/Toast';
-import { ClipboardCheck } from 'lucide-react';
+import { ClipboardCheck, Users } from 'lucide-react';
 
 export const RequestApprovalPage: React.FC = () => {
+  const navigate = useNavigate();
   const {
     requests,
     departments,
@@ -72,6 +75,18 @@ export const RequestApprovalPage: React.FC = () => {
               Validasi fisik aktual vs pengajuan sistem dari pengiriman part & runner NG oleh departemen pengirim.
             </p>
           </div>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <Button
+            variant="secondary"
+            onClick={() => navigate('/approval-requests/evaluation')}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              <Users size={16} />
+              <span>Evaluasi Pengirim</span>
+            </div>
+          </Button>
         </div>
       </div>
 

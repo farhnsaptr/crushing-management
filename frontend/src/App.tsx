@@ -14,6 +14,7 @@ import { LoginPage } from './features/auth/pages/LoginPage';
 import { DashboardPage } from './features/dashboard/pages/DashboardPage';
 import { SenderRequestsPage } from './features/crushing-requests/pages/SenderRequestsPage';
 import { RequestApprovalPage } from './features/crushing-requests/pages/RequestApprovalPage';
+import { RequestEvaluationPage } from './features/crushing-requests/pages/RequestEvaluationPage';
 import { NgInputPage } from './features/ng-input/pages/NgInputPage';
 import { PartRunnerNgPage } from './features/part-runner-ng/pages/PartRunnerNgPage';
 import { DepartmentsPage } from './features/departments/pages/DepartmentsPage';
@@ -61,6 +62,7 @@ export const App: React.FC = () => {
             <Route element={<ProtectedRoute allowedRoles={['super-admin', 'admin', 'operator']} />}>
               <Route element={<MainLayout />}>
                 <Route path="/approval-requests" element={<RequestApprovalPage />} />
+                <Route path="/approval-requests/evaluation" element={<RequestEvaluationPage />} />
                 <Route path="/ng-input" element={<NgInputPage />} />
                 <Route path="/part-runner-ng" element={<PartRunnerNgPage />} />
                 <Route path="/verification" element={<VerificationPage />} />

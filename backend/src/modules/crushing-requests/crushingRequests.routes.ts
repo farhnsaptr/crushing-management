@@ -12,6 +12,10 @@ router.delete('/draft', verifyToken, CrushingRequestsController.deleteDraft);
 // Create, List, & Cancel requests for authenticated users
 router.post('/', verifyToken, CrushingRequestsController.createRequest);
 router.get('/', verifyToken, CrushingRequestsController.listRequests);
+
+// Evaluation of senders (must be declared before /:id)
+router.get('/evaluation', verifyToken, requireRole(['super-admin', 'admin', 'operator']), CrushingRequestsController.getEvaluation);
+
 router.get('/:id', verifyToken, CrushingRequestsController.getRequestById);
 router.delete('/:id', verifyToken, CrushingRequestsController.cancelRequest);
 

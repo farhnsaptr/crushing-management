@@ -36,6 +36,8 @@ export interface CrushingRequest {
   shift: 'Pagi' | 'Malam';
   request_date: string;
   status: 'pending' | 'approved';
+  is_submitted?: boolean;
+  submitted_at?: string | null;
   rejection_reason?: string | null;
   validated_by?: string | null;
   validator_name?: string | null;
@@ -97,3 +99,43 @@ export interface CrushingRequestListResponse {
     totalPages: number;
   };
 }
+
+export interface SenderEvaluationItem {
+  user_id: string;
+  username: string;
+  full_name: string;
+  department_id: string | null;
+  department_name: string;
+  department_code?: string;
+  factory_id: string | null;
+  factory_name: string;
+  factory_code?: string;
+  request_count: number;
+  pending_count: number;
+  approved_count: number;
+  total_weight_kg: number;
+  total_pcs: number;
+  has_submitted: boolean;
+}
+
+export interface SenderEvaluationSummary {
+  total_pengirim: number;
+  sudah_kirim_count: number;
+  belum_kirim_count: number;
+}
+
+export interface SenderEvaluationResponse {
+  date: string;
+  shift: string;
+  summary: SenderEvaluationSummary;
+  senders: SenderEvaluationItem[];
+}
+
+export interface SenderEvaluationFilters {
+  date?: string;
+  shift?: string;
+  department_id?: string;
+  factory_id?: string;
+  search?: string;
+}
+
