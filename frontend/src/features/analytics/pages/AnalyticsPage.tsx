@@ -19,8 +19,10 @@ import {
 } from 'lucide-react';
 import { canManageData } from '../../../config/permissions.config';
 import { AnalyticsRollbackModal } from '../components/AnalyticsRollbackModal';
+import { useIsNarrow } from '../../../hooks';
 
 export const AnalyticsPage: React.FC = () => {
+  const [containerRef, isNarrow] = useIsNarrow<HTMLDivElement>(768);
   const { user } = useAuth();
   const canManage = canManageData(user?.role);
 
@@ -71,7 +73,7 @@ export const AnalyticsPage: React.FC = () => {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', paddingBottom: '3rem' }}>
+    <div ref={containerRef} style={{ display: 'flex', flexDirection: 'column', gap: isNarrow ? '1.15rem' : '1.5rem', paddingBottom: '3rem' }}>
       {/* Toast Notification */}
       {toast && (
         <div
@@ -105,32 +107,33 @@ export const AnalyticsPage: React.FC = () => {
       )}
 
       {/* Page Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
+      <div style={{ display: 'flex', alignItems: isNarrow ? 'flex-start' : 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-            <div style={{ width: '42px', height: '42px', borderRadius: '10px', backgroundColor: 'rgba(0, 141, 81, 0.1)', color: '#008d51', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <BarChart3 size={24} />
+            <div style={{ width: isNarrow ? '36px' : '42px', height: isNarrow ? '36px' : '42px', borderRadius: '10px', backgroundColor: 'rgba(0, 141, 81, 0.1)', color: '#008d51', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <BarChart3 size={isNarrow ? 20 : 24} />
             </div>
             <div>
-              <h1 style={{ fontSize: '1.5rem', fontWeight: 900, color: 'var(--text-main, #0f172a)', margin: 0 }}>
-                Data Analitik & Allowance Produksi
+              <h1 style={{ fontSize: isNarrow ? '1.2rem' : '1.5rem', fontWeight: 900, color: 'var(--text-main, #0f172a)', margin: 0 }}>
+                Data Analitik & Allowance
               </h1>
-              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted, #64748b)', margin: '0.2rem 0 0 0' }}>
-                Monitoring komparasi 3-komponen (Allowance, Input, Output), Gap Bulanan, dan Analisis Pareto Material & Part NG.
+              <p style={{ fontSize: isNarrow ? '0.75rem' : '0.85rem', color: 'var(--text-muted, #64748b)', margin: '0.15rem 0 0 0' }}>
+                Komparasi Allowance, Input, Output, Gap, dan Analisis Pareto.
               </p>
             </div>
           </div>
         </div>
 
         {/* Action Controls Header */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', width: isNarrow ? '100%' : 'auto' }}>
           {/* Year Selector */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', backgroundColor: '#ffffff', padding: '0.25rem 0.5rem', borderRadius: '10px', border: '1.5px solid #cbd5e1' }}>
-            <Calendar size={16} color="#64748b" />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', backgroundColor: '#ffffff', padding: '0.35rem 0.65rem', borderRadius: '10px', border: '1.5px solid #cbd5e1', flex: isNarrow ? 1 : 'none' }}>
+            <Calendar size={16} color="#64748b" style={{ flexShrink: 0 }} />
             <select
               value={year}
               onChange={(e) => setYear(parseInt(e.target.value, 10))}
               style={{
+                width: '100%',
                 border: 'none',
                 backgroundColor: 'transparent',
                 fontSize: '0.85rem',
@@ -155,7 +158,7 @@ export const AnalyticsPage: React.FC = () => {
             onClick={handleRefreshAll}
             isLoading={isLoadingChart || isLoadingRecords || isLoadingParetoMaterials || isLoadingParetoPartsNg}
             leftIcon={<RefreshCw size={15} />}
-            style={{ padding: '0.55rem 1rem', fontSize: '0.85rem' }}
+            style={{ padding: '0.5rem 0.85rem', fontSize: '0.825rem' }}
           >
             Segarkan
           </Button>
@@ -169,16 +172,16 @@ export const AnalyticsPage: React.FC = () => {
                 fetchBatches();
                 setIsRollbackModalOpen(true);
               }}
-              leftIcon={<RotateCcw size={16} />}
+              leftIcon={<RotateCcw size={15} />}
               style={{
-                padding: '0.55rem 1.15rem',
+                padding: '0.5rem 0.95rem',
                 fontWeight: 800,
                 backgroundColor: '#ef4444',
-                fontSize: '0.85rem',
+                fontSize: '0.825rem',
                 boxShadow: '0 4px 12px rgba(239, 68, 68, 0.2)',
               }}
             >
-              Rollback Data
+              Rollback
             </Button>
           )}
 
@@ -188,13 +191,14 @@ export const AnalyticsPage: React.FC = () => {
               type="button"
               variant="primary"
               onClick={() => setIsUploadModalOpen(true)}
-              leftIcon={<UploadCloud size={18} />}
+              leftIcon={<UploadCloud size={16} />}
               style={{
-                padding: '0.55rem 1.35rem',
+                padding: '0.5rem 1rem',
                 fontWeight: 800,
                 backgroundColor: '#008d51',
-                fontSize: '0.85rem',
+                fontSize: '0.825rem',
                 boxShadow: '0 4px 12px rgba(0, 141, 81, 0.25)',
+                width: isNarrow ? '100%' : 'auto',
               }}
             >
               Upload Data Produksi
@@ -203,15 +207,17 @@ export const AnalyticsPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Navigation Tabs Bar */}
+      {/* Navigation Tabs Bar - Horizontal Scrollable on Mobile */}
       <div
+        className="no-scrollbar"
         style={{
           display: 'flex',
           alignItems: 'center',
           gap: '0.5rem',
           borderBottom: '2px solid #e2e8f0',
           paddingBottom: '0.5rem',
-          flexWrap: 'wrap',
+          overflowX: 'auto',
+          WebkitOverflowScrolling: 'touch',
         }}
       >
         <button
@@ -221,19 +227,21 @@ export const AnalyticsPage: React.FC = () => {
             display: 'flex',
             alignItems: 'center',
             gap: '0.5rem',
-            padding: '0.65rem 1.25rem',
+            padding: '0.6rem 1.15rem',
             borderRadius: '10px',
             border: 'none',
             backgroundColor: activeTab === 'overview' ? '#008d51' : 'transparent',
             color: activeTab === 'overview' ? '#ffffff' : '#64748b',
             fontWeight: 800,
-            fontSize: '0.875rem',
+            fontSize: '0.85rem',
             cursor: 'pointer',
             transition: 'all 0.15s ease',
             boxShadow: activeTab === 'overview' ? '0 4px 12px rgba(0, 141, 81, 0.25)' : 'none',
+            flexShrink: 0,
+            whiteSpace: 'nowrap',
           }}
         >
-          <BarChart3 size={17} />
+          <BarChart3 size={16} />
           <span>Komparasi & Gap Bulanan</span>
         </button>
 
@@ -244,19 +252,21 @@ export const AnalyticsPage: React.FC = () => {
             display: 'flex',
             alignItems: 'center',
             gap: '0.5rem',
-            padding: '0.65rem 1.25rem',
+            padding: '0.6rem 1.15rem',
             borderRadius: '10px',
             border: 'none',
             backgroundColor: activeTab === 'pareto-material' ? '#008d51' : 'transparent',
             color: activeTab === 'pareto-material' ? '#ffffff' : '#64748b',
             fontWeight: 800,
-            fontSize: '0.875rem',
+            fontSize: '0.85rem',
             cursor: 'pointer',
             transition: 'all 0.15s ease',
             boxShadow: activeTab === 'pareto-material' ? '0 4px 12px rgba(0, 141, 81, 0.25)' : 'none',
+            flexShrink: 0,
+            whiteSpace: 'nowrap',
           }}
         >
-          <Layers size={17} />
+          <Layers size={16} />
           <span>Pareto Material</span>
         </button>
 
@@ -267,19 +277,21 @@ export const AnalyticsPage: React.FC = () => {
             display: 'flex',
             alignItems: 'center',
             gap: '0.5rem',
-            padding: '0.65rem 1.25rem',
+            padding: '0.6rem 1.15rem',
             borderRadius: '10px',
             border: 'none',
             backgroundColor: activeTab === 'pareto-part-ng' ? '#008d51' : 'transparent',
             color: activeTab === 'pareto-part-ng' ? '#ffffff' : '#64748b',
             fontWeight: 800,
-            fontSize: '0.875rem',
+            fontSize: '0.85rem',
             cursor: 'pointer',
             transition: 'all 0.15s ease',
             boxShadow: activeTab === 'pareto-part-ng' ? '0 4px 12px rgba(0, 141, 81, 0.25)' : 'none',
+            flexShrink: 0,
+            whiteSpace: 'nowrap',
           }}
         >
-          <AlertCircle size={17} />
+          <AlertCircle size={16} />
           <span>Pareto Part NG</span>
         </button>
       </div>

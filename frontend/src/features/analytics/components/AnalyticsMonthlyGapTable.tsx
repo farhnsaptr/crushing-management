@@ -1,6 +1,7 @@
 import React from 'react';
 import { Card } from '../../../components/common/Card';
-import { Table } from 'lucide-react';
+import { Table, MoveHorizontal } from 'lucide-react';
+import { useIsNarrow } from '../../../hooks';
 import type { MonthlyComparisonItem } from '../types/analytics.types';
 
 interface AnalyticsMonthlyGapTableProps {
@@ -14,6 +15,7 @@ export const AnalyticsMonthlyGapTable: React.FC<AnalyticsMonthlyGapTableProps> =
   year,
   isLoading,
 }) => {
+  const [containerRef, isNarrow] = useIsNarrow<HTMLDivElement>(768);
   const monthHeaders = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
 
   // Calculate annual totals
@@ -25,21 +27,29 @@ export const AnalyticsMonthlyGapTable: React.FC<AnalyticsMonthlyGapTableProps> =
   const totalGapCrushing = Number((totalInput - totalOutput).toFixed(2));
 
   return (
-    <Card style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', backgroundColor: '#ffffff', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
+    <Card ref={containerRef} style={{ padding: isNarrow ? '1rem' : '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', backgroundColor: '#ffffff', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
+      <div style={{ display: 'flex', alignItems: isNarrow ? 'flex-start' : 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <Table size={20} color="#008d51" />
-            <h3 style={{ fontSize: '1.1rem', fontWeight: 900, color: '#0f172a', margin: 0 }}>
-              Matriks Selisih Bulanan (Gap NG & Gap Crushing) - Tahun {year}
+            <h3 style={{ fontSize: isNarrow ? '1rem' : '1.1rem', fontWeight: 900, color: '#0f172a', margin: 0 }}>
+              Matriks Selisih Bulanan (Gap NG & Gap Crushing) - {year}
             </h3>
           </div>
-          <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '0.2rem 0 0 0' }}>
-            Tabel rekapitulasi selisih Allowance vs Input (Gap NG) dan selisih Input vs Output (Gap Crushing) sepanjang 12 bulan.
+          <p style={{ fontSize: '0.78rem', color: '#64748b', margin: '0.2rem 0 0 0' }}>
+            Rekapitulasi selisih Allowance vs Input (Gap NG) dan Input vs Output (Gap Crushing) sepanjang 12 bulan.
           </p>
         </div>
       </div>
+
+      {/* Mobile Swipe Hint */}
+      {isNarrow && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.75rem', color: '#008d51', fontWeight: 700, backgroundColor: 'rgba(0, 141, 81, 0.06)', padding: '0.35rem 0.65rem', borderRadius: '6px' }}>
+          <MoveHorizontal size={14} />
+          <span>Geser horizontal untuk melihat 12 bulan & total tahun</span>
+        </div>
+      )}
 
       {/* Matrix Table */}
       {isLoading ? (
@@ -47,7 +57,7 @@ export const AnalyticsMonthlyGapTable: React.FC<AnalyticsMonthlyGapTableProps> =
           Memuat data matriks bulanan...
         </div>
       ) : (
-        <div style={{ overflowX: 'auto', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+        <div className="no-scrollbar" style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem', textAlign: 'right' }}>
             <thead>
               <tr style={{ backgroundColor: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>

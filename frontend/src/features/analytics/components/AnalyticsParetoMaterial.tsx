@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Card } from '../../../components/common/Card';
 import { Badge } from '../../../components/common/Badge';
-import { Layers, Box, TrendingUp } from 'lucide-react';
+import { Layers, Box, TrendingUp, MoveHorizontal } from 'lucide-react';
+import { useIsNarrow } from '../../../hooks';
 import type { ParetoMaterialsResponse } from '../types/analytics.types';
 
 interface AnalyticsParetoMaterialProps {
@@ -15,6 +16,7 @@ export const AnalyticsParetoMaterial: React.FC<AnalyticsParetoMaterialProps> = (
   year,
   isLoading,
 }) => {
+  const [containerRef, isNarrow] = useIsNarrow<HTMLDivElement>(768);
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
 
   const items = data?.items || [];
@@ -23,33 +25,33 @@ export const AnalyticsParetoMaterial: React.FC<AnalyticsParetoMaterialProps> = (
   const maxWeight = Math.max(...topItems.map((i) => i.total_weight_kg), 10);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+    <div ref={containerRef} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       {/* Overview & Pareto Chart Card */}
-      <Card style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', backgroundColor: '#ffffff', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
+      <Card style={{ padding: isNarrow ? '1rem' : '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', backgroundColor: '#ffffff', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
+        <div style={{ display: 'flex', alignItems: isNarrow ? 'flex-start' : 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <Layers size={20} color="#008d51" />
-              <h2 style={{ fontSize: '1.15rem', fontWeight: 900, color: '#0f172a', margin: 0 }}>
-                Analisis Pareto Material Resin (Tahun {year})
+              <h2 style={{ fontSize: isNarrow ? '1rem' : '1.15rem', fontWeight: 900, color: '#0f172a', margin: 0 }}>
+                Analisis Pareto Material Resin ({year})
               </h2>
             </div>
-            <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '0.2rem 0 0 0' }}>
-              Distribusi akumulasi volume material resin (Part NG + Runner) diurutkan dari bobot tertinggi (Prinsip Pareto 80/20).
+            <p style={{ fontSize: '0.78rem', color: '#64748b', margin: '0.2rem 0 0 0' }}>
+              Distribusi volume material resin (Part NG + Runner) diurutkan dari bobot tertinggi (Pareto 80/20).
             </p>
           </div>
 
           {/* Metric Summary Pill */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-            <div style={{ padding: '0.45rem 0.85rem', borderRadius: '10px', backgroundColor: 'rgba(0, 141, 81, 0.08)', border: '1px solid rgba(0, 141, 81, 0.2)' }}>
-              <span style={{ fontSize: '0.75rem', color: '#008d51', fontWeight: 700 }}>Total Berat: </span>
-              <strong style={{ fontSize: '0.9rem', color: '#008d51', fontWeight: 900 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <div style={{ padding: '0.4rem 0.75rem', borderRadius: '10px', backgroundColor: 'rgba(0, 141, 81, 0.08)', border: '1px solid rgba(0, 141, 81, 0.2)' }}>
+              <span style={{ fontSize: '0.725rem', color: '#008d51', fontWeight: 700 }}>Total Berat: </span>
+              <strong style={{ fontSize: '0.85rem', color: '#008d51', fontWeight: 900 }}>
                 {data?.grand_total_kg?.toFixed(2) || 0} kg
               </strong>
             </div>
-            <div style={{ padding: '0.45rem 0.85rem', borderRadius: '10px', backgroundColor: '#f1f5f9', border: '1px solid #cbd5e1' }}>
-              <span style={{ fontSize: '0.75rem', color: '#475569', fontWeight: 700 }}>Total Material: </span>
-              <strong style={{ fontSize: '0.9rem', color: '#1e293b', fontWeight: 900 }}>
+            <div style={{ padding: '0.4rem 0.75rem', borderRadius: '10px', backgroundColor: '#f1f5f9', border: '1px solid #cbd5e1' }}>
+              <span style={{ fontSize: '0.725rem', color: '#475569', fontWeight: 700 }}>Total Material: </span>
+              <strong style={{ fontSize: '0.85rem', color: '#1e293b', fontWeight: 900 }}>
                 {data?.total_materials_count || 0} Jenis
               </strong>
             </div>
@@ -57,20 +59,28 @@ export const AnalyticsParetoMaterial: React.FC<AnalyticsParetoMaterialProps> = (
         </div>
 
         {/* Legend */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', flexWrap: 'wrap', borderTop: '1px solid #f1f5f9', paddingTop: '0.75rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontSize: '0.8rem', fontWeight: 700, color: '#475569' }}>
-            <div style={{ width: '14px', height: '14px', borderRadius: '4px', backgroundColor: '#008d51' }} />
-            <span>Total Berat Material (kg) [Sumbu Kiri]</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: isNarrow ? '0.75rem' : '1.5rem', flexWrap: 'wrap', borderTop: '1px solid #f1f5f9', paddingTop: '0.75rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: isNarrow ? '0.75rem' : '0.8rem', fontWeight: 700, color: '#475569' }}>
+            <div style={{ width: '12px', height: '12px', borderRadius: '3px', backgroundColor: '#008d51', flexShrink: 0 }} />
+            <span>Total Berat (kg)</span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontSize: '0.8rem', fontWeight: 700, color: '#475569' }}>
-            <div style={{ width: '18px', height: '3px', backgroundColor: '#e76114', borderRadius: '2px' }} />
-            <span>Persentase Kumulatif (%) [Sumbu Kanan]</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: isNarrow ? '0.75rem' : '0.8rem', fontWeight: 700, color: '#475569' }}>
+            <div style={{ width: '14px', height: '3px', backgroundColor: '#e76114', borderRadius: '2px', flexShrink: 0 }} />
+            <span>Kumulatif (%)</span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontSize: '0.8rem', fontWeight: 700, color: '#dc2626' }}>
-            <div style={{ width: '18px', height: '2px', borderTop: '2px dashed #dc2626' }} />
-            <span>Garis Batas 80% (Pareto Cut-off)</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: isNarrow ? '0.75rem' : '0.8rem', fontWeight: 700, color: '#dc2626' }}>
+            <div style={{ width: '14px', height: '2px', borderTop: '2px dashed #dc2626', flexShrink: 0 }} />
+            <span>Batas 80% (Pareto)</span>
           </div>
         </div>
+
+        {/* Mobile Swipe Hint */}
+        {isNarrow && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.75rem', color: '#008d51', fontWeight: 700, backgroundColor: 'rgba(0, 141, 81, 0.06)', padding: '0.35rem 0.65rem', borderRadius: '6px' }}>
+            <MoveHorizontal size={14} />
+            <span>Geser horizontal untuk melihat grafik Pareto 15 material</span>
+          </div>
+        )}
 
         {/* Pareto Chart Visual */}
         {isLoading ? (
@@ -82,7 +92,15 @@ export const AnalyticsParetoMaterial: React.FC<AnalyticsParetoMaterialProps> = (
             Belum ada data transaksi material pada tahun {year}.
           </div>
         ) : (
-          <div style={{ position: 'relative', height: '320px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', paddingTop: '1.5rem' }}>
+          <div
+            className="no-scrollbar"
+            style={{
+              overflowX: 'auto',
+              WebkitOverflowScrolling: 'touch',
+              paddingBottom: '0.5rem',
+            }}
+          >
+            <div style={{ position: 'relative', height: '320px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', paddingTop: '1.5rem', minWidth: isNarrow ? '700px' : '100%' }}>
             {/* 80% Dashed Reference Line */}
             <div
               style={{
@@ -245,11 +263,12 @@ export const AnalyticsParetoMaterial: React.FC<AnalyticsParetoMaterialProps> = (
               ))}
             </div>
           </div>
+        </div>
         )}
       </Card>
 
       {/* Pareto Materials Ranking Table */}
-      <Card style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', backgroundColor: '#ffffff', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
+      <Card style={{ padding: isNarrow ? '1rem' : '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', backgroundColor: '#ffffff', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
           <div>
             <h3 style={{ fontSize: '1.05rem', fontWeight: 900, color: '#0f172a', margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>

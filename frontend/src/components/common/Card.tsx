@@ -11,31 +11,36 @@ interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
   style?: React.CSSProperties;
 }
 
-export const Card: React.FC<CardProps> = ({
-  children,
-  title,
-  subtitle,
-  action,
-  hasUnsavedChanges = false,
-  className = '',
-  style = {},
-  ...props
-}) => {
-  return (
-    <div
-      className={`glass-card ${className}`}
-      style={{
-        padding: '1.5rem',
-        border: '1px solid var(--border-color)',
-        borderLeft: hasUnsavedChanges ? '6px solid var(--accent-color)' : '1px solid var(--border-color)',
-        borderRadius: 'var(--radius-lg)',
-        backgroundColor: 'var(--bg-card)',
-        boxShadow: hasUnsavedChanges ? '0 4px 14px rgba(3, 114, 51, 0.15)' : 'var(--shadow-sm)',
-        transition: 'all 0.25s ease',
-        ...style,
-      }}
-      {...props}
-    >
+export const Card = React.forwardRef<HTMLDivElement, CardProps>(
+  (
+    {
+      children,
+      title,
+      subtitle,
+      action,
+      hasUnsavedChanges = false,
+      className = '',
+      style = {},
+      ...props
+    },
+    ref
+  ) => {
+    return (
+      <div
+        ref={ref}
+        className={`glass-card ${className}`}
+        style={{
+          padding: '1.5rem',
+          border: '1px solid var(--border-color)',
+          borderLeft: hasUnsavedChanges ? '6px solid var(--accent-color)' : '1px solid var(--border-color)',
+          borderRadius: 'var(--radius-lg)',
+          backgroundColor: 'var(--bg-card)',
+          boxShadow: hasUnsavedChanges ? '0 4px 14px rgba(3, 114, 51, 0.15)' : 'var(--shadow-sm)',
+          transition: 'all 0.25s ease',
+          ...style,
+        }}
+        {...props}
+      >
       {(title || subtitle || action || hasUnsavedChanges) && (
         <div
           style={{
@@ -79,4 +84,6 @@ export const Card: React.FC<CardProps> = ({
       {children}
     </div>
   );
-};
+});
+
+Card.displayName = 'Card';
