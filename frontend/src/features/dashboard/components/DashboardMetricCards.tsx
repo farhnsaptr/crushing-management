@@ -55,7 +55,7 @@ export const DashboardMetricCards: React.FC<DashboardMetricCardsProps> = ({ summ
         valueColor={scrapKg > 0 ? '#ef4444' : '#10b981'}
       />
       <MetricCard
-        label="Input :"
+        label="Input (Output + Gap):"
         badge="Reuse NG + Runner"
         badgeColor="#10b981"
         value={fmt(inputKg)}

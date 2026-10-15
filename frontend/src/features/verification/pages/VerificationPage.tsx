@@ -2,11 +2,17 @@ import React from 'react';
 import { VerificationFormCard } from '../components/VerificationFormCard';
 import { useVerification } from '../hooks/useVerification';
 import { Toast } from '../../../components/common/Toast';
-import { CheckSquare } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../../context/AuthContext';
+import { Button } from '../../../components/common/Button';
+import { CheckSquare, Scale } from 'lucide-react';
 
 import { useIsNarrow } from '../../../hooks';
 
 export const VerificationPage: React.FC = () => {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const isAdminOrSuper = user?.role === 'super-admin' || user?.role === 'admin';
   const [containerRef, isNarrow] = useIsNarrow<HTMLDivElement>(768);
   const {
     date,
@@ -68,6 +74,20 @@ export const VerificationPage: React.FC = () => {
             </p>
           </div>
         </div>
+
+        {/* Action Button: Evaluasi Akurasi (Khusus Admin & Super-Admin) */}
+        {isAdminOrSuper && (
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={() => navigate('/verification/accuracy-evaluation')}
+            leftIcon={<Scale size={16} />}
+            style={{ fontWeight: 800 }}
+          >
+            Evaluasi Akurasi
+          </Button>
+        )}
       </div>
 
       {/* Toast Notification */}

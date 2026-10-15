@@ -13,9 +13,12 @@ Modul ini digunakan oleh Operator Crushing untuk memvalidasi hasil akhir penggil
 4. Operator menekan **"Validasi Pekerjaan Shift Ini"** untuk menyimpan data ke database. Jika output aktual lebih banyak dari input sistem (karena sisa gilingan sebelumnya/faktor timbangan), sistem tetap mengizinkan penyimpanan tanpa memblokir pekerjaan operator.
 
 ## Struktur Modul
-- `pages/VerificationPage.tsx` — Halaman utama validasi input & output shift.
-- `components/VerificationFormCard.tsx` — Komponen formulir blind verification dengan input langsung Kg per material.
+- `pages/VerificationPage.tsx` — Halaman utama validasi input & output shift (Blind Mode untuk operator).
+- `pages/AccuracyEvaluationPage.tsx` — Halaman evaluasi akurasi untuk level admin ke atas (`admin`, `super-admin`), menampilkan tabel komparasi input sistem vs output verifikasi operator.
+- `components/VerificationFormCard.tsx` — Komponen formulir blind verification dengan input langsung Kg per material (responsif desktop table & mobile cards).
 - `components/VerificationModal.tsx` — Modal verifikasi popup untuk akses cepat dari dashboard/menu.
 - `hooks/useVerification.ts` — Hook untuk state management tanggal/shift, form input Kg, dan integrasi API.
-- `services/verification.service.ts` — Service API client ke `/api/verification`.
+- `hooks/useAccuracyEvaluation.ts` — Hook untuk evaluasi akurasi perbandingan berat sistem vs verifikasi operator.
+- `services/verification.service.ts` — Service API client ke `/api/verifications`.
 - `types/verification.types.ts` — Definisi interface TypeScript.
+

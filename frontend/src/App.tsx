@@ -28,6 +28,7 @@ import { GlobalLogsPage } from './features/global-logs/pages/GlobalLogsPage';
 import { SiteConfigPage } from './features/site-config/pages/SiteConfigPage';
 import { SystemSignatureView } from './features/system/pages/SystemSignatureView';
 import { VerificationPage } from './features/verification/pages/VerificationPage';
+import { AccuracyEvaluationPage } from './features/verification/pages/AccuracyEvaluationPage';
 import { AnalyticsPage } from './features/analytics/pages/AnalyticsPage';
 
 export const App: React.FC = () => {
@@ -78,6 +79,7 @@ export const App: React.FC = () => {
                 <Route path="/admin/materials" element={<MaterialsPage />} />
                 <Route path="/admin/mixed-materials" element={<MixedMaterialsPage />} />
                 <Route path="/admin/master-parts" element={<MasterPartsPage />} />
+                <Route path="/verification/accuracy-evaluation" element={<AccuracyEvaluationPage />} />
               </Route>
             </Route>
 
