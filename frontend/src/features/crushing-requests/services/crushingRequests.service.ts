@@ -5,6 +5,8 @@ import type {
   ApproveCrushingRequestPayload,
   CrushingRequestListResponse,
   CreateRequestItemPayload,
+  SenderEvaluationResponse,
+  SenderEvaluationFilters,
 } from '../types/crushingRequests.types';
 
 export interface RequestDraftData {
@@ -30,12 +32,22 @@ export class CrushingRequestsService {
     endDate?: string;
     department_id?: string;
     factory_id?: string;
+    sender_id?: string;
+    shift?: string;
     search?: string;
     page?: number;
     limit?: number;
   }): Promise<CrushingRequestListResponse> {
     const response = await apiClient.get<{ success: boolean; data: CrushingRequestListResponse }>(
       '/api/crushing-requests',
+      { params }
+    );
+    return response.data.data;
+  }
+
+  static async getEvaluation(params?: SenderEvaluationFilters): Promise<SenderEvaluationResponse> {
+    const response = await apiClient.get<{ success: boolean; data: SenderEvaluationResponse }>(
+      '/api/crushing-requests/evaluation',
       { params }
     );
     return response.data.data;

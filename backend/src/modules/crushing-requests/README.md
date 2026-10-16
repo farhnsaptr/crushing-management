@@ -23,7 +23,8 @@ Modul ini mengelola siklus pengajuan pengiriman part NG dan runner NG dari depar
 
 ## Endpoint
 - `POST /api/crushing-requests` — Membuat/mengajukan pengiriman NG resmi (`is_submitted = TRUE`)
-- `GET /api/crushing-requests` — Mengambil daftar pengiriman yang telah di-submit (`is_submitted = TRUE`)
+- `GET /api/crushing-requests` — Mengambil daftar pengiriman yang telah di-submit (`is_submitted = TRUE`, mendukung filter `sender_id` & `shift`)
+- `GET /api/crushing-requests/evaluation` — Mengambil evaluasi pengirim yang belum/sudah mengirimkan permintaan pada hari/shift tertentu (`operator`, `admin`, `super-admin`)
 - `GET /api/crushing-requests/:id` — Mengambil detail pengiriman beserta rincian item asli dan terverifikasi
 - `DELETE /api/crushing-requests/:id` — Membatalkan pengiriman pending (Undo pengirim)
 - `PATCH /api/crushing-requests/:id/approve` — Menyetujui & memvalidasi pengiriman dengan penyesuaian fisik (`operator`, `admin`, `super-admin`)

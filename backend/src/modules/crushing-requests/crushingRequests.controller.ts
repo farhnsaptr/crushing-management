@@ -41,7 +41,7 @@ export class CrushingRequestsController {
         return;
       }
 
-      const { status, startDate, endDate, department_id, factory_id, search, page, limit } = req.query;
+      const { status, startDate, endDate, department_id, factory_id, sender_id, shift, search, page, limit } = req.query;
 
       const result = await CrushingRequestsService.listRequests(req.user, {
         status: status as any,
@@ -49,6 +49,8 @@ export class CrushingRequestsController {
         endDate: endDate ? String(endDate) : undefined,
         department_id: department_id ? String(department_id) : undefined,
         factory_id: factory_id ? String(factory_id) : undefined,
+        sender_id: sender_id ? String(sender_id) : undefined,
+        shift: shift ? String(shift) : undefined,
         search: search ? String(search) : undefined,
         page: page ? Number(page) : 1,
         limit: limit ? Number(limit) : 20,
@@ -57,6 +59,29 @@ export class CrushingRequestsController {
       sendSuccess(res, result, 'Daftar tiket request berhasil diambil');
     } catch (error: any) {
       sendError(res, error.message || 'Gagal mengambil daftar tiket request', 500);
+    }
+  }
+
+  static async getEvaluation(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      if (!req.user) {
+        sendError(res, 'Unauthorized', 401);
+        return;
+      }
+
+      const { date, shift, department_id, factory_id, search } = req.query;
+
+      const result = await CrushingRequestsService.getEvaluation({
+        date: date ? String(date) : undefined,
+        shift: shift ? String(shift) : undefined,
+        department_id: department_id ? String(department_id) : undefined,
+        factory_id: factory_id ? String(factory_id) : undefined,
+        search: search ? String(search) : undefined,
+      });
+
+      sendSuccess(res, result, 'Data evaluasi pengirim berhasil diambil');
+    } catch (error: any) {
+      sendError(res, error.message || 'Gagal mengambil data evaluasi pengirim', 500);
     }
   }
 

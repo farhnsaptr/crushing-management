@@ -47,7 +47,7 @@ export const NAVIGATION_ITEMS: NavigationItem[] = [
   },
   {
     id: 'request-approval',
-    title: 'Verifikasi Permintaan',
+    title: 'Verifikasi Permintaan Input',
     path: '/approval-requests',
     icon: ClipboardCheck,
     roles: ['super-admin', 'admin', 'operator'],
@@ -71,7 +71,7 @@ export const NAVIGATION_ITEMS: NavigationItem[] = [
   },
   {
     id: 'verification',
-    title: 'Verifikasi Input',
+    title: 'Verifikasi Output',
     path: '/verification',
     icon: CheckSquare,
     roles: ['super-admin', 'admin', 'operator'],

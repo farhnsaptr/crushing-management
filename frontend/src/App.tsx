@@ -14,6 +14,7 @@ import { LoginPage } from './features/auth/pages/LoginPage';
 import { DashboardPage } from './features/dashboard/pages/DashboardPage';
 import { SenderRequestsPage } from './features/crushing-requests/pages/SenderRequestsPage';
 import { RequestApprovalPage } from './features/crushing-requests/pages/RequestApprovalPage';
+import { RequestEvaluationPage } from './features/crushing-requests/pages/RequestEvaluationPage';
 import { NgInputPage } from './features/ng-input/pages/NgInputPage';
 import { PartRunnerNgPage } from './features/part-runner-ng/pages/PartRunnerNgPage';
 import { DepartmentsPage } from './features/departments/pages/DepartmentsPage';
@@ -27,6 +28,7 @@ import { GlobalLogsPage } from './features/global-logs/pages/GlobalLogsPage';
 import { SiteConfigPage } from './features/site-config/pages/SiteConfigPage';
 import { SystemSignatureView } from './features/system/pages/SystemSignatureView';
 import { VerificationPage } from './features/verification/pages/VerificationPage';
+import { AccuracyEvaluationPage } from './features/verification/pages/AccuracyEvaluationPage';
 import { AnalyticsPage } from './features/analytics/pages/AnalyticsPage';
 
 export const App: React.FC = () => {
@@ -61,6 +63,7 @@ export const App: React.FC = () => {
             <Route element={<ProtectedRoute allowedRoles={['super-admin', 'admin', 'operator']} />}>
               <Route element={<MainLayout />}>
                 <Route path="/approval-requests" element={<RequestApprovalPage />} />
+                <Route path="/approval-requests/evaluation" element={<RequestEvaluationPage />} />
                 <Route path="/ng-input" element={<NgInputPage />} />
                 <Route path="/part-runner-ng" element={<PartRunnerNgPage />} />
                 <Route path="/verification" element={<VerificationPage />} />
@@ -76,6 +79,7 @@ export const App: React.FC = () => {
                 <Route path="/admin/materials" element={<MaterialsPage />} />
                 <Route path="/admin/mixed-materials" element={<MixedMaterialsPage />} />
                 <Route path="/admin/master-parts" element={<MasterPartsPage />} />
+                <Route path="/verification/accuracy-evaluation" element={<AccuracyEvaluationPage />} />
               </Route>
             </Route>
 

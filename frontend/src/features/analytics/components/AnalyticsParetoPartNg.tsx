@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Card } from '../../../components/common/Card';
 import { Badge } from '../../../components/common/Badge';
-import { AlertCircle, TrendingUp } from 'lucide-react';
+import { AlertCircle, TrendingUp, MoveHorizontal } from 'lucide-react';
+import { useIsNarrow } from '../../../hooks';
 import type { ParetoPartsNgResponse } from '../types/analytics.types';
 
 interface AnalyticsParetoPartNgProps {
@@ -15,6 +16,7 @@ export const AnalyticsParetoPartNg: React.FC<AnalyticsParetoPartNgProps> = ({
   year,
   isLoading,
 }) => {
+  const [containerRef, isNarrow] = useIsNarrow<HTMLDivElement>(768);
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
 
   const items = data?.items || [];
@@ -23,33 +25,33 @@ export const AnalyticsParetoPartNg: React.FC<AnalyticsParetoPartNgProps> = ({
   const maxWeight = Math.max(...topItems.map((i) => i.total_ng_kg), 5);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+    <div ref={containerRef} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       {/* Overview & Pareto Chart Card */}
-      <Card style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', backgroundColor: '#ffffff', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
+      <Card style={{ padding: isNarrow ? '1rem' : '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', backgroundColor: '#ffffff', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
+        <div style={{ display: 'flex', alignItems: isNarrow ? 'flex-start' : 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <AlertCircle size={20} color="#dc2626" />
-              <h2 style={{ fontSize: '1.15rem', fontWeight: 900, color: '#0f172a', margin: 0 }}>
-                Analisis Pareto Part NG Terbanyak (Tahun {year})
+              <h2 style={{ fontSize: isNarrow ? '1rem' : '1.15rem', fontWeight: 900, color: '#0f172a', margin: 0 }}>
+                Analisis Pareto Part NG Terbanyak ({year})
               </h2>
             </div>
-            <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '0.2rem 0 0 0' }}>
-              Identifikasi part dengan akumulasi NG terbesar (Prinsip Pareto 80/20) untuk prioritas penanganan kualitas & pemulihan resin.
+            <p style={{ fontSize: '0.78rem', color: '#64748b', margin: '0.2rem 0 0 0' }}>
+              Part dengan akumulasi NG terbesar (Pareto 80/20) untuk prioritas penanganan kualitas & resin.
             </p>
           </div>
 
           {/* Metric Summary Pill */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-            <div style={{ padding: '0.45rem 0.85rem', borderRadius: '10px', backgroundColor: 'rgba(220, 38, 38, 0.08)', border: '1px solid rgba(220, 38, 38, 0.2)' }}>
-              <span style={{ fontSize: '0.75rem', color: '#dc2626', fontWeight: 700 }}>Total Berat NG: </span>
-              <strong style={{ fontSize: '0.9rem', color: '#dc2626', fontWeight: 900 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <div style={{ padding: '0.4rem 0.75rem', borderRadius: '10px', backgroundColor: 'rgba(220, 38, 38, 0.08)', border: '1px solid rgba(220, 38, 38, 0.2)' }}>
+              <span style={{ fontSize: '0.725rem', color: '#dc2626', fontWeight: 700 }}>Total Berat NG: </span>
+              <strong style={{ fontSize: '0.85rem', color: '#dc2626', fontWeight: 900 }}>
                 {data?.grand_total_kg?.toFixed(2) || 0} kg
               </strong>
             </div>
-            <div style={{ padding: '0.45rem 0.85rem', borderRadius: '10px', backgroundColor: '#f1f5f9', border: '1px solid #cbd5e1' }}>
-              <span style={{ fontSize: '0.75rem', color: '#475569', fontWeight: 700 }}>Total Pcs NG: </span>
-              <strong style={{ fontSize: '0.9rem', color: '#1e293b', fontWeight: 900 }}>
+            <div style={{ padding: '0.4rem 0.75rem', borderRadius: '10px', backgroundColor: '#f1f5f9', border: '1px solid #cbd5e1' }}>
+              <span style={{ fontSize: '0.725rem', color: '#475569', fontWeight: 700 }}>Total Pcs NG: </span>
+              <strong style={{ fontSize: '0.85rem', color: '#1e293b', fontWeight: 900 }}>
                 {data?.grand_total_pcs?.toLocaleString() || 0} pcs
               </strong>
             </div>
@@ -57,20 +59,28 @@ export const AnalyticsParetoPartNg: React.FC<AnalyticsParetoPartNgProps> = ({
         </div>
 
         {/* Legend */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', flexWrap: 'wrap', borderTop: '1px solid #f1f5f9', paddingTop: '0.75rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontSize: '0.8rem', fontWeight: 700, color: '#475569' }}>
-            <div style={{ width: '14px', height: '14px', borderRadius: '4px', backgroundColor: '#dc2626' }} />
-            <span>Total Berat Part NG (kg) [Sumbu Kiri]</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: isNarrow ? '0.75rem' : '1.5rem', flexWrap: 'wrap', borderTop: '1px solid #f1f5f9', paddingTop: '0.75rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: isNarrow ? '0.75rem' : '0.8rem', fontWeight: 700, color: '#475569' }}>
+            <div style={{ width: '12px', height: '12px', borderRadius: '3px', backgroundColor: '#dc2626', flexShrink: 0 }} />
+            <span>Total Berat (kg)</span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontSize: '0.8rem', fontWeight: 700, color: '#475569' }}>
-            <div style={{ width: '18px', height: '3px', backgroundColor: '#e76114', borderRadius: '2px' }} />
-            <span>Persentase Kumulatif (%) [Sumbu Kanan]</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: isNarrow ? '0.75rem' : '0.8rem', fontWeight: 700, color: '#475569' }}>
+            <div style={{ width: '14px', height: '3px', backgroundColor: '#e76114', borderRadius: '2px', flexShrink: 0 }} />
+            <span>Kumulatif (%)</span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontSize: '0.8rem', fontWeight: 700, color: '#2563eb' }}>
-            <div style={{ width: '18px', height: '2px', borderTop: '2px dashed #2563eb' }} />
-            <span>Garis Batas 80% (Pareto Cut-off)</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: isNarrow ? '0.75rem' : '0.8rem', fontWeight: 700, color: '#2563eb' }}>
+            <div style={{ width: '14px', height: '2px', borderTop: '2px dashed #2563eb', flexShrink: 0 }} />
+            <span>Batas 80% (Pareto)</span>
           </div>
         </div>
+
+        {/* Mobile Swipe Hint */}
+        {isNarrow && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.75rem', color: '#008d51', fontWeight: 700, backgroundColor: 'rgba(0, 141, 81, 0.06)', padding: '0.35rem 0.65rem', borderRadius: '6px' }}>
+            <MoveHorizontal size={14} />
+            <span>Geser horizontal untuk melihat grafik Pareto 15 part NG</span>
+          </div>
+        )}
 
         {/* Pareto Chart Visual */}
         {isLoading ? (
@@ -82,7 +92,15 @@ export const AnalyticsParetoPartNg: React.FC<AnalyticsParetoPartNgProps> = ({
             Belum ada data transaksi part NG pada tahun {year}.
           </div>
         ) : (
-          <div style={{ position: 'relative', height: '320px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', paddingTop: '1.5rem' }}>
+          <div
+            className="no-scrollbar"
+            style={{
+              overflowX: 'auto',
+              WebkitOverflowScrolling: 'touch',
+              paddingBottom: '0.5rem',
+            }}
+          >
+            <div style={{ position: 'relative', height: '320px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', paddingTop: '1.5rem', minWidth: isNarrow ? '700px' : '100%' }}>
             {/* 80% Dashed Reference Line */}
             <div
               style={{
@@ -246,11 +264,12 @@ export const AnalyticsParetoPartNg: React.FC<AnalyticsParetoPartNgProps> = ({
               ))}
             </div>
           </div>
+        </div>
         )}
       </Card>
 
       {/* Pareto Part NG Ranking Table */}
-      <Card style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', backgroundColor: '#ffffff', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
+      <Card style={{ padding: isNarrow ? '1rem' : '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', backgroundColor: '#ffffff', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
           <div>
             <h3 style={{ fontSize: '1.05rem', fontWeight: 900, color: '#0f172a', margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>

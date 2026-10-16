@@ -414,6 +414,8 @@ export class CrushingRequestsService {
       endDate?: string;
       department_id?: string;
       factory_id?: string;
+      sender_id?: string;
+      shift?: string;
       search?: string;
       page?: number;
       limit?: number;
@@ -431,6 +433,14 @@ export class CrushingRequestsService {
     if (user.role === 'pengirim') {
       whereClause += ' AND r.sender_id = ?';
       queryParams.push(user.id);
+    } else if (params.sender_id) {
+      whereClause += ' AND r.sender_id = ?';
+      queryParams.push(params.sender_id);
+    }
+
+    if (params.shift && params.shift !== 'all') {
+      whereClause += ' AND r.shift = ?';
+      queryParams.push(params.shift);
     }
 
     if (params.status && params.status !== 'all') {
@@ -499,6 +509,116 @@ export class CrushingRequestsService {
         total,
         totalPages: Math.ceil(total / limit),
       },
+    };
+  }
+
+  /**
+   * Get evaluation of pengirim users for a specific date and shift.
+   * Summarizes which senders have or have not submitted crushing requests.
+   */
+  static async getEvaluation(params: {
+    date?: string;
+    shift?: string;
+    department_id?: string;
+    factory_id?: string;
+    search?: string;
+  }) {
+    const auto = getBackendAutoShiftAndDate();
+    const date = params.date && params.date.trim() ? params.date.trim() : auto.date;
+    const shift = params.shift && params.shift.trim() ? params.shift.trim() : auto.shift;
+
+    let userWhere = `WHERE u.role = 'pengirim' AND u.is_active = TRUE`;
+    const userParams: any[] = [];
+
+    if (params.department_id && params.department_id !== 'all') {
+      userWhere += ` AND u.department_id = ?`;
+      userParams.push(params.department_id);
+    }
+
+    if (params.factory_id && params.factory_id !== 'all') {
+      userWhere += ` AND (u.factory_id = ? OR u.factory_id IS NULL)`;
+      userParams.push(params.factory_id);
+    }
+
+    if (params.search && params.search.trim()) {
+      userWhere += ` AND (u.username LIKE ? OR u.full_name LIKE ?)`;
+      const s = `%${params.search.trim()}%`;
+      userParams.push(s, s);
+    }
+
+    // Join condition for requests on that date and shift
+    let requestJoinCond = `r.sender_id = u.id AND r.is_submitted = TRUE AND r.request_date = ?`;
+    const joinParams: any[] = [date];
+
+    if (shift !== 'all') {
+      requestJoinCond += ` AND r.shift = ?`;
+      joinParams.push(shift);
+    }
+
+    if (params.factory_id && params.factory_id !== 'all') {
+      requestJoinCond += ` AND (r.factory_id = ? OR r.factory_id IS NULL)`;
+      joinParams.push(params.factory_id);
+    }
+
+    const query = `
+      SELECT 
+        u.id AS user_id,
+        u.username,
+        u.full_name,
+        u.department_id,
+        COALESCE(d.name, '-') AS department_name,
+        d.code AS department_code,
+        u.factory_id,
+        COALESCE(f.name, 'Semua Factory (ALL)') AS factory_name,
+        f.code AS factory_code,
+        COUNT(r.id) AS request_count,
+        COUNT(CASE WHEN r.status = 'pending' THEN 1 END) AS pending_count,
+        COUNT(CASE WHEN r.status = 'approved' THEN 1 END) AS approved_count,
+        COALESCE(SUM(r.total_weight_kg), 0) AS total_weight_kg,
+        COALESCE(SUM(r.total_pcs), 0) AS total_pcs,
+        (COUNT(r.id) > 0) AS has_submitted
+      FROM users u
+      LEFT JOIN departments d ON u.department_id = d.id
+      LEFT JOIN factories f ON u.factory_id = f.id
+      LEFT JOIN crushing_requests r ON ${requestJoinCond}
+      ${userWhere}
+      GROUP BY u.id, u.username, u.full_name, u.department_id, d.name, d.code, u.factory_id, f.name, f.code
+      ORDER BY has_submitted ASC, d.name ASC, u.full_name ASC
+    `;
+
+    const [rows] = await pool.query<RowDataPacket[]>(query, [...joinParams, ...userParams]);
+
+    const senders = rows.map((r) => ({
+      user_id: r.user_id,
+      username: r.username,
+      full_name: r.full_name,
+      department_id: r.department_id,
+      department_name: r.department_name,
+      department_code: r.department_code,
+      factory_id: r.factory_id,
+      factory_name: r.factory_name,
+      factory_code: r.factory_code,
+      request_count: Number(r.request_count) || 0,
+      pending_count: Number(r.pending_count) || 0,
+      approved_count: Number(r.approved_count) || 0,
+      total_weight_kg: Number(Number(r.total_weight_kg).toFixed(2)) || 0,
+      total_pcs: Number(r.total_pcs) || 0,
+      has_submitted: Boolean(Number(r.request_count) > 0),
+    }));
+
+    const total_pengirim = senders.length;
+    const sudah_kirim_count = senders.filter((s) => s.has_submitted).length;
+    const belum_kirim_count = total_pengirim - sudah_kirim_count;
+
+    return {
+      date,
+      shift,
+      summary: {
+        total_pengirim,
+        sudah_kirim_count,
+        belum_kirim_count,
+      },
+      senders,
     };
   }
 

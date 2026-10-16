@@ -5,6 +5,7 @@ import { Sun, Moon, LogOut, User } from 'lucide-react';
 
 interface HeaderProps {
   title?: string;
+  onToggleSidebar?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({ title }) => {
@@ -15,13 +16,13 @@ export const Header: React.FC<HeaderProps> = ({ title }) => {
     <header className="app-header">
       {/* Page Title & Subtitle */}
       <div className="header-title-container">
-        <h1 className="header-title" title={title || 'Material Management'}>
-          {title || 'Material Management'}
-        </h1>
-        <p className="header-subtitle" title="PT SUGITY CREATIVES - Material Management System">
-          PT SUGITY CREATIVES - Material Management System
-        </p>
-      </div>
+          <h1 className="header-title" title={title || 'Material Management'}>
+            {title || 'Material Management'}
+          </h1>
+          <p className="header-subtitle" title="PT SUGITY CREATIVES - Material Management System">
+            PT SUGITY CREATIVES - Material Management System
+          </p>
+        </div>
 
       {/* Header Actions */}
       <div className="header-actions">
