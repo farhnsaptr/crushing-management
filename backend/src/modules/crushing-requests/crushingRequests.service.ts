@@ -610,6 +610,58 @@ export class CrushingRequestsService {
     const sudah_kirim_count = senders.filter((s) => s.has_submitted).length;
     const belum_kirim_count = total_pengirim - sudah_kirim_count;
 
+    // 1. Agregasi Statistik Per Departemen (untuk grafik evaluasi)
+    const deptMap = new Map<string, { id: string; name: string; code: string; total_pengirim: number; sudah_kirim: number; belum_kirim: number }>();
+    senders.forEach((s) => {
+      const deptId = s.department_id || 'no_dept';
+      const deptName = s.department_name || 'Tanpa Departemen';
+      const deptCode = s.department_code || '';
+      if (!deptMap.has(deptId)) {
+        deptMap.set(deptId, { id: deptId, name: deptName, code: deptCode, total_pengirim: 0, sudah_kirim: 0, belum_kirim: 0 });
+      }
+      const d = deptMap.get(deptId)!;
+      d.total_pengirim += 1;
+      if (s.has_submitted) {
+        d.sudah_kirim += 1;
+      } else {
+        d.belum_kirim += 1;
+      }
+    });
+
+    const department_stats = Array.from(deptMap.values())
+      .map((d) => ({
+        ...d,
+        submission_rate: d.total_pengirim > 0 ? Number(((d.sudah_kirim / d.total_pengirim) * 100).toFixed(1)) : 0,
+      }))
+      .sort((a, b) => b.total_pengirim - a.total_pengirim);
+
+    // 2. Agregasi Statistik Per Factory (untuk grafik evaluasi)
+    // Exclude 'Semua Factory' (user tanpa factory_id spesifik) agar grafik hanya menampilkan pabrik fisik aktual
+    const factMap = new Map<string, { id: string; name: string; code: string; total_pengirim: number; sudah_kirim: number; belum_kirim: number }>();
+    senders.forEach((s) => {
+      if (!s.factory_id) return; // Exclude 'Semua Factory'
+      const factId = s.factory_id;
+      const factName = s.factory_name;
+      const factCode = s.factory_code || '';
+      if (!factMap.has(factId)) {
+        factMap.set(factId, { id: factId, name: factName, code: factCode, total_pengirim: 0, sudah_kirim: 0, belum_kirim: 0 });
+      }
+      const f = factMap.get(factId)!;
+      f.total_pengirim += 1;
+      if (s.has_submitted) {
+        f.sudah_kirim += 1;
+      } else {
+        f.belum_kirim += 1;
+      }
+    });
+
+    const factory_stats = Array.from(factMap.values())
+      .map((f) => ({
+        ...f,
+        submission_rate: f.total_pengirim > 0 ? Number(((f.sudah_kirim / f.total_pengirim) * 100).toFixed(1)) : 0,
+      }))
+      .sort((a, b) => b.total_pengirim - a.total_pengirim);
+
     return {
       date,
       shift,
@@ -618,7 +670,58 @@ export class CrushingRequestsService {
         sudah_kirim_count,
         belum_kirim_count,
       },
+      department_stats,
+      factory_stats,
       senders,
+    };
+  }
+
+  /**
+   * Mengambil data aktivitas pengiriman harian per user untuk GitHub-style Activity Heatmap
+   */
+  static async getSenderActivityHeatmap(senderId: string, months: number = 6) {
+    const validMonths = Math.min(Math.max(Number(months) || 6, 1), 12);
+
+    const query = `
+      SELECT 
+        DATE_FORMAT(r.request_date, '%Y-%m-%d') AS date,
+        COUNT(r.id) AS count,
+        COALESCE(SUM(r.total_weight_kg), 0) AS total_weight_kg,
+        COALESCE(SUM(r.total_pcs), 0) AS total_pcs,
+        COUNT(CASE WHEN r.status = 'approved' THEN 1 END) AS approved_count,
+        COUNT(CASE WHEN r.status = 'pending' THEN 1 END) AS pending_count
+      FROM crushing_requests r
+      WHERE r.sender_id = ?
+        AND r.is_submitted = TRUE
+        AND r.request_date >= DATE_SUB(CURDATE(), INTERVAL ? MONTH)
+      GROUP BY r.request_date
+      ORDER BY r.request_date ASC
+    `;
+
+    const [rows] = await pool.query<RowDataPacket[]>(query, [senderId, validMonths]);
+
+    const activities = rows.map((r) => ({
+      date: String(r.date),
+      count: Number(r.count) || 0,
+      total_weight_kg: Number(Number(r.total_weight_kg).toFixed(2)) || 0,
+      total_pcs: Number(r.total_pcs) || 0,
+      approved_count: Number(r.approved_count) || 0,
+      pending_count: Number(r.pending_count) || 0,
+    }));
+
+    const total_submissions = activities.reduce((sum, d) => sum + d.count, 0);
+    const total_weight_kg = Number(activities.reduce((sum, d) => sum + d.total_weight_kg, 0).toFixed(2));
+    const active_days = activities.length;
+
+    return {
+      sender_id: senderId,
+      months: validMonths,
+      summary: {
+        total_submissions,
+        total_weight_kg,
+        active_days,
+      },
+      activities,
     };
   }
 

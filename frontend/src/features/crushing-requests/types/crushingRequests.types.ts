@@ -124,10 +124,42 @@ export interface SenderEvaluationSummary {
   belum_kirim_count: number;
 }
 
+export interface EvaluationGroupStat {
+  id: string;
+  name: string;
+  code?: string;
+  total_pengirim: number;
+  sudah_kirim: number;
+  belum_kirim: number;
+  submission_rate: number;
+}
+
+export interface SenderDailyActivity {
+  date: string;
+  count: number;
+  total_weight_kg: number;
+  total_pcs: number;
+  approved_count: number;
+  pending_count: number;
+}
+
+export interface SenderActivityHeatmapResponse {
+  sender_id: string;
+  months: number;
+  summary: {
+    total_submissions: number;
+    total_weight_kg: number;
+    active_days: number;
+  };
+  activities: SenderDailyActivity[];
+}
+
 export interface SenderEvaluationResponse {
   date: string;
   shift: string;
   summary: SenderEvaluationSummary;
+  department_stats?: EvaluationGroupStat[];
+  factory_stats?: EvaluationGroupStat[];
   senders: SenderEvaluationItem[];
 }
 
@@ -138,4 +170,5 @@ export interface SenderEvaluationFilters {
   factory_id?: string;
   search?: string;
 }
+
 

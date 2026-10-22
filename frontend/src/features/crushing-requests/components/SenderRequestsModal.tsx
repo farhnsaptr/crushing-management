@@ -5,7 +5,12 @@ import { Badge } from '../../../components/common/Badge';
 import { Spinner } from '../../../components/common/Spinner';
 import { formatIndonesianDate } from '../../../config/shift.config';
 import { useIsNarrow } from '../../../hooks';
-import type { SenderEvaluationItem, CrushingRequest } from '../types/crushingRequests.types';
+import type {
+  SenderEvaluationItem,
+  CrushingRequest,
+  SenderActivityHeatmapResponse,
+} from '../types/crushingRequests.types';
+import { ActivityHeatmap } from './ActivityHeatmap';
 import {
   User,
   Building2,
@@ -25,6 +30,10 @@ interface SenderRequestsModalProps {
   requests: CrushingRequest[];
   isLoading: boolean;
   onViewRequestDetail: (req: CrushingRequest) => void;
+  heatmap?: SenderActivityHeatmapResponse | null;
+  isLoadingHeatmap?: boolean;
+  heatmapMonths?: number;
+  onMonthsChange?: (months: number) => void;
 }
 
 export const SenderRequestsModal: React.FC<SenderRequestsModalProps> = ({
@@ -36,6 +45,10 @@ export const SenderRequestsModal: React.FC<SenderRequestsModalProps> = ({
   requests,
   isLoading,
   onViewRequestDetail,
+  heatmap,
+  isLoadingHeatmap = false,
+  heatmapMonths = 6,
+  onMonthsChange,
 }) => {
   const [contentRef, isMobile] = useIsNarrow<HTMLDivElement>(620);
 
@@ -94,6 +107,37 @@ export const SenderRequestsModal: React.FC<SenderRequestsModalProps> = ({
                 {formatIndonesianDate(date)} ({shift === 'all' ? 'Semua Shift' : `Shift ${shift}`})
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* GitHub-Style Sender Activity Heatmap */}
+        <ActivityHeatmap
+          activities={heatmap?.activities || []}
+          totalSubmissions={heatmap?.summary?.total_submissions}
+          totalWeightKg={heatmap?.summary?.total_weight_kg}
+          activeDays={heatmap?.summary?.active_days}
+          isLoading={isLoadingHeatmap}
+          months={heatmapMonths}
+          onMonthsChange={onMonthsChange}
+          title={`Grafik Aktivitas Pengiriman — ${sender.full_name}`}
+        />
+
+        {/* Ticket Section Title */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            borderBottom: '1px solid var(--border-color, #e2e8f0)',
+            paddingBottom: '0.5rem',
+            marginTop: '0.25rem',
+          }}
+        >
+          <div style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--text-main, #0f172a)' }}>
+            Daftar Tiket Pengajuan Hari Ini
+          </div>
+          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted, #64748b)' }}>
+            {requests.length} tiket ditemukan
           </div>
         </div>
 

@@ -7,6 +7,7 @@ import type {
   CreateRequestItemPayload,
   SenderEvaluationResponse,
   SenderEvaluationFilters,
+  SenderActivityHeatmapResponse,
 } from '../types/crushingRequests.types';
 
 export interface RequestDraftData {
@@ -49,6 +50,14 @@ export class CrushingRequestsService {
     const response = await apiClient.get<{ success: boolean; data: SenderEvaluationResponse }>(
       '/api/crushing-requests/evaluation',
       { params }
+    );
+    return response.data.data;
+  }
+
+  static async getSenderActivityHeatmap(senderId: string, months: number = 6): Promise<SenderActivityHeatmapResponse> {
+    const response = await apiClient.get<{ success: boolean; data: SenderActivityHeatmapResponse }>(
+      `/api/crushing-requests/senders/${senderId}/activity-heatmap`,
+      { params: { months } }
     );
     return response.data.data;
   }

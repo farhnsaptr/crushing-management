@@ -85,6 +85,29 @@ export class CrushingRequestsController {
     }
   }
 
+  static async getSenderActivityHeatmap(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      if (!req.user) {
+        sendError(res, 'Unauthorized', 401);
+        return;
+      }
+
+      const senderId = String(req.params.id);
+      const months = req.query.months ? parseInt(String(req.query.months), 10) : 6;
+
+      // Senders can only view their own heatmap, operators/admins can view any
+      if (req.user.role === 'pengirim' && req.user.id !== senderId) {
+        sendError(res, 'Akses ditolak: Anda hanya dapat melihat heatmap aktivitas akun Anda sendiri', 403);
+        return;
+      }
+
+      const result = await CrushingRequestsService.getSenderActivityHeatmap(senderId, months);
+      sendSuccess(res, result, 'Data heatmap aktivitas pengirim berhasil diambil');
+    } catch (error: any) {
+      sendError(res, error.message || 'Gagal mengambil data heatmap aktivitas pengirim', 500);
+    }
+  }
+
   static async getRequestById(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
       if (!req.user) {

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useRequestEvaluation } from '../hooks/useRequestEvaluation';
 import { SenderRequestsModal } from '../components/SenderRequestsModal';
 import { RequestDetailModal } from '../components/RequestDetailModal';
+import { SubmissionStatusChart } from '../components/SubmissionStatusChart';
 import { Card } from '../../../components/common/Card';
 import { Button } from '../../../components/common/Button';
 import { Input } from '../../../components/common/Input';
@@ -16,9 +17,9 @@ import {
   CheckCircle2,
   AlertTriangle,
   Filter,
-  Eye,
   RefreshCw,
   Building2,
+  Activity,
 } from 'lucide-react';
 
 export const RequestEvaluationPage: React.FC = () => {
@@ -50,6 +51,11 @@ export const RequestEvaluationPage: React.FC = () => {
     isLoadingSenderRequests,
     handleOpenSenderModal,
     handleCloseSenderModal,
+    // Heatmap
+    senderHeatmap,
+    isLoadingSenderHeatmap,
+    heatmapMonths,
+    handleMonthsChange,
     // Level 3
     selectedRequest,
     isDetailModalOpen,
@@ -218,6 +224,13 @@ export const RequestEvaluationPage: React.FC = () => {
           </div>
         </Card>
       </div>
+
+      {/* Submission Status Chart (Per Departemen / Per Factory) */}
+      <SubmissionStatusChart
+        departmentStats={evaluationData?.department_stats || []}
+        factoryStats={evaluationData?.factory_stats || []}
+        isLoading={isLoading}
+      />
 
       {/* Filter Controls Card */}
       <Card>
@@ -520,8 +533,8 @@ export const RequestEvaluationPage: React.FC = () => {
                       style={{ width: '100%', justifyContent: 'center' }}
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                        <Eye size={14} />
-                        <span>Rincian Pengajuan</span>
+                        <Activity size={14} />
+                        <span>Rincian & Aktivitas</span>
                       </div>
                     </Button>
                   </div>
@@ -582,11 +595,11 @@ export const RequestEvaluationPage: React.FC = () => {
                             size="sm"
                             variant={isZero ? 'outline' : 'primary'}
                             onClick={() => handleOpenSenderModal(sender)}
-                            title="Lihat seluruh pengajuan pengirim ini"
+                            title="Lihat riwayat aktivitas & seluruh pengajuan pengirim ini"
                           >
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                              <Eye size={14} />
-                              <span>Rincian</span>
+                              <Activity size={14} />
+                              <span>Rincian & Aktivitas</span>
                             </div>
                           </Button>
                         </td>
@@ -610,6 +623,10 @@ export const RequestEvaluationPage: React.FC = () => {
         requests={senderRequests}
         isLoading={isLoadingSenderRequests}
         onViewRequestDetail={handleOpenDetailModal}
+        heatmap={senderHeatmap}
+        isLoadingHeatmap={isLoadingSenderHeatmap}
+        heatmapMonths={heatmapMonths}
+        onMonthsChange={handleMonthsChange}
       />
 
       {/* Level 3: Request Detail & Physical Verification Modal */}
