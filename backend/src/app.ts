@@ -28,6 +28,7 @@ import runnerMaterialRoutes from './modules/runner-material/runnerMaterial.route
 import verificationRoutes from './modules/verification/verification.routes';
 import analyticsRoutes from './modules/analytics/analytics.routes';
 import uploadsRoutes from './modules/uploads/uploads.routes';
+import databaseManagementRoutes from './modules/database-management/databaseManagement.routes';
 
 const app: Application = express();
 
@@ -103,6 +104,7 @@ app.use('/api/uploads', uploadsRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/site-config', siteConfigRoutes);
 app.use('/api/admin/logs', globalLogsRoutes);
+app.use('/api/admin/database', databaseManagementRoutes);
 
 // Error Handling Middleware
 app.use(errorHandler);

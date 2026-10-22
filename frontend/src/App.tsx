@@ -8,6 +8,7 @@ import { MainLayout } from './components/layout/MainLayout';
 // Shared Error Pages
 import { NotFoundPage } from './components/errors/NotFoundPage';
 import { ForbiddenPage } from './components/errors/ForbiddenPage';
+import { ErrorBoundary } from './components/common/ErrorBoundary';
 
 // Feature Pages
 import { LoginPage } from './features/auth/pages/LoginPage';
@@ -30,6 +31,7 @@ import { SystemSignatureView } from './features/system/pages/SystemSignatureView
 import { VerificationPage } from './features/verification/pages/VerificationPage';
 import { AccuracyEvaluationPage } from './features/verification/pages/AccuracyEvaluationPage';
 import { AnalyticsPage } from './features/analytics/pages/AnalyticsPage';
+import { DatabaseManagementPage } from './features/database-management/pages/DatabaseManagementPage';
 
 export const App: React.FC = () => {
   return (
@@ -89,6 +91,14 @@ export const App: React.FC = () => {
                 <Route path="/admin/users" element={<UsersPage />} />
                 <Route path="/admin/logs" element={<GlobalLogsPage />} />
                 <Route path="/admin/site-config" element={<SiteConfigPage />} />
+                <Route
+                  path="/admin/database"
+                  element={
+                    <ErrorBoundary>
+                      <DatabaseManagementPage />
+                    </ErrorBoundary>
+                  }
+                />
               </Route>
             </Route>
 

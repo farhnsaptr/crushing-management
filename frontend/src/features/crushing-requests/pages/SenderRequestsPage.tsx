@@ -76,7 +76,7 @@ export const SenderRequestsPage: React.FC = () => {
   } = useCrushingRequests();
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', height: '100%', minHeight: 0 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', height: '100%', minHeight: 0, width: '100%', overflowX: 'auto' }}>
       {/* Toast Notification */}
       {toast && <Toast toast={toast} onClose={() => setToast(null)} />}
 

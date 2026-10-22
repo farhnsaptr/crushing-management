@@ -12,6 +12,7 @@ import type { ToastState } from '../../../components/common/Toast';
 import { getAutoShiftAndDate } from '../../../config/shift.config';
 import { extractErrorMessage } from '../../../services/api.client';
 import { usePersistedState } from '../../../hooks/usePersistedState';
+import { useDebounce } from '../../../hooks/useDebounce';
 
 export function useCrushingRequests() {
   const { user } = useAuth();
@@ -44,6 +45,7 @@ export function useCrushingRequests() {
   const [selectedJenis, setSelectedJenis] = useState<string>('ALL');
   const [isLoadingParts, setIsLoadingParts] = useState<boolean>(false);
   const [partSearchQuery, setPartSearchQuery] = useState<string>('');
+  const debouncedPartSearch = useDebounce(partSearchQuery, 300);
   // Factory yang boleh dilihat user (backend sudah memfilter sesuai penugasan); '' = Semua Pabrik
   const [factoryOptions, setFactoryOptions] = useState<Factory[]>([]);
   // Pilihan factory terakhir disimpan per user di browser; dipakai hanya bila masih ada di daftar factory user
@@ -232,9 +234,9 @@ export function useCrushingRequests() {
       if (selectedJenis !== 'ALL' && p.jenis_part !== selectedJenis) {
         return false;
       }
-      // Filter by Search Query
-      if (partSearchQuery.trim() !== '') {
-        const q = partSearchQuery.toLowerCase().trim();
+      // Filter by Search Query (debounced)
+      if (debouncedPartSearch.trim() !== '') {
+        const q = debouncedPartSearch.toLowerCase().trim();
         const matchName = p.part_name?.toLowerCase().includes(q);
         const matchNum = p.part_number?.toLowerCase().includes(q);
         const matchModel = p.model_code?.toLowerCase().includes(q);
@@ -244,7 +246,7 @@ export function useCrushingRequests() {
       }
       return true;
     });
-  }, [availableParts, selectedJenis, partSearchQuery]);
+  }, [availableParts, selectedJenis, debouncedPartSearch]);
 
   const handleSelectPart = (part: MasterPart) => {
     setSelectedPart(part);
