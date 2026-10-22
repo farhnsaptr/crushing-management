@@ -30,6 +30,19 @@ export class DashboardController {
     }
   }
 
+  static async getBudomariChart(req: Request, res: Response): Promise<void> {
+    try {
+      const year = req.query.year ? parseInt(req.query.year as string, 10) : undefined;
+      const month = req.query.month ? parseInt(req.query.month as string, 10) : undefined;
+      const location = (req.query.location as string) === 'Karawang' ? 'Karawang' : 'Cibitung';
+
+      const chartData = await DashboardService.getBudomariDailyChart(year, month, location);
+      sendSuccess(res, chartData, 'Budomari daily chart data retrieved successfully');
+    } catch (error: any) {
+      sendError(res, error.message || 'Failed to get budomari chart data', 500);
+    }
+  }
+
   static async getParetoMaterial(req: Request, res: Response): Promise<void> {
     try {
       const year = req.query.year ? parseInt(req.query.year as string, 10) : undefined;

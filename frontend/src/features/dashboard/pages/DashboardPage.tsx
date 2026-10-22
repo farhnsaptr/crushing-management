@@ -3,6 +3,7 @@ import { useAuth } from '../../../context/AuthContext';
 import { useDashboard, MONTH_OPTIONS } from '../hooks/useDashboard';
 import { DashboardMetricCards } from '../components/DashboardMetricCards';
 import { DailyRecycleChart } from '../components/DailyRecycleChart';
+import { BudomariChart } from '../components/BudomariChart';
 import { ParetoMaterialTable } from '../components/ParetoMaterialTable';
 import { TopNgPartsTable } from '../components/TopNgPartsTable';
 import { DepartmentParetoTable } from '../components/DepartmentParetoTable';
@@ -24,6 +25,10 @@ export const DashboardPage: React.FC = () => {
     setSelectedLocation,
     summaryStats,
     dailyChart,
+    budomariChart,
+    monthlyAvgBudomari,
+    monthlyMinBudomari,
+    monthlyMaxBudomari,
     paretoMaterials,
     topParts,
     departmentPareto,
@@ -79,7 +84,18 @@ export const DashboardPage: React.FC = () => {
         {/* KPI: Scrap, Input, Output, Gap */}
         <DashboardMetricCards summary={summaryStats} isLoading={isLoading} />
 
-        {/* Grafik harian (mengisi sisa tinggi layar) */}
+        {/* Grafik KPI Budomari Material (%) — Efisiensi Harian */}
+        <BudomariChart
+          data={budomariChart}
+          monthlyAvg={monthlyAvgBudomari}
+          monthlyMin={monthlyMinBudomari}
+          monthlyMax={monthlyMaxBudomari}
+          isLoading={isLoading}
+          monthLabel={MONTH_OPTIONS.find((m) => m.value === selectedMonth)?.label || 'Bulan'}
+          year={selectedYear}
+        />
+
+        {/* Grafik harian: Total Part NG & Runner per Shift */}
         <DailyRecycleChart
           data={dailyChart}
           isLoading={isLoading}

@@ -52,6 +52,23 @@ export interface DailyRecycleChartResponse {
   daily_chart: DailyRecycleChartItem[];
 }
 
+export interface BudomariDailyItem {
+  day: string;
+  day_num: number;
+  avg_budomari_pct: number | null;
+  min_budomari_pct: number | null;
+  max_budomari_pct: number | null;
+  total_parts: number;
+}
+
+export interface BudomariChartResponse {
+  budomari_chart: BudomariDailyItem[];
+  monthly_avg_budomari_pct: number | null;
+  monthly_min_budomari_pct: number | null;
+  monthly_max_budomari_pct: number | null;
+  total_records: number;
+}
+
 export interface ParetoMaterialItem {
   no: number;
   material: string;

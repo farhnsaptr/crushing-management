@@ -14,6 +14,7 @@ export interface RawProductionRecord {
   act_total?: number | string;
   act_ok?: number | string;
   ng_total?: number | string;
+  budomari_pct?: number | null;
 }
 
 export interface ImportProductionReportPayload {
@@ -104,6 +105,14 @@ export class AnalyticsService {
     const actTotalKey = findKey(['ACTUAL TOTAL (PCS)', 'ACT TOTAL', 'ACTUAL TOTAL', 'ACT_TOTAL', 'TOTAL']);
     const actOkKey = findKey(['ACTUAL OK PART (PCS)', 'ACT OK', 'ACTUAL OK', 'ACT_OK', 'DIRECT OK (PCS)', 'DIRECT OK']);
     const ngTotalKey = findKey(['ACTUAL NG TOTAL (PCS)', 'NG TOTAL', 'NG_TOTAL', 'TOTAL NG']);
+    const budomariKey = findKey([
+      'KPI BUDOMARI MATERIAL (%)',
+      'BUDOMARI MATERIAL (%)',
+      'BUDOMARI (%)',
+      'BUDOMARI',
+      'BUDOMARI MATERIAL',
+      'BUDOMARI_PCT',
+    ]);
 
     if (!sebangoKey || (!actTotalKey && !actOkKey)) {
       throw new Error(
@@ -138,6 +147,19 @@ export class AnalyticsService {
         operatorVal = String(r[operatorKey]).trim();
       }
 
+      let budomariVal: number | null = null;
+      if (budomariKey && r[budomariKey] !== undefined && r[budomariKey] !== null && String(r[budomariKey]).trim() !== '') {
+        let num = typeof r[budomariKey] === 'number'
+          ? r[budomariKey]
+          : parseFloat(String(r[budomariKey]).replace(/%/g, '').replace(/,/g, '.').trim());
+        if (!isNaN(num)) {
+          if (num > 0 && num <= 1) {
+            num = num * 100;
+          }
+          budomariVal = Number(num.toFixed(1));
+        }
+      }
+
       result.push({
         date: stdDate,
         factory: factoryKey ? String(r[factoryKey] || '').trim() : undefined,
@@ -149,6 +171,7 @@ export class AnalyticsService {
         act_total: isNaN(rawActTotal) ? 0 : rawActTotal,
         act_ok: isNaN(rawActOk) ? 0 : rawActOk,
         ng_total: isNaN(rawNgTotal) ? 0 : rawNgTotal,
+        budomari_pct: budomariVal,
       });
     }
 
@@ -184,6 +207,7 @@ export class AnalyticsService {
           act_total: Math.max(0, parseInt(String(r.act_total || 0), 10) || 0),
           act_ok: Math.max(0, parseInt(String(r.act_ok || 0), 10) || 0),
           ng_total: Math.max(0, parseInt(String(r.ng_total || 0), 10) || 0),
+          budomari_pct: typeof r.budomari_pct === 'number' && !isNaN(r.budomari_pct) ? r.budomari_pct : null,
         };
       })
       .filter((r) => r.date && r.sebango);
@@ -268,6 +292,7 @@ export class AnalyticsService {
         act_total: r.act_total,
         act_ok: r.act_ok,
         ng_total: r.ng_total,
+        budomari_pct: r.budomari_pct ?? null,
         is_matched: isMatched,
         part_number: partNumber,
         part_name: partName,
@@ -334,6 +359,7 @@ export class AnalyticsService {
           act_total: Math.max(0, parseInt(String(r.act_total || 0), 10) || 0),
           act_ok: Math.max(0, parseInt(String(r.act_ok || 0), 10) || 0),
           ng_total: Math.max(0, parseInt(String(r.ng_total || 0), 10) || 0),
+          budomari_pct: typeof r.budomari_pct === 'number' && !isNaN(r.budomari_pct) ? r.budomari_pct : null,
         };
       })
       .filter((r) => r.date && r.sebango);
@@ -408,6 +434,7 @@ export class AnalyticsService {
           berat_part_gr_snapshot: beratPartGr,
           calculated_shikake: dynamicShikake,
           allowance_kg: allowanceKg,
+          budomari_pct: r.budomari_pct ?? null,
         });
       }
       // Unmatched rows are skipped automatically!
@@ -444,8 +471,8 @@ export class AnalyticsService {
     for (const item of processedItems) {
       await pool.query(
         `INSERT INTO production_analytics_items
-         (id, batch_id, production_date, shift, factory_raw, tonase_raw, sebango_code, mesin_raw, act_total_pcs, act_ok_pcs, ng_total_pcs, master_part_id, part_number_snapshot, part_name_snapshot, berat_part_gr_snapshot, calculated_shikake, allowance_kg)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         (id, batch_id, production_date, shift, factory_raw, tonase_raw, sebango_code, mesin_raw, act_total_pcs, act_ok_pcs, ng_total_pcs, master_part_id, part_number_snapshot, part_name_snapshot, berat_part_gr_snapshot, calculated_shikake, allowance_kg, budomari_pct)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           item.id,
           batchId,
@@ -464,6 +491,7 @@ export class AnalyticsService {
           item.berat_part_gr_snapshot,
           item.calculated_shikake,
           item.allowance_kg,
+          item.budomari_pct,
         ]
       );
     }

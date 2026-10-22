@@ -6,6 +6,7 @@ import { usePlantLocation } from '../../factories/hooks/usePlantLocation';
 import type {
   DashboardSummaryStats,
   DailyRecycleChartItem,
+  BudomariDailyItem,
   ParetoMaterialItem,
   TopNgPartItem,
   DepartmentParetoItem,
@@ -44,6 +45,10 @@ export function useDashboard() {
   // Plant / Operator / Admin Dashboard Data
   const [summaryStats, setSummaryStats] = useState<DashboardSummaryStats | null>(null);
   const [dailyChart, setDailyChart] = useState<DailyRecycleChartItem[]>([]);
+  const [budomariChart, setBudomariChart] = useState<BudomariDailyItem[]>([]);
+  const [monthlyAvgBudomari, setMonthlyAvgBudomari] = useState<number | null>(null);
+  const [monthlyMinBudomari, setMonthlyMinBudomari] = useState<number | null>(null);
+  const [monthlyMaxBudomari, setMonthlyMaxBudomari] = useState<number | null>(null);
   const [paretoMaterials, setParetoMaterials] = useState<ParetoMaterialItem[]>([]);
   const [topParts, setTopParts] = useState<TopNgPartItem[]>([]);
   const [departmentPareto, setDepartmentPareto] = useState<DepartmentParetoItem[]>([]);
@@ -70,9 +75,10 @@ export function useDashboard() {
         const senderData = await DashboardService.getSenderStats(selectedYear, selectedMonth);
         setSenderStats(senderData);
       } else {
-        const [statsData, chartResult, paretoData, topPartsData, deptParetoData] = await Promise.all([
+        const [statsData, chartResult, budomariResult, paretoData, topPartsData, deptParetoData] = await Promise.all([
           DashboardService.getSummary(selectedYear, selectedMonth, selectedLocation),
           DashboardService.getDailyChart(selectedYear, selectedMonth, selectedLocation),
+          DashboardService.getBudomariChart(selectedYear, selectedMonth, selectedLocation),
           DashboardService.getParetoMaterial(selectedYear, selectedMonth, selectedLocation),
           DashboardService.getTopNgParts(selectedYear, selectedMonth, selectedLocation),
           DashboardService.getDepartmentPareto(selectedYear, selectedMonth, selectedLocation),
@@ -80,6 +86,10 @@ export function useDashboard() {
 
         setSummaryStats(statsData);
         setDailyChart(chartResult.daily_chart || []);
+        setBudomariChart(budomariResult.budomari_chart || []);
+        setMonthlyAvgBudomari(budomariResult.monthly_avg_budomari_pct);
+        setMonthlyMinBudomari(budomariResult.monthly_min_budomari_pct);
+        setMonthlyMaxBudomari(budomariResult.monthly_max_budomari_pct);
         setParetoMaterials(paretoData);
         setTopParts(topPartsData);
         setDepartmentPareto(deptParetoData);
@@ -119,6 +129,10 @@ export function useDashboard() {
     setSelectedLocation,
     summaryStats,
     dailyChart,
+    budomariChart,
+    monthlyAvgBudomari,
+    monthlyMinBudomari,
+    monthlyMaxBudomari,
     paretoMaterials,
     topParts,
     departmentPareto,

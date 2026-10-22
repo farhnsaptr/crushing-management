@@ -298,6 +298,102 @@ export class DashboardService {
     };
   }
 
+  static async getBudomariDailyChart(year?: number, month?: number, location: string = 'Cibitung') {
+    const now = new Date();
+    const qYear = year || now.getFullYear();
+    const qMonth = month || now.getMonth() + 1;
+
+    // 1. Fetch daily aggregated budomari metrics
+    const [rows] = await pool.query<RowDataPacket[]>(
+      `SELECT
+        DAY(pai.production_date) AS day_num,
+        AVG(pai.budomari_pct) AS avg_budomari_pct,
+        MIN(pai.budomari_pct) AS min_budomari_pct,
+        MAX(pai.budomari_pct) AS max_budomari_pct,
+        COUNT(*) AS total_parts
+       FROM production_analytics_items pai
+       JOIN master_parts mp ON pai.master_part_id = mp.id
+       JOIN machines mc ON mp.machine_id = mc.id
+       JOIN factories fc ON mc.factory_id = fc.id
+       WHERE YEAR(pai.production_date) = ?
+         AND MONTH(pai.production_date) = ?
+         AND fc.location = ?
+         AND pai.budomari_pct IS NOT NULL
+       GROUP BY DAY(pai.production_date)
+       ORDER BY day_num ASC`,
+      [qYear, qMonth, location]
+    );
+
+    // 2. Fetch monthly overall metrics
+    const [monthlyRows] = await pool.query<RowDataPacket[]>(
+      `SELECT
+        AVG(pai.budomari_pct) AS monthly_avg,
+        MIN(pai.budomari_pct) AS monthly_min,
+        MAX(pai.budomari_pct) AS monthly_max,
+        COUNT(*) AS total_records
+       FROM production_analytics_items pai
+       JOIN master_parts mp ON pai.master_part_id = mp.id
+       JOIN machines mc ON mp.machine_id = mc.id
+       JOIN factories fc ON mc.factory_id = fc.id
+       WHERE YEAR(pai.production_date) = ?
+         AND MONTH(pai.production_date) = ?
+         AND fc.location = ?
+         AND pai.budomari_pct IS NOT NULL`,
+      [qYear, qMonth, location]
+    );
+
+    const dataByDay = new Map<number, {
+      avg: number;
+      min: number;
+      max: number;
+      total: number;
+    }>();
+
+    for (const r of rows) {
+      dataByDay.set(Number(r.day_num), {
+        avg: Number(Number(r.avg_budomari_pct).toFixed(2)),
+        min: Number(Number(r.min_budomari_pct).toFixed(2)),
+        max: Number(Number(r.max_budomari_pct).toFixed(2)),
+        total: Number(r.total_parts) || 0,
+      });
+    }
+
+    const daysInMonth = new Date(qYear, qMonth, 0).getDate();
+    const chartItems = [];
+
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dayStr = d < 10 ? `0${d}` : `${d}`;
+      const entry = dataByDay.get(d);
+      chartItems.push({
+        day: dayStr,
+        day_num: d,
+        avg_budomari_pct: entry ? entry.avg : null,
+        min_budomari_pct: entry ? entry.min : null,
+        max_budomari_pct: entry ? entry.max : null,
+        total_parts: entry ? entry.total : 0,
+      });
+    }
+
+    const monthlyAvg = monthlyRows[0]?.monthly_avg != null
+      ? Number(Number(monthlyRows[0].monthly_avg).toFixed(2))
+      : null;
+    const monthlyMin = monthlyRows[0]?.monthly_min != null
+      ? Number(Number(monthlyRows[0].monthly_min).toFixed(2))
+      : null;
+    const monthlyMax = monthlyRows[0]?.monthly_max != null
+      ? Number(Number(monthlyRows[0].monthly_max).toFixed(2))
+      : null;
+    const totalRecords = Number(monthlyRows[0]?.total_records) || 0;
+
+    return {
+      budomari_chart: chartItems,
+      monthly_avg_budomari_pct: monthlyAvg,
+      monthly_min_budomari_pct: monthlyMin,
+      monthly_max_budomari_pct: monthlyMax,
+      total_records: totalRecords,
+    };
+  }
+
   static async getParetoMaterial(year?: number, month?: number, location: string = 'Cibitung') {
     const now = new Date();
     const qYear = year || now.getFullYear();

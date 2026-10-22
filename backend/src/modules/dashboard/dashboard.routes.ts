@@ -6,6 +6,7 @@ const router = Router();
 
 router.get('/summary', DashboardController.getSummary);
 router.get('/daily-chart', DashboardController.getDailyChart);
+router.get('/budomari-chart', DashboardController.getBudomariChart);
 router.get('/pareto-material', DashboardController.getParetoMaterial);
 router.get('/top-ng-parts', DashboardController.getTopNgParts);
 router.get('/departments-pareto', DashboardController.getDepartmentPareto);

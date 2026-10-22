@@ -229,8 +229,8 @@
       min-height: calc(100vh - 72px - 3rem);
     }
     .dash-chart {
-      flex: 1 1 0;
-      min-height: 130px;
+      flex: none;
+      height: 280px;
     }
     /* Tinggi section tabel DIKUNCI untuk header + --dash-rows baris, berapa pun jumlah barisnya,
        sehingga ukuran grafik tidak berubah saat data tabel masih sedikit. */

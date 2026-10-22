@@ -25,6 +25,7 @@ Dashboard admin/operator/guest dirancang muat dalam satu layar tanpa scroll (des
   - Executive KPI Cards (semua angka dari backend, per bulan & lokasi): **Material No-Reuse (Scrap)**, **Input** (reuse NG + runner), **Output** (hasil timbang verifikasi operator), **Gap** (jumlah kekurangan per material = max(0, berat sistem − hasil timbang), hanya shift yang sudah divalidasi; tidak pernah minus, kelebihan timbangan tidak ditampilkan).
   - Toggle lokasi plant diambil dari backend (`/api/factories/locations`); pilihan terakhir tersimpan per user di browser (`usePlantLocation`, berbagi dengan form Verifikasi).
   - Grafik garis harian daur ulang per shift (Pagi & Malam, total NG + Runner), ditambah **garis putus-putus Planning Harian** (allowance dari upload data produksi di Analitik). Garis hanya muncul di hari yang data produksinya sudah diupload; nilainya juga tampil di tooltip.
+  - **KPI Budomari Material (%) Chart**: Grafik harian efisiensi material injection molding (`BudomariChart`) yang bersumber dari upload data produksi Excel di fitur Data Analitik. Menampilkan rata-rata persentase harian, rentang min-max, rata-rata bulanan (reference line), dan badge statistik.
   - **Pareto Departemen Pengirim Part NG Terbanyak** (Peringkat, Nama Departemen, Total Transaksi, Jumlah Pcs, Total Berat kg, Proporsi %).
   - Top Part NG terbanyak.
   - Pareto Material / Resin.

@@ -18,6 +18,14 @@ Mengembalikan data grafik harian total recycle material (kg & pcs per tanggal).
 - **Planning Harian** (`planning_kg` per hari) = SUM(`production_analytics_items.allowance_kg`) dari data produksi yang sudah diupload di modul Analytics (allowance di-snapshot saat upload). Hari yang belum diupload bernilai `null`.
 - **Query Params**: `year`, `month`, `location`
 
+### 2b. `GET /api/dashboard/budomari-chart`
+Mengembalikan data grafik harian KPI Budomari Material (%) yang bersumber dari `production_analytics_items` (diisi saat upload file laporan produksi di fitur Data Analitik).
+- Mengembalikan:
+  - `budomari_chart`: array titik harian berisi `day`, `day_num`, `avg_budomari_pct`, `min_budomari_pct`, `max_budomari_pct`, `total_parts`.
+  - `monthly_avg_budomari_pct`: rata-rata budomari sebulan penuh (dihitung di backend).
+  - `monthly_min_budomari_pct` & `monthly_max_budomari_pct`: rentang min & max sebulan.
+- **Query Params**: `year`, `month`, `location`
+
 ### 3. `GET /api/dashboard/pareto-material`
 Mengembalikan daftar Top 5 Pareto Material (dibatasi 5 baris agar tabel dashboard muat tanpa scroll dengan tulisan yang terbaca).
 - **Query Params**: `year`, `month`, `location`
