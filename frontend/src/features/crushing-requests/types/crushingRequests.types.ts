@@ -29,6 +29,7 @@ export interface CrushingRequest {
   factory_id: string;
   factory_name?: string;
   factory_code?: string;
+  factory_location?: string;
   department_id: string;
   department_name?: string;
   department_code?: string;

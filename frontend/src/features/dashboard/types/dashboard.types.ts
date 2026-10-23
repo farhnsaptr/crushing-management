@@ -132,6 +132,7 @@ export interface SenderDashboardStats {
   department_name: string;
   department_code: string;
   factory_name: string;
+  factory_location?: string;
   total_requests: number;
   pending_count: number;
   approved_count: number;
@@ -148,6 +149,8 @@ export interface SenderDashboardStats {
     request_number: string;
     sender_name: string;
     sender_username: string;
+    factory_name?: string;
+    factory_location?: string;
     request_type: string;
     shift: string;
     request_date: string;

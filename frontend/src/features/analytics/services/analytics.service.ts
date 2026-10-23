@@ -70,11 +70,12 @@ export class AnalyticsService {
    */
   static async getYearlyComparison(
     year?: number,
-    factory?: string
+    factory?: string,
+    location?: string
   ): Promise<YearlyAnalyticsResponse> {
     const response = await apiClient.get<{ success: boolean; data: YearlyAnalyticsResponse }>(
       '/api/analytics/yearly-comparison',
-      { params: { year, factory } }
+      { params: { year, factory, location } }
     );
     return response.data.data;
   }

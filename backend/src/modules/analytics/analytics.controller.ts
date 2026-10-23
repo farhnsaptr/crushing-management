@@ -70,8 +70,9 @@ export class AnalyticsController {
     try {
       const year = req.query.year ? parseInt(req.query.year as string, 10) : undefined;
       const factory = req.query.factory as string | undefined;
+      const location = req.query.location as string | undefined;
 
-      const result = await AnalyticsService.getYearlyAnalytics(year, factory);
+      const result = await AnalyticsService.getYearlyAnalytics(year, factory, location);
       sendSuccess(res, result, 'Data komparasi analitik tahunan berhasil dimuat.');
     } catch (error: any) {
       console.error('Yearly Comparison Error:', error);

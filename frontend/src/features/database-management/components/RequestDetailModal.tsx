@@ -235,7 +235,9 @@ export const RequestDetailModal: React.FC<RequestDetailModalProps> = ({
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginTop: '0.2rem', fontWeight: 800, color: '#0f172a' }}>
                     <Building2 size={14} color="#64748b" />
                     <span>{detail.request.department_name}</span>
-                    <span style={{ color: '#94a3b8' }}>({detail.request.factory_name})</span>
+                    <span style={{ color: '#94a3b8' }}>
+                      ({detail.request.factory_name}{detail.request.factory_location ? ` • ${detail.request.factory_location}` : ''})
+                    </span>
                   </div>
                 </div>
 

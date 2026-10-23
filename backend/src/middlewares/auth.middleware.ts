@@ -16,6 +16,7 @@ export interface JwtPayloadUser {
   role: UserRole;
   factory_id?: string | null;
   factory_name?: string | null;
+  factory_location?: string | null;
   department_id?: string | null;
   department_name?: string | null;
 }

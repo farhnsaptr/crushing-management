@@ -28,9 +28,13 @@ export class DashboardService {
         COALESCE(SUM(CASE WHEN t.recycle_type_snapshot = 'no_reuse' THEN t.weight_kg ELSE 0 END), 0) AS scrap_kg
        FROM ng_transactions t
        JOIN master_parts mp ON t.master_part_id = mp.id
-       JOIN machines mc ON mp.machine_id = mc.id
-       JOIN factories fc ON mc.factory_id = fc.id
-       WHERE YEAR(t.transaction_date) = ? AND MONTH(t.transaction_date) = ? AND fc.location = ?`,
+       LEFT JOIN crushing_requests cr ON t.request_id = cr.id
+       LEFT JOIN factories req_fc ON cr.factory_id = req_fc.id
+       LEFT JOIN factories tx_fc ON t.factory_id = tx_fc.id
+       LEFT JOIN machines mc ON mp.machine_id = mc.id
+       LEFT JOIN factories mc_fc ON mc.factory_id = mc_fc.id
+       WHERE YEAR(t.transaction_date) = ? AND MONTH(t.transaction_date) = ? 
+         AND COALESCE(req_fc.location, tx_fc.location, mc_fc.location) = ?`,
       [qYear, qMonth, location]
     );
 
@@ -39,9 +43,12 @@ export class DashboardService {
         COALESCE(SUM(CASE WHEN mm.recycle_type = 'reuse' OR (mm.recycle_type IS NULL AND LOWER(rmt.material_name_snapshot) NOT LIKE '%no reuse%') THEN rmt.total_runner_weight_kg ELSE 0 END), 0) AS reuse_kg,
         COALESCE(SUM(CASE WHEN mm.recycle_type = 'no_reuse' OR LOWER(rmt.material_name_snapshot) LIKE '%no reuse%' THEN rmt.total_runner_weight_kg ELSE 0 END), 0) AS scrap_kg
        FROM runner_material_transactions rmt
-       JOIN factories fc ON rmt.factory_id = fc.id
+       LEFT JOIN crushing_requests cr ON rmt.request_id = cr.id
+       LEFT JOIN factories req_fc ON cr.factory_id = req_fc.id
+       LEFT JOIN factories rmt_fc ON rmt.factory_id = rmt_fc.id
        ${RUNNER_MATERIAL_JOIN_SQL}
-       WHERE YEAR(rmt.transaction_date) = ? AND MONTH(rmt.transaction_date) = ? AND fc.location = ?`,
+       WHERE YEAR(rmt.transaction_date) = ? AND MONTH(rmt.transaction_date) = ? 
+         AND COALESCE(req_fc.location, rmt_fc.location) = ?`,
       [qYear, qMonth, location]
     );
 
@@ -87,9 +94,13 @@ export class DashboardService {
         SUM(CASE WHEN t.recycle_type_snapshot = 'no_reuse' THEN t.weight_kg ELSE 0 END) AS no_reuse_waste_kg
        FROM ng_transactions t
        JOIN master_parts mp ON t.master_part_id = mp.id
-       JOIN machines mc ON mp.machine_id = mc.id
-       JOIN factories fc ON mc.factory_id = fc.id
-       WHERE YEAR(t.transaction_date) = ? AND MONTH(t.transaction_date) = ? AND fc.location = ?
+       LEFT JOIN crushing_requests cr ON t.request_id = cr.id
+       LEFT JOIN factories req_fc ON cr.factory_id = req_fc.id
+       LEFT JOIN factories tx_fc ON t.factory_id = tx_fc.id
+       LEFT JOIN machines mc ON mp.machine_id = mc.id
+       LEFT JOIN factories mc_fc ON mc.factory_id = mc_fc.id
+       WHERE YEAR(t.transaction_date) = ? AND MONTH(t.transaction_date) = ? 
+         AND COALESCE(req_fc.location, tx_fc.location, mc_fc.location) = ?
        GROUP BY DAY(t.transaction_date), t.shift
        ORDER BY day_num ASC`,
       [qYear, qMonth, location]
@@ -104,9 +115,12 @@ export class DashboardService {
         SUM(CASE WHEN mm.recycle_type = 'reuse' OR (mm.recycle_type IS NULL AND LOWER(rmt.material_name_snapshot) NOT LIKE '%no reuse%') THEN rmt.total_runner_weight_kg ELSE 0 END) AS reuse_kg,
         SUM(CASE WHEN mm.recycle_type = 'no_reuse' OR LOWER(rmt.material_name_snapshot) LIKE '%no reuse%' THEN rmt.total_runner_weight_kg ELSE 0 END) AS no_reuse_waste_kg
        FROM runner_material_transactions rmt
-       JOIN factories fc ON rmt.factory_id = fc.id
+       LEFT JOIN crushing_requests cr ON rmt.request_id = cr.id
+       LEFT JOIN factories req_fc ON cr.factory_id = req_fc.id
+       LEFT JOIN factories rmt_fc ON rmt.factory_id = rmt_fc.id
        ${RUNNER_MATERIAL_JOIN_SQL}
-       WHERE YEAR(rmt.transaction_date) = ? AND MONTH(rmt.transaction_date) = ? AND fc.location = ?
+       WHERE YEAR(rmt.transaction_date) = ? AND MONTH(rmt.transaction_date) = ? 
+         AND COALESCE(req_fc.location, rmt_fc.location) = ?
        GROUP BY DAY(rmt.transaction_date), rmt.shift
        ORDER BY day_num ASC`,
       [qYear, qMonth, location]
@@ -411,10 +425,14 @@ export class DashboardService {
            t.quantity_pcs AS total_pcs
          FROM ng_transactions t
          JOIN master_parts mp ON t.master_part_id = mp.id
-         JOIN machines mc ON mp.machine_id = mc.id
-         JOIN factories fc ON mc.factory_id = fc.id
+         LEFT JOIN crushing_requests cr ON t.request_id = cr.id
+         LEFT JOIN factories req_fc ON cr.factory_id = req_fc.id
+         LEFT JOIN factories tx_fc ON t.factory_id = tx_fc.id
+         LEFT JOIN machines mc ON mp.machine_id = mc.id
+         LEFT JOIN factories mc_fc ON mc.factory_id = mc_fc.id
          LEFT JOIN master_materials mm ON mp.material_id = mm.id
-         WHERE YEAR(t.transaction_date) = ? AND MONTH(t.transaction_date) = ? AND fc.location = ?
+         WHERE YEAR(t.transaction_date) = ? AND MONTH(t.transaction_date) = ? 
+           AND COALESCE(req_fc.location, tx_fc.location, mc_fc.location) = ?
 
          UNION ALL
 
@@ -423,13 +441,17 @@ export class DashboardService {
            rmt.total_runner_weight_kg AS total_kg,
            0 AS total_pcs
          FROM runner_material_transactions rmt
+         LEFT JOIN crushing_requests cr ON rmt.request_id = cr.id
+         LEFT JOIN factories req_fc ON cr.factory_id = req_fc.id
+         LEFT JOIN factories rmt_fc ON rmt.factory_id = rmt_fc.id
          LEFT JOIN v_all_materials mm ON (rmt.material_id = mm.id OR rmt.material_name_snapshot = mm.material_name)
          WHERE YEAR(rmt.transaction_date) = ? AND MONTH(rmt.transaction_date) = ?
+           AND COALESCE(req_fc.location, rmt_fc.location) = ?
        ) combined
        GROUP BY material_name
        ORDER BY total_kg DESC
        LIMIT 5`,
-      [qYear, qMonth, location, qYear, qMonth]
+      [qYear, qMonth, location, qYear, qMonth, location]
     );
 
     return rows.map((r, index) => ({
@@ -454,9 +476,13 @@ export class DashboardService {
         SUM(t.weight_kg) AS total_kg
        FROM ng_transactions t
        JOIN master_parts mp ON t.master_part_id = mp.id
-       JOIN machines mc ON mp.machine_id = mc.id
-       JOIN factories fc ON mc.factory_id = fc.id
-       WHERE YEAR(t.transaction_date) = ? AND MONTH(t.transaction_date) = ? AND fc.location = ?
+       LEFT JOIN crushing_requests cr ON t.request_id = cr.id
+       LEFT JOIN factories req_fc ON cr.factory_id = req_fc.id
+       LEFT JOIN factories tx_fc ON t.factory_id = tx_fc.id
+       LEFT JOIN machines mc ON mp.machine_id = mc.id
+       LEFT JOIN factories mc_fc ON mc.factory_id = mc_fc.id
+       WHERE YEAR(t.transaction_date) = ? AND MONTH(t.transaction_date) = ? 
+         AND COALESCE(req_fc.location, tx_fc.location, mc_fc.location) = ?
        GROUP BY t.part_name_snapshot, t.part_number_snapshot, t.model_snapshot
        ORDER BY total_pcs DESC
        LIMIT 5`,
@@ -525,17 +551,20 @@ export class DashboardService {
         END AS waste_kg
        FROM ng_transactions t
        JOIN master_parts mp ON t.master_part_id = mp.id
-       JOIN machines mc ON mp.machine_id = mc.id
-       JOIN factories fc ON mc.factory_id = fc.id
+       LEFT JOIN crushing_requests cr ON t.request_id = cr.id
+       LEFT JOIN factories req_fc ON cr.factory_id = req_fc.id
+       LEFT JOIN factories tx_fc ON t.factory_id = tx_fc.id
+       LEFT JOIN machines mc ON mp.machine_id = mc.id
+       LEFT JOIN factories mc_fc ON mc.factory_id = mc_fc.id
        LEFT JOIN master_materials mm ON mp.material_id = mm.id
        LEFT JOIN crushing_request_items cri ON (t.request_id IS NOT NULL AND cri.request_id = t.request_id AND cri.master_part_id = t.master_part_id)
-       LEFT JOIN input_verifications iv ON (iv.verification_date = t.transaction_date AND iv.shift = t.shift AND iv.location = fc.location)
+       LEFT JOIN input_verifications iv ON (iv.verification_date = t.transaction_date AND iv.shift = t.shift AND iv.location = COALESCE(req_fc.location, tx_fc.location, mc_fc.location))
        LEFT JOIN input_verification_items ivi ON (
          ivi.verification_id = iv.id
          AND ivi.material_name_snapshot = COALESCE(t.material_name_snapshot, mm.material_name, mp.material)
        )
        WHERE t.transaction_date BETWEEN ? AND ?
-         AND fc.location = ?
+         AND COALESCE(req_fc.location, tx_fc.location, mc_fc.location) = ?
        ORDER BY t.transaction_date ASC, t.created_at ASC`,
       [qStart, qEnd, location]
     );
@@ -569,10 +598,12 @@ export class DashboardService {
         END AS waste_kg,
         COALESCE(rmt.import_batch_ref, '-') AS batch_ref
        FROM runner_material_transactions rmt
-       JOIN factories fc ON rmt.factory_id = fc.id
+       LEFT JOIN crushing_requests cr ON rmt.request_id = cr.id
+       LEFT JOIN factories req_fc ON cr.factory_id = req_fc.id
+       LEFT JOIN factories rmt_fc ON rmt.factory_id = rmt_fc.id
        ${RUNNER_MATERIAL_JOIN_SQL}
        LEFT JOIN crushing_request_items cri ON (rmt.request_id IS NOT NULL AND cri.request_id = rmt.request_id AND cri.item_type = 'runner_ng' AND (cri.material_id = rmt.material_id OR cri.material_name_snapshot = rmt.material_name_snapshot))
-       LEFT JOIN input_verifications iv ON (iv.verification_date = rmt.transaction_date AND iv.shift = rmt.shift AND iv.location = fc.location)
+       LEFT JOIN input_verifications iv ON (iv.verification_date = rmt.transaction_date AND iv.shift = rmt.shift AND iv.location = COALESCE(req_fc.location, rmt_fc.location))
        LEFT JOIN input_verification_items ivi ON (
          ivi.verification_id = iv.id AND (
            (rmt.material_id IS NOT NULL AND ivi.material_id = rmt.material_id)
@@ -580,7 +611,7 @@ export class DashboardService {
          )
        )
        WHERE rmt.transaction_date BETWEEN ? AND ?
-         AND fc.location = ?
+         AND COALESCE(req_fc.location, rmt_fc.location) = ?
        ORDER BY rmt.transaction_date ASC, rmt.created_at ASC`,
       [qStart, qEnd, location]
     );
@@ -714,10 +745,14 @@ export class DashboardService {
         COUNT(t.id) AS total_transaksi
        FROM ng_transactions t
        JOIN master_parts mp ON t.master_part_id = mp.id
-       JOIN machines mc ON mp.machine_id = mc.id
-       JOIN factories fc ON mc.factory_id = fc.id
+       LEFT JOIN crushing_requests cr ON t.request_id = cr.id
+       LEFT JOIN factories req_fc ON cr.factory_id = req_fc.id
+       LEFT JOIN factories tx_fc ON t.factory_id = tx_fc.id
+       LEFT JOIN machines mc ON mp.machine_id = mc.id
+       LEFT JOIN factories mc_fc ON mc.factory_id = mc_fc.id
        LEFT JOIN departments d ON t.department_id = d.id
-       WHERE YEAR(t.transaction_date) = ? AND MONTH(t.transaction_date) = ? AND fc.location = ?
+       WHERE YEAR(t.transaction_date) = ? AND MONTH(t.transaction_date) = ? 
+         AND COALESCE(req_fc.location, tx_fc.location, mc_fc.location) = ?
        GROUP BY d.id, d.code, d.name
        ORDER BY total_kg DESC`,
       [qYear, qMonth, location]
@@ -772,7 +807,7 @@ export class DashboardService {
     // 1. Determine department and factory of the requesting sender
     const [userRows] = await pool.query<RowDataPacket[]>(
       `SELECT u.id, u.username, u.full_name, u.role, u.department_id, d.name AS department_name, d.code AS department_code,
-              u.factory_id, f.name AS factory_name
+              u.factory_id, f.name AS factory_name, f.location AS factory_location
        FROM users u
        LEFT JOIN departments d ON u.department_id = d.id
        LEFT JOIN factories f ON u.factory_id = f.id
@@ -784,13 +819,15 @@ export class DashboardService {
     let departmentId = currentUser.department_id || null;
     let departmentName = currentUser.department_name || 'Umum';
     let departmentCode = currentUser.department_code || 'ALL';
+    let factoryId = currentUser.factory_id || null;
     let factoryName = currentUser.factory_name || 'Semua Pabrik';
+    let factoryLocation = currentUser.factory_location || null;
 
-    // If user's department_id is not set in users table, lookup from their most recent request
-    if (!departmentId) {
+    // If user's department_id or factory is not set in users table, lookup from their most recent request
+    if (!departmentId || !factoryLocation) {
       const [deptLookup] = await pool.query<RowDataPacket[]>(
         `SELECT r.department_id, d.name AS department_name, d.code AS department_code,
-                r.factory_id, f.name AS factory_name
+                r.factory_id, f.name AS factory_name, f.location AS factory_location
          FROM crushing_requests r
          LEFT JOIN departments d ON r.department_id = d.id
          LEFT JOIN factories f ON r.factory_id = f.id
@@ -798,20 +835,44 @@ export class DashboardService {
          ORDER BY r.created_at DESC LIMIT 1`,
         [userId]
       );
-      if (deptLookup.length > 0 && deptLookup[0].department_id) {
-        departmentId = deptLookup[0].department_id;
-        departmentName = deptLookup[0].department_name || departmentName;
-        departmentCode = deptLookup[0].department_code || departmentCode;
-        factoryName = deptLookup[0].factory_name || factoryName;
+      if (deptLookup.length > 0) {
+        if (!departmentId && deptLookup[0].department_id) {
+          departmentId = deptLookup[0].department_id;
+          departmentName = deptLookup[0].department_name || departmentName;
+          departmentCode = deptLookup[0].department_code || departmentCode;
+        }
+        if (!factoryId && deptLookup[0].factory_id) {
+          factoryId = deptLookup[0].factory_id;
+          factoryName = deptLookup[0].factory_name || factoryName;
+        }
+        if (!factoryLocation && deptLookup[0].factory_location) {
+          factoryLocation = deptLookup[0].factory_location;
+        }
       }
     }
 
-    // Draft (is_submitted = FALSE) tidak dihitung/ditampilkan di dashboard pengirim
-    const filterClause = departmentId
-      ? '(r.department_id = ? OR r.sender_id = ?) AND r.is_submitted = TRUE'
-      : 'r.sender_id = ? AND r.is_submitted = TRUE';
-    const queryParams = departmentId ? [departmentId, userId, qYear, qMonth] : [userId, qYear, qMonth];
-    const recentQueryParams = departmentId ? [departmentId, userId] : [userId];
+    // Filter per departemen dan lingkup pabrik/lokasi agar tidak bocor antar plant (contoh: Karawang vs Cibitung)
+    let filterClause = 'r.is_submitted = TRUE';
+    const baseFilterParams: any[] = [];
+
+    if (departmentId) {
+      filterClause += ' AND (r.department_id = ? OR r.sender_id = ?)';
+      baseFilterParams.push(departmentId, userId);
+    } else {
+      filterClause += ' AND r.sender_id = ?';
+      baseFilterParams.push(userId);
+    }
+
+    if (factoryId) {
+      filterClause += ' AND r.factory_id = ?';
+      baseFilterParams.push(factoryId);
+    } else if (factoryLocation) {
+      filterClause += " AND COALESCE(rf.location, 'Cibitung') = ?";
+      baseFilterParams.push(factoryLocation);
+    }
+
+    const queryParams = [...baseFilterParams, qYear, qMonth];
+    const recentQueryParams = [...baseFilterParams];
 
     // 2. Aggregate Department KPI Summary
     const [summaryRows] = await pool.query<RowDataPacket[]>(
@@ -825,6 +886,7 @@ export class DashboardService {
         COALESCE(SUM(r.submitted_total_weight_kg), 0) AS total_submitted_weight_kg,
         COALESCE(SUM(r.submitted_total_pcs), 0) AS total_pcs
        FROM crushing_requests r
+       LEFT JOIN factories rf ON r.factory_id = rf.id
        WHERE ${filterClause} AND YEAR(r.request_date) = ? AND MONTH(r.request_date) = ?`,
       queryParams
     );
@@ -842,6 +904,7 @@ export class DashboardService {
         SUM(r.total_weight_kg) AS total_kg,
         SUM(r.total_pcs) AS total_pcs
        FROM crushing_requests r
+       LEFT JOIN factories rf ON r.factory_id = rf.id
        WHERE ${filterClause} AND YEAR(r.request_date) = ? AND MONTH(r.request_date) = ? AND r.status != 'rejected'
        GROUP BY DAY(r.request_date), r.shift
        ORDER BY day_num ASC`,
@@ -898,6 +961,7 @@ export class DashboardService {
         SUM(i.weight_kg) AS total_kg
        FROM crushing_request_items i
        JOIN crushing_requests r ON i.request_id = r.id
+       LEFT JOIN factories rf ON r.factory_id = rf.id
        WHERE ${filterClause} AND YEAR(r.request_date) = ? AND MONTH(r.request_date) = ? AND r.status != 'rejected'
        GROUP BY i.part_name_snapshot, i.part_number_snapshot, i.model_snapshot
        ORDER BY total_kg DESC
@@ -932,6 +996,7 @@ export class DashboardService {
            i.weight_kg
          FROM crushing_request_items i
          JOIN crushing_requests r ON i.request_id = r.id
+         LEFT JOIN factories rf ON r.factory_id = rf.id
          LEFT JOIN master_parts mp ON i.master_part_id = mp.id
          WHERE ${filterClause} AND YEAR(r.request_date) = ? AND MONTH(r.request_date) = ? AND r.status != 'rejected'
        ) sub
@@ -959,9 +1024,11 @@ export class DashboardService {
         r.id, r.request_number, r.sender_id, u.full_name AS sender_name, u.username AS sender_username,
         r.request_type, r.shift, r.request_date, r.status,
         r.total_weight_kg, r.total_pcs, r.notes, r.rejection_reason, r.created_at,
+        rf.name AS factory_name, rf.location AS factory_location,
         (SELECT COUNT(*) FROM crushing_request_items WHERE request_id = r.id) AS item_count
        FROM crushing_requests r
        JOIN users u ON r.sender_id = u.id
+       LEFT JOIN factories rf ON r.factory_id = rf.id
        WHERE ${filterClause}
        ORDER BY r.created_at DESC
        LIMIT 5`,
@@ -975,6 +1042,7 @@ export class DashboardService {
       department_name: departmentName,
       department_code: departmentCode,
       factory_name: factoryName,
+      factory_location: factoryLocation,
       total_requests: Number(s.total_requests || 0),
       pending_count: Number(s.pending_count || 0),
       approved_count: Number(s.approved_count || 0),

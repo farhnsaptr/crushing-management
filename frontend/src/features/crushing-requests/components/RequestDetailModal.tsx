@@ -307,7 +307,7 @@ export const RequestDetailModal: React.FC<RequestDetailModalProps> = ({
                 <div style={{ color: 'var(--text-muted, #64748b)', fontSize: '0.75rem', fontWeight: 600 }}>Departemen & Pabrik:</div>
                 <div style={{ fontWeight: 800, color: 'var(--text-main, #0f172a)', display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.2rem' }}>
                   <Network size={15} color="var(--primary-color, #008d51)" />
-                  <span>{request.department_name} ({request.factory_name})</span>
+                  <span>{request.department_name} ({request.factory_name}{request.factory_location ? ` • ${request.factory_location}` : ''})</span>
                 </div>
               </div>
 

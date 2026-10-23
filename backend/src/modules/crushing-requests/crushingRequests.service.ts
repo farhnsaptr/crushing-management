@@ -48,6 +48,7 @@ export interface CrushingRequestRow extends RowDataPacket {
   factory_id?: string | null;
   factory_name?: string | null;
   factory_code?: string;
+  factory_location?: string | null;
   department_id: string;
   department_name?: string;
   department_code?: string;
@@ -438,6 +439,13 @@ export class CrushingRequestsService {
       queryParams.push(params.sender_id);
     }
 
+    // Operator: batasi hanya melihat request dari lokasi pabriknya sendiri.
+    // Admin & super-admin dapat melihat semua lokasi.
+    if (user.role === 'operator' && user.factory_location) {
+      whereClause += ` AND COALESCE(f.location, 'Cibitung') = ?`;
+      queryParams.push(user.factory_location);
+    }
+
     if (params.shift && params.shift !== 'all') {
       whereClause += ' AND r.shift = ?';
       queryParams.push(params.shift);
@@ -474,6 +482,7 @@ export class CrushingRequestsService {
        FROM crushing_requests r
        JOIN users u ON r.sender_id = u.id
        JOIN departments d ON r.department_id = d.id
+       LEFT JOIN factories f ON r.factory_id = f.id
        ${whereClause}`,
       queryParams
     );
@@ -483,7 +492,7 @@ export class CrushingRequestsService {
     const [rows] = await pool.query<CrushingRequestRow[]>(
       `SELECT 
         r.id, r.request_number, r.sender_id, u.full_name AS sender_name, u.username AS sender_username,
-        r.factory_id, COALESCE(f.name, 'Semua Factory (ALL)') AS factory_name, f.code AS factory_code,
+        r.factory_id, COALESCE(f.name, 'Semua Factory (ALL)') AS factory_name, f.code AS factory_code, f.location AS factory_location,
         r.department_id, d.name AS department_name, d.code AS department_code,
         r.request_type, r.shift, r.request_date, r.status, r.is_submitted, r.submitted_at,
         r.validated_by, v.full_name AS validator_name, r.validated_at,
@@ -729,7 +738,7 @@ export class CrushingRequestsService {
     const [rows] = await pool.query<CrushingRequestRow[]>(
       `SELECT 
         r.id, r.request_number, r.sender_id, u.full_name AS sender_name, u.username AS sender_username,
-        r.factory_id, COALESCE(f.name, 'Semua Factory (ALL)') AS factory_name, f.code AS factory_code,
+        r.factory_id, COALESCE(f.name, 'Semua Factory (ALL)') AS factory_name, f.code AS factory_code, f.location AS factory_location,
         r.department_id, d.name AS department_name, d.code AS department_code,
         r.request_type, r.shift, r.request_date, r.status, r.is_submitted, r.submitted_at,
         r.validated_by, v.full_name AS validator_name, r.validated_at,
@@ -786,12 +795,37 @@ export class CrushingRequestsService {
 
   /**
    * Operator verifies & approves a crushing request.
+   * Operator dibatasi hanya dapat approve request dari lokasi pabrik mereka sendiri.
+   * Admin & super-admin dapat approve dari semua lokasi.
    */
   static async approveRequest(requestId: string, validatorUser: JwtPayloadUser, payload?: ApproveCrushingRequestDto) {
     const request = await this.getRequestById(requestId, validatorUser);
 
     if (request.status === 'approved') {
       throw new Error('Pengiriman ini sudah disetujui sebelumnya');
+    }
+
+    // Validasi lokasi untuk operator: hanya boleh approve request dari lokasi pabrik yang sama.
+    // Admin & super-admin bypass (bisa approve semua lokasi).
+    if (validatorUser.role === 'operator') {
+      // Prioritas: gunakan factory_location dari JWT, fallback ke lookup DB (untuk token lama).
+      let operatorLocation: string | null = validatorUser.factory_location || null;
+
+      if (!operatorLocation && validatorUser.factory_id) {
+        const [fcRows] = await pool.query<RowDataPacket[]>(
+          'SELECT location FROM factories WHERE id = ?',
+          [validatorUser.factory_id]
+        );
+        operatorLocation = fcRows[0]?.location || null;
+      }
+
+      const requestLocation = (request as any).factory_location as string | null;
+
+      if (operatorLocation && requestLocation && operatorLocation !== requestLocation) {
+        throw new Error(
+          `Akses ditolak. Anda (operator ${operatorLocation}) tidak dapat menyetujui pengiriman dari lokasi ${requestLocation}.`
+        );
+      }
     }
 
     // 1. Process Adjustments

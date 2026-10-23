@@ -514,65 +514,108 @@ export class AnalyticsService {
   /**
    * Get yearly comparison metrics (12 months): Allowance vs Actual Output Crushing vs System NG.
    */
-  static async getYearlyAnalytics(year?: number, factory?: string) {
+  static async getYearlyAnalytics(year?: number, factory?: string, location?: string) {
     const qYear = year || new Date().getFullYear();
 
     // 1. Monthly Production Allowance
     let allowanceQuery = `
       SELECT 
-        MONTH(production_date) AS month_num,
-        COALESCE(SUM(allowance_kg), 0) AS total_allowance_kg,
-        COALESCE(SUM(act_total_pcs), 0) AS total_act_pcs,
-        COALESCE(SUM(ng_total_pcs), 0) AS total_prod_ng_pcs,
+        MONTH(pai.production_date) AS month_num,
+        COALESCE(SUM(pai.allowance_kg), 0) AS total_allowance_kg,
+        COALESCE(SUM(pai.act_total_pcs), 0) AS total_act_pcs,
+        COALESCE(SUM(pai.ng_total_pcs), 0) AS total_prod_ng_pcs,
         COUNT(*) AS total_items
-      FROM production_analytics_items
-      WHERE YEAR(production_date) = ?
+      FROM production_analytics_items pai
     `;
     const allowanceParams: any[] = [qYear];
 
+    if (location && location !== 'all') {
+      allowanceQuery += `
+        JOIN master_parts mp ON pai.master_part_id = mp.id
+        JOIN machines mc ON mp.machine_id = mc.id
+        JOIN factories fc ON mc.factory_id = fc.id
+        WHERE YEAR(pai.production_date) = ? AND fc.location = ?
+      `;
+      allowanceParams.push(location);
+    } else {
+      allowanceQuery += ` WHERE YEAR(pai.production_date) = ?`;
+    }
+
     if (factory && factory !== 'all') {
-      allowanceQuery += ` AND factory_raw = ?`;
+      allowanceQuery += ` AND pai.factory_raw = ?`;
       allowanceParams.push(factory);
     }
 
-    allowanceQuery += ` GROUP BY MONTH(production_date)`;
+    allowanceQuery += ` GROUP BY MONTH(pai.production_date)`;
     const [allowanceRows] = await pool.query<RowDataPacket[]>(allowanceQuery, allowanceParams);
 
     // 2. Monthly Actual Output from Validated Input Verifications
-    const [verRows] = await pool.query<RowDataPacket[]>(
-      `SELECT 
+    let verQuery = `
+      SELECT 
         MONTH(verification_date) AS month_num,
         COALESCE(SUM(total_actual_output_kg), 0) AS total_actual_output_kg,
         COALESCE(SUM(total_system_weight_kg), 0) AS total_system_weight_kg,
         COALESCE(SUM(total_crushing_waste_kg), 0) AS total_crushing_waste_kg
        FROM input_verifications
        WHERE YEAR(verification_date) = ? AND status = 'validated'
-       GROUP BY MONTH(verification_date)`,
-      [qYear]
-    );
+    `;
+    const verParams: any[] = [qYear];
+    if (location && location !== 'all') {
+      verQuery += ` AND location = ?`;
+      verParams.push(location);
+    }
+    verQuery += ` GROUP BY MONTH(verification_date)`;
+    const [verRows] = await pool.query<RowDataPacket[]>(verQuery, verParams);
 
-    // 3. Monthly System Part NG Transactions
-    const [ngRows] = await pool.query<RowDataPacket[]>(
-      `SELECT 
-        MONTH(transaction_date) AS month_num,
-        COALESCE(SUM(weight_kg), 0) AS total_ng_kg,
-        COALESCE(SUM(quantity_pcs), 0) AS total_ng_pcs
-       FROM ng_transactions
-       WHERE YEAR(transaction_date) = ?
-       GROUP BY MONTH(transaction_date)`,
-      [qYear]
-    );
+    // 3. Monthly System Part NG Transactions (Prioritize Request Location)
+    let ngQuery = `
+      SELECT 
+        MONTH(t.transaction_date) AS month_num,
+        COALESCE(SUM(t.weight_kg), 0) AS total_ng_kg,
+        COALESCE(SUM(t.quantity_pcs), 0) AS total_ng_pcs
+       FROM ng_transactions t
+    `;
+    const ngParams: any[] = [qYear];
+    if (location && location !== 'all') {
+      ngQuery += `
+        JOIN master_parts mp ON t.master_part_id = mp.id
+        LEFT JOIN crushing_requests cr ON t.request_id = cr.id
+        LEFT JOIN factories req_fc ON cr.factory_id = req_fc.id
+        LEFT JOIN factories tx_fc ON t.factory_id = tx_fc.id
+        LEFT JOIN machines mc ON mp.machine_id = mc.id
+        LEFT JOIN factories mc_fc ON mc.factory_id = mc_fc.id
+        WHERE YEAR(t.transaction_date) = ? 
+          AND COALESCE(req_fc.location, tx_fc.location, mc_fc.location) = ?
+      `;
+      ngParams.push(location);
+    } else {
+      ngQuery += ` WHERE YEAR(t.transaction_date) = ?`;
+    }
+    ngQuery += ` GROUP BY MONTH(t.transaction_date)`;
+    const [ngRows] = await pool.query<RowDataPacket[]>(ngQuery, ngParams);
 
-    // 4. Monthly Part Runner NG Transactions
-    const [runnerRows] = await pool.query<RowDataPacket[]>(
-      `SELECT 
-        MONTH(transaction_date) AS month_num,
-        COALESCE(SUM(total_runner_weight_kg), 0) AS total_runner_kg
-       FROM runner_material_transactions
-       WHERE YEAR(transaction_date) = ?
-       GROUP BY MONTH(transaction_date)`,
-      [qYear]
-    );
+    // 4. Monthly Part Runner NG Transactions (Prioritize Request Location)
+    let runnerQuery = `
+      SELECT 
+        MONTH(rmt.transaction_date) AS month_num,
+        COALESCE(SUM(rmt.total_runner_weight_kg), 0) AS total_runner_kg
+       FROM runner_material_transactions rmt
+    `;
+    const runnerParams: any[] = [qYear];
+    if (location && location !== 'all') {
+      runnerQuery += `
+        LEFT JOIN crushing_requests cr ON rmt.request_id = cr.id
+        LEFT JOIN factories req_fc ON cr.factory_id = req_fc.id
+        LEFT JOIN factories rmt_fc ON rmt.factory_id = rmt_fc.id
+        WHERE YEAR(rmt.transaction_date) = ? 
+          AND COALESCE(req_fc.location, rmt_fc.location) = ?
+      `;
+      runnerParams.push(location);
+    } else {
+      runnerQuery += ` WHERE YEAR(rmt.transaction_date) = ?`;
+    }
+    runnerQuery += ` GROUP BY MONTH(rmt.transaction_date)`;
+    const [runnerRows] = await pool.query<RowDataPacket[]>(runnerQuery, runnerParams);
 
     // 5. Assemble 12 months map
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];

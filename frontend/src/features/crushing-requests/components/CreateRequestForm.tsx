@@ -619,10 +619,10 @@ export const CreateRequestForm: React.FC<CreateRequestFormProps> = ({
               cursor: 'pointer',
             }}
           >
-            {factoryOptions.length !== 1 && <option value="">-- Semua Pabrik --</option>}
+            {factoryOptions.length !== 1 && <option value="">-- Pilih Pabrik Asal Pengiriman --</option>}
             {factoryOptions.map((f) => (
               <option key={f.id} value={f.id}>
-                {f.name}
+                {f.name} {f.location ? `(${f.location})` : ''}
               </option>
             ))}
           </select>
