@@ -9,8 +9,8 @@ Upload dan Rollback hanya untuk `super-admin`, `admin`, `operator` (`canManageDa
 1. **Upload File Laporan Produksi Excel/CSV & Live Preview Kecocokan**:
    - Mendukung format file Excel Laporan Produksi (seperti `08. LAPORAN AGUSTUS 2026.xlsx`) serta retro-kompatibilitas file CSV `Report  Production.csv`.
    - **Live Preview & Match Analysis**: Sebelum submit, sistem otomatis menganalisis setiap baris Sebango terhadap Master Part di database.
-   - Menampilkan statistik kecocokan (Total Baris, Baris Cocok/Diproses, dan Baris Tidak Cocok/Di-skip).
-   - Menyediakan tabel pratinjau interaktif dengan filter tab (*Semua*, *Cocok*, *Di-skip*) dan fitur pencarian Sebango.
+ - Menampilkan statistik kecocokan (Total Baris, Baris Cocok/Diproses, dan Baris Tidak Cocok/Di-skip), termasuk jumlah baris Sebango gabungan yang diperluas backend.
+ - Menyediakan tabel pratinjau interaktif dengan filter tab (*Semua*, *Cocok*, *Di-skip*) dan fitur pencarian Sebango; baris hasil perluasan menampilkan Sebango asal (`dari ...`).
    - Baris dengan Sebango yang tidak terdaftar otomatis di-skip dari penyimpanan database.
 2. **Rollback & Manajemen Batch Upload**:
    - Tombol **Rollback Data** untuk membatalkan 1 batch upload data produksi terakhir jika terjadi kesalahan input oleh operator.

@@ -3,8 +3,9 @@ import type { ParsedCsvRow } from '../utils/csvParser.util';
 export type { ParsedCsvRow };
 
 export interface MatchedSebangoDetail {
-  sebango_code: string;
-  part_number: string;
+ sebango_code: string;
+ sebango_code_raw?: string;
+ part_number: string;
   part_name: string;
   act_pcs: number;
   berat_runner_gr: number;

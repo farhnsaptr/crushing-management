@@ -3,6 +3,10 @@ import XLSX from 'xlsx';
 import { pool } from '../../config/database';
 import { RowDataPacket } from 'mysql2';
 import { usesMixedIdentity } from '../materials/effectiveMaterial';
+import {
+ buildSebangoMasterMap,
+ resolveSebango,
+} from '../../utils/sebango.util';
 
 export interface ParsedCsvRowDto {
   date: string;
@@ -248,17 +252,14 @@ export class RunnerMaterialService {
     }
 
     // 2. Aggregate ACT TOTAL per (date, sebango_code, shift)
-    const sebangoShiftMap = new Map<string, { date: string; sebango_code: string; shift: 'Pagi' | 'Malam'; total_pcs: number }>();
-    const uniqueSebangosSet = new Set<string>();
+ const sebangoShiftMap = new Map<string, { date: string; sebango_code: string; shift: 'Pagi' | 'Malam'; total_pcs: number }>();
 
-    for (const row of rowsToProcess) {
-      const cleanSebango = (row.sebango_code || '').trim();
-      const pcs = Number(row.act_total_pcs) || 0;
-      if (!cleanSebango || pcs <= 0) continue;
+ for (const row of rowsToProcess) {
+ const cleanSebango = (row.sebango_code || '').trim();
+ const pcs = Number(row.act_total_pcs) || 0;
+ if (!cleanSebango || pcs <= 0) continue;
 
-      uniqueSebangosSet.add(cleanSebango);
-
-      const normShift = normalizeShift(row.shift);
+ const normShift = normalizeShift(row.shift);
       const rowDate = (row.date && row.date.trim()) || targetDate || new Date().toISOString().substring(0, 10);
       const key = `${rowDate}__${cleanSebango}__${normShift}`;
 
@@ -287,11 +288,10 @@ export class RunnerMaterialService {
 
     const matLookup = await getMasterMaterialsLookup();
 
-    // Index master parts by sebango_code
-    const masterPartMap = new Map<string, RowDataPacket>();
-    for (const part of partRows) {
-      masterPartMap.set(part.sebango_code.trim(), part);
-    }
+ // Index master parts by normalized sebango_code (duplicates kept for ambiguity detection)
+ const masterMap = buildSebangoMasterMap(partRows, (p) => p.sebango_code);
+ const matchedSebangoSet = new Set<string>();
+ const resolvedSebangoSet = new Set<string>();
 
     interface MaterialGroup {
       material_id: string | null;
@@ -301,9 +301,10 @@ export class RunnerMaterialService {
       total_pcs: number;
       total_runner_weight_kg: number;
       sebango_count: number;
-      sebango_details: Array<{
-        sebango_code: string;
-        part_number: string;
+ sebango_details: Array<{
+ sebango_code: string;
+ sebango_code_raw?: string;
+ part_number: string;
         part_name: string;
         act_pcs: number;
         berat_runner_gr: number;
@@ -316,61 +317,80 @@ export class RunnerMaterialService {
     const materialMap = new Map<string, MaterialGroup>();
     const unmatchedSebangosMap = new Map<string, { sebango_code: string; act_pcs: number; shift: string; reason: string }>();
 
-    for (const [, aggregated] of sebangoShiftMap.entries()) {
-      const matchedPart = masterPartMap.get(aggregated.sebango_code);
+ for (const [, aggregated] of sebangoShiftMap.entries()) {
+ const resolution = resolveSebango(aggregated.sebango_code, masterMap);
 
-      if (!matchedPart) {
-        const existingUnmatched = unmatchedSebangosMap.get(aggregated.sebango_code) || {
-          sebango_code: aggregated.sebango_code,
-          act_pcs: 0,
-          shift: aggregated.shift,
-          reason: 'Kode Sebango tidak ditemukan dalam Master Parts sistem',
-        };
-        existingUnmatched.act_pcs += aggregated.total_pcs;
-        unmatchedSebangosMap.set(aggregated.sebango_code, existingUnmatched);
-        continue;
-      }
+ for (const missingCode of resolution.missing) {
+ resolvedSebangoSet.add(missingCode);
+ const existingUnmatched = unmatchedSebangosMap.get(missingCode) || {
+ sebango_code: missingCode,
+ act_pcs: 0,
+ shift: aggregated.shift,
+ reason: `Sebango hasil perluasan "${aggregated.sebango_code}" tidak ditemukan dalam Master Parts sistem`,
+ };
+ existingUnmatched.act_pcs += aggregated.total_pcs;
+ unmatchedSebangosMap.set(missingCode, existingUnmatched);
+ }
 
-      // Resolve official material name: prioritize master_materials table in system database
-      const resolvedMat = matLookup.resolve(
-        matchedPart.material_id,
-        matchedPart.master_material_name || matchedPart.material
-      );
-      const materialName = resolvedMat.name;
-      const materialId = resolvedMat.id;
-      const beratRunnerGr = Number(matchedPart.berat_runner_gr) || 0;
-      const runnerWeightKg = Number(((aggregated.total_pcs * beratRunnerGr) / 1000).toFixed(2));
+ for (const ambiguousCode of resolution.ambiguous) {
+ resolvedSebangoSet.add(ambiguousCode);
+ const existingUnmatched = unmatchedSebangosMap.get(ambiguousCode) || {
+ sebango_code: ambiguousCode,
+ act_pcs: 0,
+ shift: aggregated.shift,
+ reason: `Kode Sebango "${ambiguousCode}" duplikat di Master Parts sistem`,
+ };
+ existingUnmatched.act_pcs += aggregated.total_pcs;
+ unmatchedSebangosMap.set(ambiguousCode, existingUnmatched);
+ }
 
-      // Group per (date, material, shift) to guarantee each production date retains its true transaction date
-      const groupKey = `${aggregated.date}__${materialName}__${aggregated.shift}`;
+ for (const resolvedCode of resolution.matched) {
+ const matchedPart = masterMap.get(resolvedCode)![0];
+ resolvedSebangoSet.add(resolvedCode);
+ matchedSebangoSet.add(resolvedCode);
 
-      const existingMat: MaterialGroup = materialMap.get(groupKey) || {
-        material_id: materialId,
-        material_name: materialName,
-        shift: aggregated.shift,
-        transaction_date: aggregated.date,
-        total_pcs: 0,
-        total_runner_weight_kg: 0,
-        sebango_count: 0,
-        sebango_details: [],
-      };
+ // Resolve official material name: prioritize master_materials table in system database
+ const resolvedMat = matLookup.resolve(
+ matchedPart.material_id,
+ matchedPart.master_material_name || matchedPart.material
+ );
+ const materialName = resolvedMat.name;
+ const materialId = resolvedMat.id;
+ const beratRunnerGr = Number(matchedPart.berat_runner_gr) || 0;
+ const runnerWeightKg = Number(((aggregated.total_pcs * beratRunnerGr) / 1000).toFixed(2));
 
-      existingMat.total_pcs += aggregated.total_pcs;
-      existingMat.total_runner_weight_kg = Number((existingMat.total_runner_weight_kg + runnerWeightKg).toFixed(2));
-      existingMat.sebango_count += 1;
-      existingMat.sebango_details.push({
-        sebango_code: aggregated.sebango_code,
-        part_number: matchedPart.part_number,
-        part_name: matchedPart.part_name,
-        act_pcs: aggregated.total_pcs,
-        berat_runner_gr: beratRunnerGr,
-        runner_weight_kg: runnerWeightKg,
-        shift: aggregated.shift,
-        date: aggregated.date,
-      });
+ // Group per (date, material, shift) to guarantee each production date retains its true transaction date
+ const groupKey = `${aggregated.date}__${materialName}__${aggregated.shift}`;
 
-      materialMap.set(groupKey, existingMat);
-    }
+ const existingMat: MaterialGroup = materialMap.get(groupKey) || {
+ material_id: materialId,
+ material_name: materialName,
+ shift: aggregated.shift,
+ transaction_date: aggregated.date,
+ total_pcs: 0,
+ total_runner_weight_kg: 0,
+ sebango_count: 0,
+ sebango_details: [],
+ };
+
+ existingMat.total_pcs += aggregated.total_pcs;
+ existingMat.total_runner_weight_kg = Number((existingMat.total_runner_weight_kg + runnerWeightKg).toFixed(2));
+ existingMat.sebango_count += 1;
+ existingMat.sebango_details.push({
+ sebango_code: resolvedCode,
+ sebango_code_raw: aggregated.sebango_code,
+ part_number: matchedPart.part_number,
+ part_name: matchedPart.part_name,
+ act_pcs: aggregated.total_pcs,
+ berat_runner_gr: beratRunnerGr,
+ runner_weight_kg: runnerWeightKg,
+ shift: aggregated.shift,
+ date: aggregated.date,
+ });
+
+ materialMap.set(groupKey, existingMat);
+ }
+ }
 
     const matchedMaterials = Array.from(materialMap.values());
     // Sort descending by transaction_date (newest date first), then material name, then shift
@@ -395,9 +415,9 @@ export class RunnerMaterialService {
       summary: {
         total_rows: rowsToProcess.length,
         total_file_rows: parsedRows.length,
-        unique_sebangos: uniqueSebangosSet.size,
-        matched_sebangos: Math.max(0, uniqueSebangosSet.size - unmatchedSebangos.length),
-        unmatched_sebangos: unmatchedSebangos.length,
+ unique_sebangos: resolvedSebangoSet.size,
+ matched_sebangos: matchedSebangoSet.size,
+ unmatched_sebangos: unmatchedSebangos.length,
         total_materials: matchedMaterials.length,
         total_runner_weight_kg: grandTotalRunnerKg,
       },

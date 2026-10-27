@@ -19,7 +19,8 @@ Modul ini bertanggung jawab mengelola pencatatan data **Part Runner NG per Jenis
    - Endpoint mendukung query/body parameter `selected_date` untuk memfilter tanggal produksi spesifik (default: tanggal produksi terbaru di file, atau semua tanggal jika `selected_date=all`).
 
 3. **Master Part Lookup & Perhitungan Runner**:
-   - Setiap kode Sebango dicocokkan ke tabel `master_parts` dan `master_materials`.
+ - Setiap kode Sebango dicocokkan ke tabel `master_parts` dan `master_materials`.
+ - **SEBANGO gabungan** (mis. `U0-9901/2/5-201B`) dicocokkan persis dulu; jika tidak ada, diperluas menjadi Sebango satuan (`U0-9901-201B`, `U0-9902-201B`, `U0-9905-201B`) dan setiap hasil mendapat qty penuh. Sebango hasil perluasan yang tidak ada/ambigu di master dilaporkan di `unmatched_sebangos`.
    - Berat runner per sebango dihitung dengan rumus:
      $$\text{runner\_weight\_kg} = \frac{\text{ACTUAL TOTAL (PCS)} \times \text{berat\_runner\_gr}}{1000}$$
 
