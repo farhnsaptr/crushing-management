@@ -50,6 +50,7 @@ Ada 3 sumber data yang mengalir ke 3 tabel berbeda:
 1. **Excel master part** (`Data_Base_Part_Resin_SC1_Baru.xlsx`) → diimport ke tabel **`master_parts`** (dilakukan sekali di awal, admin bisa update kalau ada part baru/berubah). Berisi data part, model, customer, jenis part, material, berat part (gr), dan berat runner (gr).
 2. **Operator input NG** (lewat halaman ketik atau scan QR) → masuk ke tabel **`ng_transactions`**, real-time, kapan saja part NG ditemukan.
 3. **CSV MIS shopfloor lama** (`Report__Production.csv`, kolom penting: `DATE`, `SEBANGO`, `SHIFT`, `ACT TOTAL`) → diimport berkala oleh admin ke tabel **`production_actual`**, dipakai untuk hitung berat runner. Join ke `master_parts` pakai `sebango_code`.
+4. **Crusing API (MIS Hub)** → ditarik manual lewat tombol refresh (tanpa polling) ke `production_analytics_items` (allowance, komposisi Budomari) dan `runner_material_transactions` (berat runner per material). Modul: `backend/src/modules/crussing-sync`.
 
 Kedua sumber data (`ng_transactions` dan `production_actual`) berjalan independen, tidak saling menunggu — digabungkan hanya saat query dashboard, berdasarkan tanggal & shift yang sama.
 
