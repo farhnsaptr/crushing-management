@@ -4,7 +4,7 @@ import { Button } from '../../../components/common/Button';
 import { Badge } from '../../../components/common/Badge';
 import { Spinner } from '../../../components/common/Spinner';
 import { CrussingSyncService } from '../services/crussingSync.service';
-import type { UnmatchedSebangosResponse, UnmatchedSebangoItem } from '../types/crussingSync.types';
+import type { UnmatchedSebangosResponse } from '../types/crussingSync.types';
 import {
   AlertTriangle,
   Search,
@@ -209,7 +209,7 @@ export const UnmatchedSebangoModal: React.FC<UnmatchedSebangoModalProps> = ({
               color: '#64748b',
             }}
           >
-            <Spinner size="lg" />
+            <Spinner size={48} />
             <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>
               Mengambil rincian kode Sebango...
             </span>
