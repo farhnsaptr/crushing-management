@@ -9,8 +9,14 @@ export const pool = mysql.createPool({
   database: env.DB_NAME,
   waitForConnections: true,
   connectionLimit: 10,
-  queueLimit: 0,
-  dateStrings: true,
+ queueLimit: 0,
+ dateStrings: true,
+});
+
+// MySQL server berjalan di UTC; samakan session ke WIB agar NOW(), CURDATE(),
+// dan TIMESTAMP yang dibaca/ditulis konsisten dengan tanggal operasional (+07:00).
+pool.on('connection', (connection) => {
+ connection.query("SET time_zone = '+07:00'");
 });
 
 export async function testDbConnection(): Promise<boolean> {
