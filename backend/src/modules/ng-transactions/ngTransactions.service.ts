@@ -123,17 +123,21 @@ export class NgTransactionsService {
         mp.part_number,
         m.model_code AS model,
         mp.allowance_kg,
-        fc.location AS plant_location,
+        COALESCE(req_fc.location, tx_fc.location, mc_fc.location, 'Cibitung') AS plant_location,
         SUM(t.weight_kg) AS total_weight_kg,
         SUM(t.quantity_pcs) AS total_quantity_pcs
        FROM ng_transactions t
        JOIN master_parts mp ON t.master_part_id = mp.id
-       JOIN machines mc ON mp.machine_id = mc.id
-       JOIN factories fc ON mc.factory_id = fc.id
+       LEFT JOIN crushing_requests cr ON t.request_id = cr.id
+       LEFT JOIN factories req_fc ON cr.factory_id = req_fc.id
+       LEFT JOIN factories tx_fc ON t.factory_id = tx_fc.id
+       LEFT JOIN machines mc ON mp.machine_id = mc.id
+       LEFT JOIN factories mc_fc ON mc.factory_id = mc_fc.id
        JOIN master_models m ON mp.model_id = m.id
        LEFT JOIN master_materials mm ON mp.material_id = mm.id
-       WHERE YEAR(t.transaction_date) = ? AND MONTH(t.transaction_date) = ? AND fc.location = ?
-       GROUP BY COALESCE(t.material_name_snapshot, mm.material_name, mp.material, 'Unknown Material'), mp.id, mp.part_name, mp.part_number, m.model_code, mp.allowance_kg, fc.location
+       WHERE YEAR(t.transaction_date) = ? AND MONTH(t.transaction_date) = ? 
+         AND COALESCE(req_fc.location, tx_fc.location, mc_fc.location) = ?
+       GROUP BY COALESCE(t.material_name_snapshot, mm.material_name, mp.material, 'Unknown Material'), mp.id, mp.part_name, mp.part_number, m.model_code, mp.allowance_kg, COALESCE(req_fc.location, tx_fc.location, mc_fc.location, 'Cibitung')
        ORDER BY total_weight_kg DESC`,
       [year, month, location]
     );

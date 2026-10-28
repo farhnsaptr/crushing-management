@@ -83,6 +83,7 @@ export const SenderDashboardView: React.FC<SenderDashboardViewProps> = ({
 
   const departmentTitle = stats?.department_name || user?.department_name || 'Departemen Pengirim';
   const factoryTitle = stats?.factory_name || user?.factory_name || 'Semua Pabrik';
+  const factoryLocation = stats?.factory_location || user?.factory_location;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', width: '100%', minHeight: 'calc(100vh - 85px)' }}>
@@ -144,6 +145,11 @@ export const SenderDashboardView: React.FC<SenderDashboardViewProps> = ({
         <div>
           <h1 className="sender-title">
             DASHBOARD {departmentTitle} — {factoryTitle}
+            {factoryLocation && factoryTitle !== 'Semua Pabrik' && (
+              <span style={{ fontSize: '0.85rem', color: '#008d51', marginLeft: '0.45rem', padding: '0.15rem 0.5rem', backgroundColor: 'rgba(0,141,81,0.08)', borderRadius: '6px', fontWeight: 800 }}>
+                {factoryLocation}
+              </span>
+            )}
           </h1>
           <p style={{ fontSize: '0.775rem', color: 'var(--text-muted, #64748b)', margin: '0.15rem 0 0 0', fontWeight: 600 }}>
             Akumulasi & Monitoring Pengiriman Part NG Reject Departemen ke Area Crushing
@@ -519,7 +525,7 @@ export const SenderDashboardView: React.FC<SenderDashboardViewProps> = ({
                         {r.sender_name || 'Pengirim'}
                       </div>
                       <div style={{ fontSize: '0.725rem', color: 'var(--text-muted, #64748b)' }}>
-                        @{r.sender_username || '-'}
+                        @{r.sender_username || '-'} {r.factory_location ? `• ${r.factory_location}` : ''}
                       </div>
                     </td>
                     <td style={{ padding: '0.65rem 0.85rem' }}>

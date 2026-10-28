@@ -15,6 +15,7 @@ import {
   Send,
   ClipboardCheck,
   BarChart3,
+  Database,
 } from 'lucide-react';
 import React from 'react';
 import type { UserRole } from '../context/AuthContext';
@@ -154,6 +155,14 @@ export const NAVIGATION_ITEMS: NavigationItem[] = [
     title: 'Site Configuration',
     path: '/admin/site-config',
     icon: Palette,
+    roles: ['super-admin'],
+    section: 'admin',
+  },
+  {
+    id: 'database-management',
+    title: 'Database Management',
+    path: '/admin/database',
+    icon: Database,
     roles: ['super-admin'],
     section: 'admin',
   },

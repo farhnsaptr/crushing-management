@@ -16,12 +16,12 @@ export function usePlantLocation() {
 
   useEffect(() => {
     FactoriesService.getLocations()
-      .then(setLocations)
+      .then((data) => setLocations((data || []).filter((l) => Boolean(l) && l !== 'null')))
       .catch((err) => console.error('Failed to load plant locations:', err))
       .finally(() => setIsLoaded(true));
   }, []);
 
-  const location = stored && locations.includes(stored) ? stored : (locations[0] ?? '');
+  const location = stored && locations.includes(stored) ? stored : (locations[0] ?? 'Cibitung');
 
   return { locations, location, setLocation: setStored, isLoaded };
 }

@@ -5,12 +5,19 @@ Modul ini menyediakan antarmuka analitik visual komprehensif untuk menghubungkan
 ## Hak Akses
 Upload dan Rollback hanya untuk `super-admin`, `admin`, `operator` (`canManageData` di `config/permissions.config.ts`). Role `pengirim` dan `guest` (viewer murni) hanya melihat tab, grafik, dan tabel; tombol serta modal Upload/Rollback tidak dirender.
 
+## Sinkronisasi Crusing API
+- Tombol **Segarkan** untuk `super-admin`/`admin`/`operator` menarik data **satu bulan** dari Crusing API (default: bulan berjalan, atau bulan yang dipilih di filter tabel), lalu me-refresh seluruh data analitik.
+- Pilihan **lokasi plant** (Cibitung/Karawang) menentukan data yang ditarik dan filter chart komparasi tahunan.
+- Label **terakhir masuk** menampilkan waktu sinkron sukses terakhir per lokasi + periode, plus peringatan `SEBANGO` tidak cocok dan data manual yang overlap.
+- Sync hanya mengganti data **hasil API** pada periode tersebut; data upload manual tidak dihapus (rollback manual bila tidak ingin dobel).
+- Filter pabrik pada tabel diambil dinamis dari master factories (`F2`, `F3`, `F4`, `SC2`, ...).
+
 ## Fitur Utama
 1. **Upload File Laporan Produksi Excel/CSV & Live Preview Kecocokan**:
    - Mendukung format file Excel Laporan Produksi (seperti `08. LAPORAN AGUSTUS 2026.xlsx`) serta retro-kompatibilitas file CSV `Report  Production.csv`.
    - **Live Preview & Match Analysis**: Sebelum submit, sistem otomatis menganalisis setiap baris Sebango terhadap Master Part di database.
-   - Menampilkan statistik kecocokan (Total Baris, Baris Cocok/Diproses, dan Baris Tidak Cocok/Di-skip).
-   - Menyediakan tabel pratinjau interaktif dengan filter tab (*Semua*, *Cocok*, *Di-skip*) dan fitur pencarian Sebango.
+ - Menampilkan statistik kecocokan (Total Baris, Baris Cocok/Diproses, dan Baris Tidak Cocok/Di-skip), termasuk jumlah baris Sebango gabungan yang diperluas backend.
+ - Menyediakan tabel pratinjau interaktif dengan filter tab (*Semua*, *Cocok*, *Di-skip*) dan fitur pencarian Sebango; baris hasil perluasan menampilkan Sebango asal (`dari ...`).
    - Baris dengan Sebango yang tidak terdaftar otomatis di-skip dari penyimpanan database.
 2. **Rollback & Manajemen Batch Upload**:
    - Tombol **Rollback Data** untuk membatalkan 1 batch upload data produksi terakhir jika terjadi kesalahan input oleh operator.

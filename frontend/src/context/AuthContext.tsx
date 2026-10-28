@@ -11,6 +11,7 @@ export interface UserProfile {
   role: UserRole;
   factory_id?: string | null;
   factory_name?: string | null;
+  factory_location?: string | null;
   department_id?: string | null;
   department_name?: string | null;
   last_login_at?: string;

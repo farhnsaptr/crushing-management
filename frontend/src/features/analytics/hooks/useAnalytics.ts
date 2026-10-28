@@ -1,4 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
+import { FactoriesService } from '../../factories/services/factories.service';
+import { usePlantLocation } from '../../factories/hooks/usePlantLocation';
+import { useCrussingSync } from '../../crussing-sync/hooks/useCrussingSync';
 import { AnalyticsService } from '../services/analytics.service';
 import type {
   YearlyAnalyticsResponse,
@@ -16,9 +19,27 @@ export const useAnalytics = (initialYear?: number) => {
   const [activeTab, setActiveTab] = useState<AnalyticsTabType>('overview');
   const [year, setYear] = useState<number>(initialYear || currentYear);
   const [factory, setFactory] = useState<string>('all');
-  const [search, setSearch] = useState<string>('');
-  const [page, setPage] = useState<number>(1);
-  const [monthFilter, setMonthFilter] = useState<number | ''>('');
+ const [search, setSearch] = useState<string>('');
+ const [page, setPage] = useState<number>(1);
+ const [monthFilter, setMonthFilter] = useState<number | ''>('');
+ const { locations, location, setLocation } = usePlantLocation();
+ const [factoryOptions, setFactoryOptions] = useState<Array<{ code: string; name: string }>>([]);
+
+ // Sinkronisasi per bulan (response setahun terlalu besar). Default bulan berjalan.
+ const syncMonth = monthFilter === '' ? new Date().getMonth() + 1 : monthFilter;
+ const {
+ status: syncStatus,
+ isLoadingStatus: isLoadingSyncStatus,
+ isSyncing,
+ error: syncError,
+ sync: runSync,
+ } = useCrussingSync({ location, year, month: syncMonth, enabled: !!location });
+
+ useEffect(() => {
+ FactoriesService.getFactories()
+ .then((factories) => setFactoryOptions(factories.map((f) => ({ code: f.code, name: f.name }))))
+ .catch((err) => console.error('Failed to load factory options:', err));
+ }, []);
 
   const [yearlyData, setYearlyData] = useState<YearlyAnalyticsResponse | null>(null);
   const [records, setRecords] = useState<ProductionAnalyticsItem[]>([]);
@@ -44,18 +65,18 @@ export const useAnalytics = (initialYear?: number) => {
   const fetchYearlyData = useCallback(async () => {
     setIsLoadingChart(true);
     try {
-      const res = await AnalyticsService.getYearlyComparison(year, factory);
-      setYearlyData(res);
-    } catch (err: any) {
-      console.error('Failed to load yearly analytics:', err);
-      setToast({
-        message: err?.response?.data?.message || 'Gagal memuat data komparasi analitik tahunan.',
-        type: 'error',
-      });
-    } finally {
-      setIsLoadingChart(false);
-    }
-  }, [year, factory]);
+ const res = await AnalyticsService.getYearlyComparison(year, factory, location);
+ setYearlyData(res);
+ } catch (err: any) {
+ console.error('Failed to load yearly analytics:', err);
+ setToast({
+ message: err?.response?.data?.message || 'Gagal memuat data komparasi analitik tahunan.',
+ type: 'error',
+ });
+ } finally {
+ setIsLoadingChart(false);
+ }
+ }, [year, factory, location]);
 
   // Fetch paginated table records
   const fetchRecords = useCallback(async () => {
@@ -134,9 +155,15 @@ export const useAnalytics = (initialYear?: number) => {
       fetchParetoPartsNg(),
       fetchBatches(),
     ]);
-  }, [fetchYearlyData, fetchRecords, fetchParetoMaterials, fetchParetoPartsNg, fetchBatches]);
+ }, [fetchYearlyData, fetchRecords, fetchParetoMaterials, fetchParetoPartsNg, fetchBatches]);
 
-  // Upload production report handler
+ // Tarik data Crusing API untuk bulan yang sedang difilter (default bulan berjalan), lalu refresh.
+ const handleSync = useCallback(async () => {
+ await runSync();
+ await refreshAll();
+ }, [runSync, refreshAll]);
+
+ // Upload production report handler
   const handleUploadReport = async (
     fileOrFilename: File | string,
     rawRows?: RawProductionCsvRow[],
@@ -223,11 +250,20 @@ export const useAnalytics = (initialYear?: number) => {
     setSearch,
     page,
     setPage,
-    monthFilter,
-    setMonthFilter,
-    yearlyData,
-    records,
-    pagination,
+ monthFilter,
+ setMonthFilter,
+ locations,
+ location,
+ setLocation,
+ factoryOptions,
+ syncMonth,
+ syncStatus,
+ isLoadingSyncStatus,
+ isSyncing,
+ syncError,
+ yearlyData,
+ records,
+ pagination,
     batches,
     paretoMaterialsData,
     paretoPartsNgData,
@@ -248,10 +284,11 @@ export const useAnalytics = (initialYear?: number) => {
     fetchRecords,
     fetchParetoMaterials,
     fetchParetoPartsNg,
-    fetchBatches,
-    refreshAll,
-    handleUploadReport,
-    handleRollbackLatestBatch,
-    handleDeleteBatch,
-  };
+ fetchBatches,
+ refreshAll,
+ handleSync,
+ handleUploadReport,
+ handleRollbackLatestBatch,
+ handleDeleteBatch,
+ };
 };

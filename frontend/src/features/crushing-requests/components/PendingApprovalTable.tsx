@@ -267,7 +267,7 @@ export const PendingApprovalTable: React.FC<PendingApprovalTableProps> = ({
                         </div>
                         <div style={{ fontSize: '0.75rem', color: 'var(--text-muted, #64748b)', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
                           <Building2 size={12} />
-                          <span>{r.department_name} ({r.factory_code || r.factory_name})</span>
+                          <span>{r.department_name} ({r.factory_code || r.factory_name}{r.factory_location ? ` • ${r.factory_location}` : ''})</span>
                         </div>
                       </td>
                       <td style={{ padding: '0.75rem 0.85rem', textAlign: 'center' }}>

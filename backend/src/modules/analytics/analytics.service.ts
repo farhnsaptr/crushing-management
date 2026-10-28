@@ -2,6 +2,10 @@ import { randomUUID } from 'crypto';
 import XLSX from 'xlsx';
 import { pool } from '../../config/database';
 import { RowDataPacket } from 'mysql2';
+import {
+  buildSebangoMasterMap,
+  resolveSebango,
+} from '../../utils/sebango.util';
 
 export interface RawProductionRecord {
   date: string; // YYYY-MM-DD
@@ -11,20 +15,38 @@ export interface RawProductionRecord {
   shift?: string;
   operator?: string;
   mesin?: string;
-  act_total?: number | string;
-  act_ok?: number | string;
-  ng_total?: number | string;
+ act_total?: number | string;
+ act_ok?: number | string;
+ ng_total?: number | string;
+ budomari_pct?: number | null;
+ // Komposisi Budomari dari Crusing API (total = 100%). NULL untuk upload manual.
+ ok_use_pct?: number | null;
+ ng_loss_pct?: number | null;
+ runner_pct?: number | null;
+ dango_pct?: number | null;
+ dango_part_pct?: number | null;
 }
 
 export interface ImportProductionReportPayload {
-  filename: string;
-  batch_name?: string;
-  records: RawProductionRecord[];
+ filename: string;
+ batch_name?: string;
+ records: RawProductionRecord[];
+ source?: 'manual_upload' | 'crussing_api';
+ source_ref?: string;
+ external_location?: string;
+ allow_empty?: boolean;
 }
 
 /**
  * Standardizes various date formats (DD-MM-YYYY, YYYY-MM-DD, Excel serial date) to YYYY-MM-DD.
  */
+/** Persentase komposisi Budomari: angka valid atau NULL (bukan 0) bila tidak tersedia. */
+function toPctOrNull(val: any): number | null {
+ if (val === undefined || val === null || val === '') return null;
+ const n = Number(val);
+ return Number.isFinite(n) ? Number(n.toFixed(3)) : null;
+}
+
 function formatStandardDate(val: any): string {
   if (!val) return '';
   if (typeof val === 'number') {
@@ -77,16 +99,24 @@ export class AnalyticsService {
       );
     }
 
-    const sheetName = workbook.SheetNames[0];
-    if (!sheetName) {
-      throw new Error('File tidak memiliki lembar kerja (worksheet).');
-    }
+ if (!workbook.SheetNames.length) {
+ throw new Error('File tidak memiliki lembar kerja (worksheet).');
+ }
 
-    const sheet = workbook.Sheets[sheetName];
-    const rawRows: any[] = XLSX.utils.sheet_to_json(sheet, { defval: '' });
-    if (!rawRows || rawRows.length === 0) {
-      throw new Error('File kosong atau tidak memiliki baris data.');
-    }
+ // Report bisa punya lebih dari satu sheet (mis. "Worksheet" + "Sheet1"):
+ // pakai sheet pertama yang benar-benar berisi baris data.
+ let rawRows: any[] = [];
+ for (const sheetName of workbook.SheetNames) {
+ const sheet = workbook.Sheets[sheetName];
+ const rows: any[] = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+ if (rows.length > 0) {
+ rawRows = rows;
+ break;
+ }
+ }
+ if (rawRows.length === 0) {
+ throw new Error('File kosong atau tidak memiliki baris data.');
+ }
 
     const keys = Object.keys(rawRows[0]);
     const findKey = (possibleNames: string[]): string | undefined => {
@@ -104,6 +134,14 @@ export class AnalyticsService {
     const actTotalKey = findKey(['ACTUAL TOTAL (PCS)', 'ACT TOTAL', 'ACTUAL TOTAL', 'ACT_TOTAL', 'TOTAL']);
     const actOkKey = findKey(['ACTUAL OK PART (PCS)', 'ACT OK', 'ACTUAL OK', 'ACT_OK', 'DIRECT OK (PCS)', 'DIRECT OK']);
     const ngTotalKey = findKey(['ACTUAL NG TOTAL (PCS)', 'NG TOTAL', 'NG_TOTAL', 'TOTAL NG']);
+    const budomariKey = findKey([
+      'KPI BUDOMARI MATERIAL (%)',
+      'BUDOMARI MATERIAL (%)',
+      'BUDOMARI (%)',
+      'BUDOMARI',
+      'BUDOMARI MATERIAL',
+      'BUDOMARI_PCT',
+    ]);
 
     if (!sebangoKey || (!actTotalKey && !actOkKey)) {
       throw new Error(
@@ -138,6 +176,19 @@ export class AnalyticsService {
         operatorVal = String(r[operatorKey]).trim();
       }
 
+      let budomariVal: number | null = null;
+      if (budomariKey && r[budomariKey] !== undefined && r[budomariKey] !== null && String(r[budomariKey]).trim() !== '') {
+        let num = typeof r[budomariKey] === 'number'
+          ? r[budomariKey]
+          : parseFloat(String(r[budomariKey]).replace(/%/g, '').replace(/,/g, '.').trim());
+        if (!isNaN(num)) {
+          if (num > 0 && num <= 1) {
+            num = num * 100;
+          }
+          budomariVal = Number(num.toFixed(1));
+        }
+      }
+
       result.push({
         date: stdDate,
         factory: factoryKey ? String(r[factoryKey] || '').trim() : undefined,
@@ -149,6 +200,7 @@ export class AnalyticsService {
         act_total: isNaN(rawActTotal) ? 0 : rawActTotal,
         act_ok: isNaN(rawActOk) ? 0 : rawActOk,
         ng_total: isNaN(rawNgTotal) ? 0 : rawNgTotal,
+        budomari_pct: budomariVal,
       });
     }
 
@@ -184,137 +236,235 @@ export class AnalyticsService {
           act_total: Math.max(0, parseInt(String(r.act_total || 0), 10) || 0),
           act_ok: Math.max(0, parseInt(String(r.act_ok || 0), 10) || 0),
           ng_total: Math.max(0, parseInt(String(r.ng_total || 0), 10) || 0),
-        };
-      })
-      .filter((r) => r.date && r.sebango);
+ budomari_pct: typeof r.budomari_pct === 'number' && !isNaN(r.budomari_pct) ? r.budomari_pct : null,
+ ok_use_pct: toPctOrNull(r.ok_use_pct),
+ ng_loss_pct: toPctOrNull(r.ng_loss_pct),
+ runner_pct: toPctOrNull(r.runner_pct),
+ dango_pct: toPctOrNull(r.dango_pct),
+ dango_part_pct: toPctOrNull(r.dango_part_pct),
+ };
+ })
+ .filter((r) => r.date && r.sebango);
 
     if (cleanedRecords.length === 0) {
       throw new Error('Tidak ada baris yang valid dengan Tanggal dan Sebango yang lengkap.');
     }
 
-    // 2. Count Sebango occurrences per Date (Dynamic Shikake Calculation)
-    const sebangoDateCountMap = new Map<string, number>();
-    for (const r of cleanedRecords) {
-      const key = `${r.date}__${r.sebango.toUpperCase()}`;
-      sebangoDateCountMap.set(key, (sebangoDateCountMap.get(key) || 0) + 1);
-    }
+ // 2. Load Master Parts lookup once, keyed by normalized sebango (duplicates kept)
+ const [partRows] = await pool.query<RowDataPacket[]>(
+ `SELECT id, sebango_code, part_number, part_name, berat_part_gr, shikake, material
+ FROM master_parts
+ WHERE is_active = TRUE`
+ );
+ const masterMap = buildSebangoMasterMap(partRows, (p) => p.sebango_code);
 
-    // 3. Load Master Parts lookup
-    const [partRows] = await pool.query<RowDataPacket[]>(
-      `SELECT id, sebango_code, part_number, part_name, berat_part_gr, shikake, material
-       FROM master_parts
-       WHERE is_active = TRUE`
-    );
+ // 3. Resolve exact / combined sebango, then expand matched rows with full quantity
+ type CleanedRecord = (typeof cleanedRecords)[number];
+ const resolvedRows: Array<{
+ rowNumber: number;
+ source: CleanedRecord;
+ sebango: string;
+ masterPart: any;
+ }> = [];
+ const unresolved: Array<{
+ row_number: number;
+ raw: string;
+ missing: string[];
+ ambiguous: string[];
+ }> = [];
+ const unmatchedItems: any[] = [];
+ let expandedRows = 0;
+ let resolvedSourceRows = 0;
 
-    const partMap = new Map<string, any>();
-    for (const p of partRows) {
-      if (p.sebango_code) {
-        partMap.set(String(p.sebango_code).toUpperCase().trim(), p);
-      }
-    }
+ const buildUnmatchedItem = (
+ r: CleanedRecord,
+ rowNumber: number,
+ sebango: string,
+ message: string
+ ) => ({
+ row_number: rowNumber,
+ date: r.date,
+ shift: r.shift,
+ factory: r.factory,
+ tonase: r.tonase,
+ mesin: r.mesin,
+ sebango,
+ sebango_raw: r.sebango,
+ act_total: r.act_total,
+ act_ok: r.act_ok,
+ ng_total: r.ng_total,
+ budomari_pct: r.budomari_pct ?? null,
+ ok_use_pct: r.ok_use_pct ?? null,
+ ng_loss_pct: r.ng_loss_pct ?? null,
+ runner_pct: r.runner_pct ?? null,
+ dango_pct: r.dango_pct ?? null,
+ dango_part_pct: r.dango_part_pct ?? null,
+ is_matched: false,
+ part_number: null,
+ part_name: null,
+ berat_part_gr: 0,
+ calculated_shikake: 1,
+ allowance_kg: 0,
+ status: 'unmatched' as const,
+ status_message: message,
+ });
 
-    // 4. Match & preview items
-    let totalEstimatedAllowanceKg = 0;
-    let matchedCount = 0;
-    let unmatchedCount = 0;
-    let minDate = cleanedRecords[0].date;
-    let maxDate = cleanedRecords[0].date;
+ cleanedRecords.forEach((r, idx) => {
+ const rowNumber = idx + 1;
+ const resolution = resolveSebango(r.sebango, masterMap);
+ if (resolution.strategy === 'expanded') expandedRows++;
+ if (resolution.matched.length > 0) resolvedSourceRows++;
 
-    const uniqueSebangos = new Set<string>();
-    const matchedSebangos = new Set<string>();
-    const unmatchedSebangos = new Set<string>();
+ for (const sebango of resolution.matched) {
+ resolvedRows.push({
+ rowNumber,
+ source: r,
+ sebango,
+ masterPart: masterMap.get(sebango)![0],
+ });
+ }
 
-    const previewItems = cleanedRecords.map((r, idx) => {
-      if (r.date < minDate) minDate = r.date;
-      if (r.date > maxDate) maxDate = r.date;
+ if (resolution.missing.length || resolution.ambiguous.length) {
+ unresolved.push({
+ row_number: rowNumber,
+ raw: r.sebango,
+ missing: resolution.missing,
+ ambiguous: resolution.ambiguous,
+ });
+ for (const sebango of resolution.missing) {
+ unmatchedItems.push(
+ buildUnmatchedItem(r, rowNumber, sebango, 'Sebango tidak terdaftar di Master Part (Akan di-skip)')
+ );
+ }
+ for (const sebango of resolution.ambiguous) {
+ unmatchedItems.push(
+ buildUnmatchedItem(r, rowNumber, sebango, 'Sebango duplikat di Master Part (ambigu, di-skip)')
+ );
+ }
+ }
+ });
 
-      const upperSebango = r.sebango.toUpperCase();
-      uniqueSebangos.add(upperSebango);
+ // 4. Count resolved Sebango occurrences per Date (Dynamic Shikake Calculation)
+ const sebangoDateCountMap = new Map<string, number>();
+ for (const row of resolvedRows) {
+ const key = `${row.source.date}__${row.sebango}`;
+ sebangoDateCountMap.set(key, (sebangoDateCountMap.get(key) || 0) + 1);
+ }
 
-      const countKey = `${r.date}__${upperSebango}`;
-      const dynamicShikake = Math.max(1, sebangoDateCountMap.get(countKey) || 1);
+ // 5. Build matched preview items
+ let totalEstimatedAllowanceKg = 0;
+ let minDate = cleanedRecords[0].date;
+ let maxDate = cleanedRecords[0].date;
+ for (const r of cleanedRecords) {
+ if (r.date < minDate) minDate = r.date;
+ if (r.date > maxDate) maxDate = r.date;
+ }
 
-      const masterPart = partMap.get(upperSebango) || null;
-      const isMatched = !!masterPart;
+ const matchedSebangos = new Set<string>();
 
-      let beratPartGr = 0;
-      let partNumber: string | null = null;
-      let partName: string | null = null;
-      let allowanceKg = 0;
+ const matchedItems = resolvedRows.map(({ rowNumber, source: r, sebango, masterPart }) => {
+ matchedSebangos.add(sebango);
 
-      if (masterPart) {
-        matchedCount++;
-        matchedSebangos.add(upperSebango);
-        partNumber = masterPart.part_number;
-        partName = masterPart.part_name;
-        beratPartGr = Number(masterPart.berat_part_gr) || 0;
-        allowanceKg = beratPartGr > 0
-          ? Number(((3 * (beratPartGr / 1000)) / dynamicShikake).toFixed(3))
-          : 0;
-        totalEstimatedAllowanceKg += allowanceKg;
-      } else {
-        unmatchedCount++;
-        unmatchedSebangos.add(upperSebango);
-      }
+ const countKey = `${r.date}__${sebango}`;
+ const dynamicShikake = Math.max(1, sebangoDateCountMap.get(countKey) || 1);
+ const beratPartGr = Number(masterPart.berat_part_gr) || 0;
+ const allowanceKg = beratPartGr > 0
+ ? Number(((3 * (beratPartGr / 1000)) / dynamicShikake).toFixed(3))
+ : 0;
 
-      return {
-        row_number: idx + 1,
-        date: r.date,
-        shift: r.shift,
-        factory: r.factory,
-        tonase: r.tonase,
-        mesin: r.mesin,
-        sebango: r.sebango,
-        act_total: r.act_total,
-        act_ok: r.act_ok,
-        ng_total: r.ng_total,
-        is_matched: isMatched,
-        part_number: partNumber,
-        part_name: partName,
-        berat_part_gr: beratPartGr,
-        calculated_shikake: dynamicShikake,
-        allowance_kg: allowanceKg,
-        status: isMatched ? 'matched' : 'unmatched',
-        status_message: isMatched
-          ? 'Cocok'
-          : 'Sebango tidak terdaftar di Master Part (Akan di-skip)',
-      };
-    });
+ totalEstimatedAllowanceKg += allowanceKg;
 
-    totalEstimatedAllowanceKg = Number(totalEstimatedAllowanceKg.toFixed(3));
+ return {
+ row_number: rowNumber,
+ date: r.date,
+ shift: r.shift,
+ factory: r.factory,
+ tonase: r.tonase,
+ mesin: r.mesin,
+ sebango,
+ sebango_raw: r.sebango,
+ act_total: r.act_total,
+ act_ok: r.act_ok,
+ ng_total: r.ng_total,
+ budomari_pct: r.budomari_pct ?? null,
+ ok_use_pct: r.ok_use_pct ?? null,
+ ng_loss_pct: r.ng_loss_pct ?? null,
+ runner_pct: r.runner_pct ?? null,
+ dango_pct: r.dango_pct ?? null,
+ dango_part_pct: r.dango_part_pct ?? null,
+ is_matched: true,
+ part_number: masterPart.part_number,
+ part_name: masterPart.part_name,
+ berat_part_gr: beratPartGr,
+ calculated_shikake: dynamicShikake,
+ allowance_kg: allowanceKg,
+ status: 'matched' as const,
+ status_message: 'Cocok',
+ };
+ });
 
-    return {
-      summary: {
-        total_rows: cleanedRecords.length,
-        matched_rows: matchedCount,
-        unmatched_rows: unmatchedCount,
-        match_rate_percentage: cleanedRecords.length > 0
-          ? Number(((matchedCount / cleanedRecords.length) * 100).toFixed(1))
-          : 0,
-        total_estimated_allowance_kg: totalEstimatedAllowanceKg,
-        min_date: minDate,
-        max_date: maxDate,
-        unique_sebangos_count: uniqueSebangos.size,
-        matched_sebangos_count: matchedSebangos.size,
-        unmatched_sebangos_count: unmatchedSebangos.size,
-        unmatched_sebango_codes: Array.from(unmatchedSebangos),
-      },
-      items: previewItems,
-    };
-  }
+ const previewItems = [...matchedItems, ...unmatchedItems].sort(
+ (a, b) => a.row_number - b.row_number
+ );
+ const uniqueSebangos = new Set(previewItems.map((i) => i.sebango));
+ const unmatchedSebangos = new Set(unmatchedItems.map((i) => i.sebango));
+
+ totalEstimatedAllowanceKg = Number(totalEstimatedAllowanceKg.toFixed(3));
+
+ return {
+ summary: {
+ total_rows: cleanedRecords.length,
+ matched_rows: matchedItems.length,
+ unmatched_rows: unmatchedItems.length,
+ resolved_rows: resolvedSourceRows,
+ expanded_rows: expandedRows,
+ unresolved_rows: unresolved.length,
+ match_rate_percentage: previewItems.length > 0
+ ? Number(((matchedItems.length / previewItems.length) * 100).toFixed(1))
+ : 0,
+ total_estimated_allowance_kg: totalEstimatedAllowanceKg,
+ min_date: minDate,
+ max_date: maxDate,
+ unique_sebangos_count: uniqueSebangos.size,
+ matched_sebangos_count: matchedSebangos.size,
+ unmatched_sebangos_count: unmatchedSebangos.size,
+ unmatched_sebango_codes: Array.from(unmatchedSebangos),
+ },
+ unresolved,
+ items: previewItems,
+ };
+ }
 
   /**
-   * Import production report CSV records, compute dynamic shikake and allowance per item.
-   * Unmatched Sebangos are automatically skipped.
-   */
-  static async importProductionReport(
-    payload: ImportProductionReportPayload,
-    userId?: string | null
-  ) {
-    const { filename, batch_name, records } = payload;
-    if (!Array.isArray(records) || records.length === 0) {
-      throw new Error('Data laporan produksi kosong atau tidak valid.');
-    }
+ * Import production report CSV records, compute dynamic shikake and allowance per item.
+ * Combined Sebangos are expanded and each resolved Sebango keeps the full quantity.
+ * Unmatched Sebangos are skipped from records but returned in `unresolved`.
+ */
+ static async importProductionReport(
+ payload: ImportProductionReportPayload,
+ userId?: string | null,
+ // Pool atau connection (dipakai sync agar delete+insert satu transaksi).
+ db: any = pool
+) {
+ const { filename, batch_name, records, source, source_ref, external_location, allow_empty } = payload;
+ if (!Array.isArray(records) || records.length === 0) {
+ if (allow_empty) {
+ return {
+ batch_id: null,
+ batch_name: batch_name || '',
+ filename,
+ date_range: { min_date: null, max_date: null },
+ total_rows: 0,
+ matched_rows: 0,
+ unmatched_rows: 0,
+ resolved_rows: 0,
+ expanded_rows: 0,
+ total_allowance_kg: 0,
+ unresolved: [],
+ };
+ }
+ throw new Error('Data laporan produksi kosong atau tidak valid.');
+ }
 
     const cleanedRecords = records
       .map((r) => {
@@ -334,217 +484,330 @@ export class AnalyticsService {
           act_total: Math.max(0, parseInt(String(r.act_total || 0), 10) || 0),
           act_ok: Math.max(0, parseInt(String(r.act_ok || 0), 10) || 0),
           ng_total: Math.max(0, parseInt(String(r.ng_total || 0), 10) || 0),
-        };
-      })
-      .filter((r) => r.date && r.sebango);
+ budomari_pct: typeof r.budomari_pct === 'number' && !isNaN(r.budomari_pct) ? r.budomari_pct : null,
+ ok_use_pct: toPctOrNull(r.ok_use_pct),
+ ng_loss_pct: toPctOrNull(r.ng_loss_pct),
+ runner_pct: toPctOrNull(r.runner_pct),
+ dango_pct: toPctOrNull(r.dango_pct),
+ dango_part_pct: toPctOrNull(r.dango_part_pct),
+ };
+ })
+ .filter((r) => r.date && r.sebango);
 
     if (cleanedRecords.length === 0) {
       throw new Error('Tidak ada baris yang valid dengan Tanggal dan Sebango yang lengkap.');
     }
 
-    // 2. Count Sebango occurrences per Date (Dynamic Shikake Calculation)
-    const sebangoDateCountMap = new Map<string, number>();
-    for (const r of cleanedRecords) {
-      const key = `${r.date}__${r.sebango.toUpperCase()}`;
-      sebangoDateCountMap.set(key, (sebangoDateCountMap.get(key) || 0) + 1);
-    }
+ // 2. Load Master Parts lookup once, keyed by normalized sebango (duplicates kept)
+ const [partRows] = await pool.query<RowDataPacket[]>(
+ `SELECT id, sebango_code, part_number, part_name, berat_part_gr, shikake
+ FROM master_parts
+ WHERE is_active = TRUE`
+ );
+ const masterMap = buildSebangoMasterMap(partRows, (p) => p.sebango_code);
 
-    // 3. Load Master Parts lookup (by sebango_code)
-    const [partRows] = await pool.query<RowDataPacket[]>(
-      `SELECT id, sebango_code, part_number, part_name, berat_part_gr, shikake
-       FROM master_parts
-       WHERE is_active = TRUE`
-    );
+ // 3. Resolve exact / combined sebango, then expand matched rows with full quantity
+ type CleanedRecord = (typeof cleanedRecords)[number];
+ const resolvedRows: Array<{
+ rowNumber: number;
+ source: CleanedRecord;
+ sebango: string;
+ masterPart: any;
+ }> = [];
+ const unresolved: Array<{
+ row_number: number;
+ raw: string;
+ missing: string[];
+ ambiguous: string[];
+ }> = [];
+ let expandedRows = 0;
+ let resolvedSourceRows = 0;
 
-    const partMap = new Map<string, any>();
-    for (const p of partRows) {
-      if (p.sebango_code) {
-        partMap.set(String(p.sebango_code).toUpperCase().trim(), p);
-      }
-    }
+ cleanedRecords.forEach((r, idx) => {
+ const rowNumber = idx + 1;
+ const resolution = resolveSebango(r.sebango, masterMap);
+ if (resolution.strategy === 'expanded') expandedRows++;
+ if (resolution.matched.length > 0) resolvedSourceRows++;
 
-    // 4. Calculate allowance for each row
-    let totalBatchAllowanceKg = 0;
-    let matchedCount = 0;
-    let minDate = cleanedRecords[0].date;
-    let maxDate = cleanedRecords[0].date;
+ for (const sebango of resolution.matched) {
+ resolvedRows.push({
+ rowNumber,
+ source: r,
+ sebango,
+ masterPart: masterMap.get(sebango)![0],
+ });
+ }
 
-    const processedItems: any[] = [];
+ if (resolution.missing.length || resolution.ambiguous.length) {
+ unresolved.push({
+ row_number: rowNumber,
+ raw: r.sebango,
+ missing: resolution.missing,
+ ambiguous: resolution.ambiguous,
+ });
+ }
+ });
 
-    for (const r of cleanedRecords) {
-      if (r.date < minDate) minDate = r.date;
-      if (r.date > maxDate) maxDate = r.date;
+ // 4. Count resolved Sebango occurrences per Date (Dynamic Shikake Calculation)
+ const sebangoDateCountMap = new Map<string, number>();
+ for (const row of resolvedRows) {
+ const key = `${row.source.date}__${row.sebango}`;
+ sebangoDateCountMap.set(key, (sebangoDateCountMap.get(key) || 0) + 1);
+ }
 
-      const countKey = `${r.date}__${r.sebango.toUpperCase()}`;
-      const dynamicShikake = Math.max(1, sebangoDateCountMap.get(countKey) || 1);
+ // 5. Calculate allowance and prepare DB rows
+ let totalBatchAllowanceKg = 0;
+ let minDate = cleanedRecords[0].date;
+ let maxDate = cleanedRecords[0].date;
+ for (const r of cleanedRecords) {
+ if (r.date < minDate) minDate = r.date;
+ if (r.date > maxDate) maxDate = r.date;
+ }
 
-      // Match with master parts
-      const masterPart = partMap.get(r.sebango.toUpperCase()) || null;
+ const processedItems: any[] = [];
 
-      // If matched, compute allowance and prepare for database insertion
-      if (masterPart) {
-        matchedCount++;
-        const beratPartGr = Number(masterPart.berat_part_gr) || 0;
-        const allowanceKg = beratPartGr > 0
-          ? Number(((3 * (beratPartGr / 1000)) / dynamicShikake).toFixed(3))
-          : 0;
+ for (const { rowNumber, source: r, sebango, masterPart } of resolvedRows) {
+ const countKey = `${r.date}__${sebango}`;
+ const dynamicShikake = Math.max(1, sebangoDateCountMap.get(countKey) || 1);
+ const beratPartGr = Number(masterPart.berat_part_gr) || 0;
+ const allowanceKg = beratPartGr > 0
+ ? Number(((3 * (beratPartGr / 1000)) / dynamicShikake).toFixed(3))
+ : 0;
 
-        totalBatchAllowanceKg += allowanceKg;
+ totalBatchAllowanceKg += allowanceKg;
 
-        processedItems.push({
-          id: randomUUID(),
-          production_date: r.date,
-          shift: r.shift,
-          factory_raw: r.factory || null,
-          tonase_raw: r.tonase || null,
-          sebango_code: r.sebango,
-          mesin_raw: r.mesin || null,
-          act_total_pcs: r.act_total,
-          act_ok_pcs: r.act_ok,
-          ng_total_pcs: r.ng_total,
-          master_part_id: masterPart.id,
-          part_number_snapshot: masterPart.part_number,
-          part_name_snapshot: masterPart.part_name,
-          berat_part_gr_snapshot: beratPartGr,
-          calculated_shikake: dynamicShikake,
-          allowance_kg: allowanceKg,
-        });
-      }
-      // Unmatched rows are skipped automatically!
-    }
+ processedItems.push({
+ id: randomUUID(),
+ production_date: r.date,
+ shift: r.shift,
+ factory_raw: r.factory || null,
+ tonase_raw: r.tonase || null,
+ sebango_code: sebango,
+ sebango_code_raw: r.sebango,
+ source_row_number: rowNumber,
+ mesin_raw: r.mesin || null,
+ act_total_pcs: r.act_total,
+ act_ok_pcs: r.act_ok,
+ ng_total_pcs: r.ng_total,
+ master_part_id: masterPart.id,
+ part_number_snapshot: masterPart.part_number,
+ part_name_snapshot: masterPart.part_name,
+ berat_part_gr_snapshot: beratPartGr,
+ calculated_shikake: dynamicShikake,
+ allowance_kg: allowanceKg,
+ budomari_pct: r.budomari_pct ?? null,
+ ok_use_pct: r.ok_use_pct ?? null,
+ ng_loss_pct: r.ng_loss_pct ?? null,
+ runner_pct: r.runner_pct ?? null,
+ dango_pct: r.dango_pct ?? null,
+ dango_part_pct: r.dango_part_pct ?? null,
+ });
+}
 
-    if (processedItems.length === 0) {
-      throw new Error('Tidak ada baris yang cocok dengan Master Part. Seluruh baris di-skip sehingga import dibatalkan.');
-    }
+ const batchTitle = batch_name || `Laporan Produksi ${minDate} s/d ${maxDate}`;
 
-    totalBatchAllowanceKg = Number(totalBatchAllowanceKg.toFixed(3));
+ if (processedItems.length === 0) {
+ if (allow_empty) {
+ return {
+ batch_id: null,
+ batch_name: batchTitle,
+ filename,
+ date_range: { min_date: minDate, max_date: maxDate },
+ total_rows: cleanedRecords.length,
+ matched_rows: 0,
+ unmatched_rows: unresolved.length,
+ resolved_rows: 0,
+ expanded_rows: expandedRows,
+ total_allowance_kg: 0,
+ unresolved,
+ };
+ }
+ throw new Error('Tidak ada baris yang cocok dengan Master Part. Seluruh baris di-skip sehingga import dibatalkan.');
+}
 
-    // 5. Save Batch Header
-    const batchId = randomUUID();
-    const batchTitle = batch_name || `Laporan Produksi ${minDate} s/d ${maxDate}`;
+ totalBatchAllowanceKg = Number(totalBatchAllowanceKg.toFixed(3));
 
-    await pool.query(
-      `INSERT INTO production_analytics_batches
-       (id, batch_name, filename, min_production_date, max_production_date, total_rows, matched_rows, total_allowance_kg, uploaded_by)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        batchId,
-        batchTitle,
-        filename,
-        minDate,
-        maxDate,
-        cleanedRecords.length,
-        matchedCount,
-        totalBatchAllowanceKg,
-        userId || null,
-      ]
-    );
+// 6. Save Batch Header
+ const batchId = randomUUID();
 
-    // 6. Bulk Insert Items (Only matched items)
-    for (const item of processedItems) {
-      await pool.query(
-        `INSERT INTO production_analytics_items
-         (id, batch_id, production_date, shift, factory_raw, tonase_raw, sebango_code, mesin_raw, act_total_pcs, act_ok_pcs, ng_total_pcs, master_part_id, part_number_snapshot, part_name_snapshot, berat_part_gr_snapshot, calculated_shikake, allowance_kg)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [
-          item.id,
-          batchId,
-          item.production_date,
-          item.shift,
-          item.factory_raw,
-          item.tonase_raw,
-          item.sebango_code,
-          item.mesin_raw,
-          item.act_total_pcs,
-          item.act_ok_pcs,
-          item.ng_total_pcs,
-          item.master_part_id,
-          item.part_number_snapshot,
-          item.part_name_snapshot,
-          item.berat_part_gr_snapshot,
-          item.calculated_shikake,
-          item.allowance_kg,
-        ]
-      );
-    }
+ await db.query(
+`INSERT INTO production_analytics_batches
+(id, batch_name, filename, min_production_date, max_production_date, total_rows, matched_rows, total_allowance_kg, source, source_ref, external_location, uploaded_by)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+[
+batchId,
+batchTitle,
+filename,
+minDate,
+maxDate,
+cleanedRecords.length,
+processedItems.length,
+totalBatchAllowanceKg,
+source || 'manual_upload',
+source_ref || null,
+external_location || null,
+userId || null,
+]
+);
 
-    return {
-      batch_id: batchId,
-      batch_name: batchTitle,
-      filename,
-      date_range: {
-        min_date: minDate,
-        max_date: maxDate,
-      },
-      total_rows: cleanedRecords.length,
-      matched_rows: matchedCount,
-      unmatched_rows: cleanedRecords.length - matchedCount,
-      total_allowance_kg: totalBatchAllowanceKg,
-    };
-  }
+// 7. Bulk Insert Items (Only matched items) - chunked agar sinkronisasi bulanan cepat
+ const itemRows = processedItems.map((item) => [
+ item.id,
+ batchId,
+ item.production_date,
+ item.shift,
+ item.factory_raw,
+ item.tonase_raw,
+ item.sebango_code,
+ item.sebango_code_raw,
+ item.source_row_number,
+ item.mesin_raw,
+ item.act_total_pcs,
+ item.act_ok_pcs,
+ item.ng_total_pcs,
+ item.master_part_id,
+ item.part_number_snapshot,
+ item.part_name_snapshot,
+ item.berat_part_gr_snapshot,
+ item.calculated_shikake,
+ item.allowance_kg,
+ item.budomari_pct,
+ item.ok_use_pct,
+ item.ng_loss_pct,
+ item.runner_pct,
+ item.dango_pct,
+ item.dango_part_pct,
+]);
+ const insertItemSql = `INSERT INTO production_analytics_items
+(id, batch_id, production_date, shift, factory_raw, tonase_raw, sebango_code, sebango_code_raw, source_row_number, mesin_raw, act_total_pcs, act_ok_pcs, ng_total_pcs, master_part_id, part_number_snapshot, part_name_snapshot, berat_part_gr_snapshot, calculated_shikake, allowance_kg, budomari_pct, ok_use_pct, ng_loss_pct, runner_pct, dango_pct, dango_part_pct)
+VALUES ?`;
+ for (let i = 0; i < itemRows.length; i += 500) {
+ await db.query(insertItemSql, [itemRows.slice(i, i + 500)]);
+}
+
+ return {
+ batch_id: batchId,
+ batch_name: batchTitle,
+ filename,
+ date_range: {
+ min_date: minDate,
+ max_date: maxDate,
+ },
+ total_rows: cleanedRecords.length,
+ matched_rows: processedItems.length,
+ unmatched_rows: unresolved.length,
+ resolved_rows: resolvedSourceRows,
+ expanded_rows: expandedRows,
+ total_allowance_kg: totalBatchAllowanceKg,
+ unresolved,
+ };
+ }
 
   /**
    * Get yearly comparison metrics (12 months): Allowance vs Actual Output Crushing vs System NG.
    */
-  static async getYearlyAnalytics(year?: number, factory?: string) {
+  static async getYearlyAnalytics(year?: number, factory?: string, location?: string) {
     const qYear = year || new Date().getFullYear();
 
     // 1. Monthly Production Allowance
     let allowanceQuery = `
       SELECT 
-        MONTH(production_date) AS month_num,
-        COALESCE(SUM(allowance_kg), 0) AS total_allowance_kg,
-        COALESCE(SUM(act_total_pcs), 0) AS total_act_pcs,
-        COALESCE(SUM(ng_total_pcs), 0) AS total_prod_ng_pcs,
+        MONTH(pai.production_date) AS month_num,
+        COALESCE(SUM(pai.allowance_kg), 0) AS total_allowance_kg,
+        COALESCE(SUM(pai.act_total_pcs), 0) AS total_act_pcs,
+        COALESCE(SUM(pai.ng_total_pcs), 0) AS total_prod_ng_pcs,
         COUNT(*) AS total_items
-      FROM production_analytics_items
-      WHERE YEAR(production_date) = ?
+      FROM production_analytics_items pai
     `;
     const allowanceParams: any[] = [qYear];
 
+    if (location && location !== 'all') {
+      allowanceQuery += `
+        JOIN master_parts mp ON pai.master_part_id = mp.id
+        JOIN machines mc ON mp.machine_id = mc.id
+        JOIN factories fc ON mc.factory_id = fc.id
+        WHERE YEAR(pai.production_date) = ? AND fc.location = ?
+      `;
+      allowanceParams.push(location);
+    } else {
+      allowanceQuery += ` WHERE YEAR(pai.production_date) = ?`;
+    }
+
     if (factory && factory !== 'all') {
-      allowanceQuery += ` AND factory_raw = ?`;
+      allowanceQuery += ` AND pai.factory_raw = ?`;
       allowanceParams.push(factory);
     }
 
-    allowanceQuery += ` GROUP BY MONTH(production_date)`;
+    allowanceQuery += ` GROUP BY MONTH(pai.production_date)`;
     const [allowanceRows] = await pool.query<RowDataPacket[]>(allowanceQuery, allowanceParams);
 
     // 2. Monthly Actual Output from Validated Input Verifications
-    const [verRows] = await pool.query<RowDataPacket[]>(
-      `SELECT 
+    let verQuery = `
+      SELECT 
         MONTH(verification_date) AS month_num,
         COALESCE(SUM(total_actual_output_kg), 0) AS total_actual_output_kg,
         COALESCE(SUM(total_system_weight_kg), 0) AS total_system_weight_kg,
         COALESCE(SUM(total_crushing_waste_kg), 0) AS total_crushing_waste_kg
        FROM input_verifications
        WHERE YEAR(verification_date) = ? AND status = 'validated'
-       GROUP BY MONTH(verification_date)`,
-      [qYear]
-    );
+    `;
+    const verParams: any[] = [qYear];
+    if (location && location !== 'all') {
+      verQuery += ` AND location = ?`;
+      verParams.push(location);
+    }
+    verQuery += ` GROUP BY MONTH(verification_date)`;
+    const [verRows] = await pool.query<RowDataPacket[]>(verQuery, verParams);
 
-    // 3. Monthly System Part NG Transactions
-    const [ngRows] = await pool.query<RowDataPacket[]>(
-      `SELECT 
-        MONTH(transaction_date) AS month_num,
-        COALESCE(SUM(weight_kg), 0) AS total_ng_kg,
-        COALESCE(SUM(quantity_pcs), 0) AS total_ng_pcs
-       FROM ng_transactions
-       WHERE YEAR(transaction_date) = ?
-       GROUP BY MONTH(transaction_date)`,
-      [qYear]
-    );
+    // 3. Monthly System Part NG Transactions (Prioritize Request Location)
+    let ngQuery = `
+      SELECT 
+        MONTH(t.transaction_date) AS month_num,
+        COALESCE(SUM(t.weight_kg), 0) AS total_ng_kg,
+        COALESCE(SUM(t.quantity_pcs), 0) AS total_ng_pcs
+       FROM ng_transactions t
+    `;
+    const ngParams: any[] = [qYear];
+    if (location && location !== 'all') {
+      ngQuery += `
+        JOIN master_parts mp ON t.master_part_id = mp.id
+        LEFT JOIN crushing_requests cr ON t.request_id = cr.id
+        LEFT JOIN factories req_fc ON cr.factory_id = req_fc.id
+        LEFT JOIN factories tx_fc ON t.factory_id = tx_fc.id
+        LEFT JOIN machines mc ON mp.machine_id = mc.id
+        LEFT JOIN factories mc_fc ON mc.factory_id = mc_fc.id
+        WHERE YEAR(t.transaction_date) = ? 
+          AND COALESCE(req_fc.location, tx_fc.location, mc_fc.location) = ?
+      `;
+      ngParams.push(location);
+    } else {
+      ngQuery += ` WHERE YEAR(t.transaction_date) = ?`;
+    }
+    ngQuery += ` GROUP BY MONTH(t.transaction_date)`;
+    const [ngRows] = await pool.query<RowDataPacket[]>(ngQuery, ngParams);
 
-    // 4. Monthly Part Runner NG Transactions
-    const [runnerRows] = await pool.query<RowDataPacket[]>(
-      `SELECT 
-        MONTH(transaction_date) AS month_num,
-        COALESCE(SUM(total_runner_weight_kg), 0) AS total_runner_kg
-       FROM runner_material_transactions
-       WHERE YEAR(transaction_date) = ?
-       GROUP BY MONTH(transaction_date)`,
-      [qYear]
-    );
+    // 4. Monthly Part Runner NG Transactions (Prioritize Request Location)
+    let runnerQuery = `
+      SELECT 
+        MONTH(rmt.transaction_date) AS month_num,
+        COALESCE(SUM(rmt.total_runner_weight_kg), 0) AS total_runner_kg
+       FROM runner_material_transactions rmt
+    `;
+    const runnerParams: any[] = [qYear];
+    if (location && location !== 'all') {
+      runnerQuery += `
+        LEFT JOIN crushing_requests cr ON rmt.request_id = cr.id
+        LEFT JOIN factories req_fc ON cr.factory_id = req_fc.id
+        LEFT JOIN factories rmt_fc ON rmt.factory_id = rmt_fc.id
+        WHERE YEAR(rmt.transaction_date) = ? 
+          AND COALESCE(req_fc.location, rmt_fc.location, rmt.location) = ?
+      `;
+      runnerParams.push(location);
+    } else {
+      runnerQuery += ` WHERE YEAR(rmt.transaction_date) = ?`;
+    }
+    runnerQuery += ` GROUP BY MONTH(rmt.transaction_date)`;
+    const [runnerRows] = await pool.query<RowDataPacket[]>(runnerQuery, runnerParams);
 
     // 5. Assemble 12 months map
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];

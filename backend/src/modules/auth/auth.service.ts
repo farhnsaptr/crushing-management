@@ -26,6 +26,7 @@ export class AuthService {
         u.id, u.username, u.password_hash, u.full_name, u.role, u.is_active,
         u.factory_id,
         COALESCE(f.name, IF(u.factory_id IS NULL AND u.role = 'pengirim', 'Semua Factory (ALL)', NULL)) AS factory_name,
+        f.location AS factory_location,
         u.department_id, d.name AS department_name
        FROM users u
        LEFT JOIN factories f ON u.factory_id = f.id
@@ -59,6 +60,7 @@ export class AuthService {
       role: user.role,
       factory_id: user.factory_id || null,
       factory_name: user.factory_name || null,
+      factory_location: user.factory_location || null,
       department_id: user.department_id || null,
       department_name: user.department_name || null,
     };
@@ -76,6 +78,7 @@ export class AuthService {
         role: user.role,
         factory_id: user.factory_id || null,
         factory_name: user.factory_name || null,
+        factory_location: user.factory_location || null,
         department_id: user.department_id || null,
         department_name: user.department_name || null,
       },
@@ -88,6 +91,7 @@ export class AuthService {
         u.id, u.username, u.full_name, u.role, u.is_active, u.last_login_at,
         u.factory_id,
         COALESCE(f.name, IF(u.factory_id IS NULL AND u.role = 'pengirim', 'Semua Factory (ALL)', NULL)) AS factory_name,
+        f.location AS factory_location,
         u.department_id, d.name AS department_name
        FROM users u
        LEFT JOIN factories f ON u.factory_id = f.id

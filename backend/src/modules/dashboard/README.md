@@ -10,12 +10,21 @@ Modul ini menyediakan API agregasi statistik, visualisasi grafik harian daur ula
 ## Endpoints
 
 ### 1. `GET /api/dashboard/summary`
-Mengembalikan KPI per bulan & lokasi: `scrap_kg` (material no-reuse NG + runner, menurut jenis recycle efektif termasuk material campur), `input_kg` (material reuse NG + runner), `output_kg` (total hasil timbang verifikasi `validated` di lokasi tsb), `gap_kg` (jumlah `crushing_waste_kg` verifikasi tervalidasi = kekurangan per material `max(0, sistem − timbang)`; tidak pernah minus, kelebihan timbangan tidak dihitung; Scrap + Gap = Waste di sistem lama), dan `input_pcs`. Runner tanpa `factory_id` tidak dihitung. `daily-chart` memakai definisi yang sama per hari/shift (`*_input_kg`, `*_scrap_kg`, `*_output_kg`, `*_gap_kg`); Export Excel menyambung verifikasi per lokasi.
+Mengembalikan KPI per bulan & lokasi: `scrap_kg` (material no-reuse NG + runner, menurut jenis recycle efektif termasuk material campur), `input_kg` (material reuse NG + runner), `output_kg` (total hasil timbang verifikasi `validated` di lokasi tsb), `gap_kg` (jumlah `crushing_waste_kg` verifikasi tervalidasi = kekurangan per material `max(0, sistem − timbang)`; tidak pernah minus, kelebihan timbangan tidak dihitung; Scrap + Gap = Waste di sistem lama), dan `input_pcs`. Runner hasil sinkronisasi API memakai kolom `location`; runner manual tetap memakai `factory_id`/request. `daily-chart` memakai definisi yang sama per hari/shift (`*_input_kg`, `*_scrap_kg`, `*_output_kg`, `*_gap_kg`); Export Excel menyambung verifikasi per lokasi.
 - **Query Params**: `year`, `month`, `location` (`Cibitung` | `Karawang`)
 
 ### 2. `GET /api/dashboard/daily-chart`
 Mengembalikan data grafik harian total recycle material (kg & pcs per tanggal).
 - **Planning Harian** (`planning_kg` per hari) = SUM(`production_analytics_items.allowance_kg`) dari data produksi yang sudah diupload di modul Analytics (allowance di-snapshot saat upload). Hari yang belum diupload bernilai `null`.
+- **Query Params**: `year`, `month`, `location`
+
+### 2b. `GET /api/dashboard/budomari-chart`
+Mengembalikan grafik harian komposisi **KPI Budomari Material** dari `production_analytics_items` (diisi oleh sinkronisasi Crusing API lewat modul `crussing-sync`).
+- Mengembalikan:
+ - `budomari_chart`: array titik harian berisi `day`, `day_num`, `ok_use_pct`, `ng_loss_pct`, `runner_pct`, `dango_pct`, `dango_part_pct`, dan `total_parts`. Kelima persentase sudah dinormalisasi di backend agar totalnya **100%**.
+ - `monthly_breakdown`: rata-rata komposisi sebulan (5 field yang sama) atau `null`.
+ - `total_records`: jumlah record yang memiliki data persentase.
+- Data upload manual lama yang hanya punya `budomari_pct` tidak ikut chart ini; chart memakai komposisi dari API.
 - **Query Params**: `year`, `month`, `location`
 
 ### 3. `GET /api/dashboard/pareto-material`

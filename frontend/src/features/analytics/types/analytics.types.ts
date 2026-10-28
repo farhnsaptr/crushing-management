@@ -126,10 +126,13 @@ export interface RawProductionCsvRow {
 }
 
 export interface ProductionPreviewSummary {
-  total_rows: number;
-  matched_rows: number;
-  unmatched_rows: number;
-  match_rate_percentage: number;
+ total_rows: number;
+ matched_rows: number;
+ unmatched_rows: number;
+ resolved_rows: number;
+ expanded_rows: number;
+ unresolved_rows: number;
+ match_rate_percentage: number;
   total_estimated_allowance_kg: number;
   min_date: string;
   max_date: string;
@@ -145,9 +148,10 @@ export interface ProductionPreviewItem {
   shift: 'Pagi' | 'Malam';
   factory?: string;
   tonase?: string;
-  mesin?: string;
-  sebango: string;
-  act_total: number;
+ mesin?: string;
+ sebango: string;
+ sebango_raw?: string | null;
+ act_total: number;
   act_ok: number;
   ng_total: number;
   is_matched: boolean;

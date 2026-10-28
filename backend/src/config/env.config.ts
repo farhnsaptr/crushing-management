@@ -27,6 +27,13 @@ export const env = {
   MINIO_BUCKET_NAME: requireEnv('MINIO_BUCKET_NAME'),
   MINIO_REGION: requireEnv('MINIO_REGION'),
   MINIO_BASE_URL: requireEnv('MINIO_BASE_URL'),
-  MINIO_FOLDER_MASTER_PARTS: requireEnv('MINIO_FOLDER_MASTER_PARTS'),
-  API_BASE_URL: process.env.API_BASE_URL || '',
+ MINIO_FOLDER_MASTER_PARTS: requireEnv('MINIO_FOLDER_MASTER_PARTS'),
+ API_BASE_URL: process.env.API_BASE_URL || '',
+ // Integrasi Crusing API. Opsional agar aplikasi tetap bisa boot tanpa integrasi.
+ CRUSSING_API_BASE_URL: process.env.CRUSSING_API_BASE_URL || '',
+ CRUSSING_API_CLIENT_ID: process.env.CRUSSING_API_CLIENT_ID || '',
+ CRUSSING_API_CLIENT_SECRET: process.env.CRUSSING_API_CLIENT_SECRET || '',
+ CRUSSING_API_TIMEOUT_MS: parseInt(process.env.CRUSSING_API_TIMEOUT_MS || '60000', 10),
+ // Format: 'Cibitung=SC1,Karawang=SC2'
+ CRUSSING_LOCATION_MAP: process.env.CRUSSING_LOCATION_MAP || '',
 };

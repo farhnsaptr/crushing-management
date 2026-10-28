@@ -23,9 +23,10 @@ interface AnalyticsDataTableProps {
   setPage: (page: number) => void;
   monthFilter: number | '';
   setMonthFilter: (m: number | '') => void;
-  factory: string;
-  setFactory: (f: string) => void;
-  isLoading: boolean;
+ factory: string;
+ setFactory: (f: string) => void;
+ factoryOptions: Array<{ code: string; name: string }>;
+ isLoading: boolean;
 }
 
 export const AnalyticsDataTable: React.FC<AnalyticsDataTableProps> = ({
@@ -38,9 +39,10 @@ export const AnalyticsDataTable: React.FC<AnalyticsDataTableProps> = ({
   setPage,
   monthFilter,
   setMonthFilter,
-  factory,
-  setFactory,
-  isLoading,
+ factory,
+ setFactory,
+ factoryOptions,
+ isLoading,
 }) => {
   const [containerRef, isNarrow] = useIsNarrow<HTMLDivElement>(768);
 
@@ -147,11 +149,13 @@ export const AnalyticsDataTable: React.FC<AnalyticsDataTableProps> = ({
                 outline: 'none',
               }}
             >
-              <option value="all">Semua Pabrik</option>
-              <option value="F2">Pabrik F2</option>
-              <option value="F3">Pabrik F3</option>
-              <option value="F4">Pabrik F4</option>
-            </select>
+ <option value="all">Semua Pabrik</option>
+ {factoryOptions.map((option) => (
+ <option key={option.code} value={option.code}>
+ {option.code} - {option.name}
+ </option>
+ ))}
+ </select>
           </div>
         </div>
       </div>

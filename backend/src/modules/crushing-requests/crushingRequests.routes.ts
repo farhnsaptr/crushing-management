@@ -15,6 +15,7 @@ router.get('/', verifyToken, CrushingRequestsController.listRequests);
 
 // Evaluation of senders (must be declared before /:id)
 router.get('/evaluation', verifyToken, requireRole(['super-admin', 'admin', 'operator']), CrushingRequestsController.getEvaluation);
+router.get('/senders/:id/activity-heatmap', verifyToken, requireRole(['super-admin', 'admin', 'operator', 'pengirim']), CrushingRequestsController.getSenderActivityHeatmap);
 
 router.get('/:id', verifyToken, CrushingRequestsController.getRequestById);
 router.delete('/:id', verifyToken, CrushingRequestsController.cancelRequest);

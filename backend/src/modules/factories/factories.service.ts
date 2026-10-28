@@ -15,9 +15,11 @@ export class FactoriesService {
   /** Daftar lokasi plant (distinct factories.location) - sumber pilihan lokasi di dashboard & verifikasi. */
   static async listLocations(): Promise<string[]> {
     const [rows] = await pool.query<RowDataPacket[]>(
-      'SELECT DISTINCT location FROM factories ORDER BY location ASC'
+      `SELECT DISTINCT location FROM factories 
+       WHERE location IS NOT NULL AND TRIM(location) != '' AND location != 'null'
+       ORDER BY location ASC`
     );
-    return rows.map((r) => String(r.location));
+    return rows.map((r) => String(r.location).trim()).filter((loc) => loc && loc !== 'null');
   }
 
   static async getFactoryById(id: string) {

@@ -166,7 +166,7 @@ export const MyRequestsTable: React.FC<MyRequestsTableProps> = ({
                       <div style={{ fontSize: '0.75rem', color: 'var(--text-muted, #64748b)' }}>Shift {r.shift}</div>
                     </td>
                     <td style={{ padding: '0.65rem 0.85rem', fontSize: '0.8rem' }}>
-                      <div>{r.factory_name || '-'}</div>
+                      <div>{r.factory_name || '-'}{r.factory_location ? ` (${r.factory_location})` : ''}</div>
                       <div style={{ color: 'var(--text-muted, #64748b)' }}>{r.department_name || '-'}</div>
                     </td>
                     <td style={{ padding: '0.65rem 0.85rem', textAlign: 'right', fontWeight: 700 }}>

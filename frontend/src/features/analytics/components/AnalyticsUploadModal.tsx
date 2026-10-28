@@ -62,13 +62,17 @@ export const AnalyticsUploadModal: React.FC<AnalyticsUploadModalProps> = ({
     try {
       const previewRes = await AnalyticsService.previewProductionFile(selectedFile);
       setPreviewData(previewRes);
-    } catch (previewErr: any) {
-      console.error('Preview error:', previewErr);
-      setParseError(
-        previewErr?.response?.data?.message ||
-          previewErr?.message ||
-          'Gagal membaca dan menganalisis kecocokan file laporan produksi.'
-      );
+ } catch (previewErr) {
+ console.error('Preview error:', previewErr);
+ const err = previewErr as {
+ response?: { data?: { message?: string } };
+ message?: string;
+ };
+ setParseError(
+ err?.response?.data?.message ||
+ err?.message ||
+ 'Gagal membaca dan menganalisis kecocokan file laporan produksi.'
+ );
       setPreviewData(null);
     } finally {
       setIsPreviewLoading(false);
@@ -196,9 +200,16 @@ export const AnalyticsUploadModal: React.FC<AnalyticsUploadModalProps> = ({
                   <div style={{ fontWeight: 900, fontSize: '0.925rem', color: '#0f172a' }}>
                     {file.name}
                   </div>
-                  <div style={{ fontSize: '0.775rem', color: '#64748b' }}>
-                    {(file.size / 1024).toFixed(1)} KB • {totalRowsCount} total baris terdeteksi
-                  </div>
+ <div style={{ fontSize: '0.775rem', color: '#64748b' }}>
+ {(file.size / 1024).toFixed(1)} KB • {totalRowsCount} total baris terdeteksi
+ </div>
+
+ {previewData && (previewData.summary?.expanded_rows ?? 0) > 0 && (
+ <div style={{ fontSize: '0.75rem', color: '#008d51', fontWeight: 700 }}>
+ {previewData.summary.expanded_rows} baris Sebango gabungan diperluas menjadi {matchedCount} record
+ </div>
+ )}
+
                 </div>
               </div>
 
@@ -429,9 +440,14 @@ export const AnalyticsUploadModal: React.FC<AnalyticsUploadModalProps> = ({
                               <td style={{ padding: '0.5rem 0.75rem', color: '#1e293b', fontWeight: 600 }}>
                                 {item.date} ({item.shift || 'Pagi'})
                               </td>
-                              <td style={{ padding: '0.5rem 0.75rem', fontWeight: 900, color: item.is_matched ? '#0f172a' : '#dc2626' }}>
-                                {item.sebango}
-                              </td>
+ <td style={{ padding: '0.5rem 0.75rem', fontWeight: 900, color: item.is_matched ? '#0f172a' : '#dc2626' }}>
+ {item.sebango}
+ {item.sebango_raw && item.sebango_raw !== item.sebango && (
+ <div style={{ fontSize: '0.65rem', color: '#64748b', fontWeight: 600 }}>
+ dari {item.sebango_raw}
+ </div>
+ )}
+ </td>
                               <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>
                                 {item.is_matched ? (
                                   <Badge variant="success" size="sm">✓ Cocok</Badge>

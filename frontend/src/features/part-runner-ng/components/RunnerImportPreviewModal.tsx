@@ -373,9 +373,14 @@ export const RunnerImportPreviewModal: React.FC<RunnerImportPreviewModalProps> =
                                   <tbody>
                                     {details.map((detail, dIdx) => (
                                       <tr key={detail.sebango_code + dIdx} style={{ borderBottom: '1px solid var(--border-color, #e2e8f0)' }}>
-                                        <td style={{ padding: '0.45rem 0.6rem', fontWeight: 700, color: 'var(--text-main, #0f172a)' }}>
-                                          {detail.sebango_code}
-                                        </td>
+ <td style={{ padding: '0.45rem 0.6rem', fontWeight: 700, color: 'var(--text-main, #0f172a)' }}>
+ {detail.sebango_code}
+ {detail.sebango_code_raw && detail.sebango_code_raw !== detail.sebango_code && (
+ <div style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted, #64748b)' }}>
+ dari {detail.sebango_code_raw}
+ </div>
+ )}
+ </td>
                                         <td style={{ padding: '0.45rem 0.6rem', color: 'var(--text-main, #334155)' }}>
                                           {detail.part_name} <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>({detail.part_number})</span>
                                         </td>

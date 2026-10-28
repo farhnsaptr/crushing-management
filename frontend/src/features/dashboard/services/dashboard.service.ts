@@ -2,6 +2,7 @@ import { apiClient } from '../../../services/api.client';
 import type {
   DashboardSummaryStats,
   DailyRecycleChartResponse,
+  BudomariChartResponse,
   ParetoMaterialItem,
   TopNgPartItem,
   DepartmentParetoItem,
@@ -30,6 +31,23 @@ export class DashboardService {
       params: { year, month, location },
     });
     return response.data.data || { daily_chart: [] };
+  }
+
+  static async getBudomariChart(
+    year?: number,
+    month?: number,
+    location: PlantLocation = 'Cibitung'
+  ): Promise<BudomariChartResponse> {
+    const response = await apiClient.get('/api/dashboard/budomari-chart', {
+      params: { year, month, location },
+    });
+ return (
+ response.data.data || {
+ budomari_chart: [],
+ monthly_breakdown: null,
+ total_records: 0,
+ }
+ );
   }
 
   static async getParetoMaterial(

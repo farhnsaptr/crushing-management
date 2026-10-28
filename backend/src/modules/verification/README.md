@@ -7,7 +7,7 @@ Modul ini mengelola validasi input vs output hasil penggilingan (crushing) per t
    - Mengambil akumulasi berat Part NG dan Part Runner per material reuse pada tanggal dan shift terkait.
    - Mengembalikan daftar material dan status apakah shift tersebut telah divalidasi.
    - Setelah ada minimal satu transaksi reuse, **semua material campuran bertipe reuse** ikut ditampilkan dengan berat sistem 0 (diurutkan setelah material yang punya input) supaya hasil crushing material campuran yang tidak ada di input tetap bisa dicatat (hasil timbangnya masuk Output; Gap tidak minus). Hanya campuran; material biasa tidak ditambahkan. `has_input` = ada transaksi reuse.
-   - **Per lokasi**: verifikasi unik per (`date`, `shift`, `location`). Parameter `location` wajib (nilai dari `GET /api/factories/locations`); berat sistem hanya dari transaksi lokasi tsb (NG lewat part→mesin→factory, runner lewat `factory_id`; runner tanpa factory tidak dihitung).
+   - **Per lokasi**: verifikasi unik per (`date`, `shift`, `location`). Parameter `location` wajib (nilai dari `GET /api/factories/locations`); berat sistem material dipisahkan per lokasi berdasarkan lokasi pabrik pengirim di request (`crushing_requests.factory_id -> factories.location`, dengan fallback ke transaksi/mesin). Material dari Cibitung dan Karawang dihitung terpisah secara independen tanpa perlu tagging lokasi pada master material.
 2. **Penyimpanan Validasi (`POST /api/verification`)**:
    - Menerima payload berat output aktual langsung dalam satuan Kg (`actual_output_kg`).
    - Menyimpan data validasi ke tabel header `input_verifications` dan tabel rincian `input_verification_items`.

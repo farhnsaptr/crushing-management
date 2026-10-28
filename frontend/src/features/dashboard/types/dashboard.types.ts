@@ -52,6 +52,32 @@ export interface DailyRecycleChartResponse {
   daily_chart: DailyRecycleChartItem[];
 }
 
+/** Komposisi Budomari dari Crusing API; total kelima nilai = 100%. */
+export interface BudomariBreakdown {
+ ok_use_pct: number;
+ ng_loss_pct: number;
+ runner_pct: number;
+ dango_pct: number;
+ dango_part_pct: number;
+}
+
+export interface BudomariDailyItem {
+ day: string;
+ day_num: number;
+ ok_use_pct: number | null;
+ ng_loss_pct: number | null;
+ runner_pct: number | null;
+ dango_pct: number | null;
+ dango_part_pct: number | null;
+ total_parts: number;
+}
+
+export interface BudomariChartResponse {
+ budomari_chart: BudomariDailyItem[];
+ monthly_breakdown: BudomariBreakdown | null;
+ total_records: number;
+}
+
 export interface ParetoMaterialItem {
   no: number;
   material: string;
@@ -115,6 +141,7 @@ export interface SenderDashboardStats {
   department_name: string;
   department_code: string;
   factory_name: string;
+  factory_location?: string;
   total_requests: number;
   pending_count: number;
   approved_count: number;
@@ -131,6 +158,8 @@ export interface SenderDashboardStats {
     request_number: string;
     sender_name: string;
     sender_username: string;
+    factory_name?: string;
+    factory_location?: string;
     request_type: string;
     shift: string;
     request_date: string;

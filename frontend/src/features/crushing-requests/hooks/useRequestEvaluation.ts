@@ -8,6 +8,7 @@ import type {
   SenderEvaluationItem,
   SenderEvaluationResponse,
   CrushingRequest,
+  SenderActivityHeatmapResponse,
 } from '../types/crushingRequests.types';
 import type { Department } from '../../departments/types/departments.types';
 import type { Factory } from '../../factories/types/factories.types';
@@ -33,6 +34,11 @@ export function useRequestEvaluation() {
   const [isSenderModalOpen, setIsSenderModalOpen] = useState<boolean>(false);
   const [senderRequests, setSenderRequests] = useState<CrushingRequest[]>([]);
   const [isLoadingSenderRequests, setIsLoadingSenderRequests] = useState<boolean>(false);
+
+  // Activity Heatmap State
+  const [senderHeatmap, setSenderHeatmap] = useState<SenderActivityHeatmapResponse | null>(null);
+  const [isLoadingSenderHeatmap, setIsLoadingSenderHeatmap] = useState<boolean>(false);
+  const [heatmapMonths, setHeatmapMonths] = useState<number>(6);
 
   // Level 3: Request detail modal (parts breakdown)
   const [selectedRequest, setSelectedRequest] = useState<CrushingRequest | null>(null);
@@ -82,11 +88,29 @@ export function useRequestEvaluation() {
     fetchEvaluation();
   }, [fetchEvaluation]);
 
+  // Fetch sender activity heatmap
+  const fetchSenderHeatmap = useCallback(async (senderId: string, monthsCount: number) => {
+    setIsLoadingSenderHeatmap(true);
+    try {
+      const data = await CrushingRequestsService.getSenderActivityHeatmap(senderId, monthsCount);
+      setSenderHeatmap(data);
+    } catch (err: any) {
+      console.error('Failed to load sender activity heatmap:', err);
+      // Non-blocking, fallback gracefully
+    } finally {
+      setIsLoadingSenderHeatmap(false);
+    }
+  }, []);
+
   // Open sender request tickets modal (Level 2)
   const handleOpenSenderModal = async (sender: SenderEvaluationItem) => {
     setSelectedSender(sender);
     setIsSenderModalOpen(true);
     setIsLoadingSenderRequests(true);
+
+    // Fetch heatmap concurrently
+    fetchSenderHeatmap(sender.user_id, heatmapMonths);
+
     try {
       const res = await CrushingRequestsService.listRequests({
         sender_id: sender.user_id,
@@ -106,10 +130,18 @@ export function useRequestEvaluation() {
     }
   };
 
+  const handleMonthsChange = (newMonths: number) => {
+    setHeatmapMonths(newMonths);
+    if (selectedSender) {
+      fetchSenderHeatmap(selectedSender.user_id, newMonths);
+    }
+  };
+
   const handleCloseSenderModal = () => {
     setIsSenderModalOpen(false);
     setSelectedSender(null);
     setSenderRequests([]);
+    setSenderHeatmap(null);
   };
 
   // Open specific request part breakdown modal (Level 3)
@@ -160,6 +192,11 @@ export function useRequestEvaluation() {
     isLoadingSenderRequests,
     handleOpenSenderModal,
     handleCloseSenderModal,
+    // Heatmap
+    senderHeatmap,
+    isLoadingSenderHeatmap,
+    heatmapMonths,
+    handleMonthsChange,
     // Level 3
     selectedRequest,
     isDetailModalOpen,

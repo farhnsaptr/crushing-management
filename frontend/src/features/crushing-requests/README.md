@@ -10,14 +10,17 @@ Fitur ini menyediakan sistem permohonan dan verifikasi pengiriman material rejec
 ## Struktur Modul
 - `pages/SenderRequestsPage.tsx` — Halaman pengajuan pengiriman Part NG baru dan pelacakan riwayat untuk role `pengirim`.
 - `pages/RequestApprovalPage.tsx` — Halaman verifikasi dan persetujuan pengiriman untuk role `operator`, `admin`, dan `super-admin`.
-- `pages/RequestEvaluationPage.tsx` — Halaman evaluasi keaktifan pengirim per tanggal, shift, departemen, dan pabrik. Baris pengirim yang belum mengirimkan permintaan (`request_count = 0`) otomatis ditandai warna kuning.
+- `pages/RequestEvaluationPage.tsx` — Halaman evaluasi keaktifan pengirim per tanggal, shift, departemen, dan pabrik. Dilengkapi grafik kepatuhan pengiriman (`SubmissionStatusChart`) dan visualisasi calendar heatmap aktivitas pengirim.
+- `components/SubmissionStatusChart.tsx` — Grafik perbandingan pengirim yang Sudah vs Belum Mengirim dengan filter toggle `[ Per Departemen ] [ Per Factory ]` dan tooltip persentase kepatuhan.
+- `components/ActivityHeatmap.tsx` — Komponen visualisasi frekuensi pengiriman harian (GitHub-style calendar contribution heatmap) dengan 7 baris hari, label bulan, skala intensitas warna hijau, tooltip interaktif, dan kontrol rentang waktu (6 Bulan / 1 Tahun).
 - `components/CreateRequestForm.tsx` — Form pembuatan pengiriman Part NG berbasis sistem keranjang 1-click, toggle katalog Grid/List, serta daftar rincian pengiriman interaktif dengan tombol stepper `+`/`-` pcs dan live calculation berat. Responsif berdasarkan lebar area form, bukan lebar layar (≤ 820px, termasuk tablet saat sidebar terbuka): bar filter (search, pabrik, jenis) sticky & tersusun 2 baris, katalog grid 2 kolom dengan tombol stepper ukuran jari, dan rincian pengiriman berubah menjadi bottom cart bar yang membuka sheet rincian + tombol kirim.
 - `components/MyRequestsTable.tsx` — Tabel daftar pengiriman milik pengirim dengan status tracking.
 - `components/PendingApprovalTable.tsx` — Tabel pengiriman masuk untuk diverifikasi oleh operator.
-- `components/SenderRequestsModal.tsx` — Modal rincian pengajuan tiket milik pengirim tertentu pada tanggal & shift terpilih.
+- `components/SenderRequestsModal.tsx` — Modal rincian pengajuan tiket milik pengirim tertentu pada tanggal & shift terpilih, dilengkapi dengan visualisasi `ActivityHeatmap`.
 - `components/RequestDetailModal.tsx` — Modal rincian pengiriman full-screen beserta visual foto part besar, kontrol penyesuaian kuantitas fisik inline, perbandingan audit trail, dan tombol validasi persetujuan.
 - `hooks/useCrushingRequests.ts` — Hook untuk logika formulir pengirim, pengiriman langsung, shift engine real-time, sinkronisasi draf database, dan aksi Undo toast. Pilihan factory terakhir pengirim disimpan per user di browser (`usePersistedState`) dan dibuang bila sudah tidak ada di daftar factory user.
 - `hooks/useRequestApproval.ts` — Hook untuk logika verifikasi fisik dan approval operator.
-- `hooks/useRequestEvaluation.ts` — Hook untuk logika evaluasi pengirim, filter shift/tanggal/departemen/factory, dan drill-down rincian tiket & rincian part.
+- `hooks/useRequestEvaluation.ts` — Hook untuk logika evaluasi pengirim, filter shift/tanggal/departemen/factory, sinkronisasi heatmap aktivitas, dan drill-down rincian tiket & rincian part.
 - `services/crushingRequests.service.ts` — Service API client untuk komunikasi dengan backend `/api/crushing-requests`.
 - `types/crushingRequests.types.ts` — Interface tipe TypeScript.
+

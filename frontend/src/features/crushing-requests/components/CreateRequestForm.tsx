@@ -3,7 +3,6 @@ import { Input } from '../../../components/common/Input';
 import { Button } from '../../../components/common/Button';
 import { Spinner } from '../../../components/common/Spinner';
 import { Modal } from '../../../components/common/Modal';
-import { useIsNarrow } from '../../../hooks';
 import type { CreateRequestItemPayload } from '../types/crushingRequests.types';
 import type { MasterPart } from '../../master-parts/types/masterParts.types';
 import type { Material } from '../../materials/types/materials.types';
@@ -29,9 +28,6 @@ import {
   ShoppingCart,
 } from 'lucide-react';
 import { formatIndonesianDate } from '../../../config/shift.config';
-
-// Lebar area form (bukan layar) di bawah ini → layout mobile. Samakan dengan @container crf di index.css
-const CRF_NARROW_WIDTH = 820;
 
 interface CreateRequestFormProps {
   user: UserProfile | null;
@@ -110,7 +106,8 @@ export const CreateRequestForm: React.FC<CreateRequestFormProps> = ({
 }) => {
   const [catalogViewMode, setCatalogViewMode] = useState<'grid' | 'list'>('grid');
   const [isCartOpen, setIsCartOpen] = useState(false);
-  const [rootRef, isMobile] = useIsNarrow<HTMLDivElement>(CRF_NARROW_WIDTH);
+  // Disabled mobile view collapse so desktop layout stays intact with horizontal scrolling
+  const isMobile = false;
 
   const hasDraftContent = items.length > 0 || notes.trim() !== '';
 
@@ -460,8 +457,8 @@ export const CreateRequestForm: React.FC<CreateRequestFormProps> = ({
   );
 
   return (
-    <div ref={rootRef}>
-      <div className="crf-container">
+    <div style={{ width: '100%', overflowX: 'auto', paddingBottom: '1rem' }}>
+      <div className="crf-container" style={{ minWidth: '920px' }}>
         {/* Top Identity & Shift Bar */}
         <div
           style={{
@@ -622,10 +619,10 @@ export const CreateRequestForm: React.FC<CreateRequestFormProps> = ({
               cursor: 'pointer',
             }}
           >
-            {factoryOptions.length !== 1 && <option value="">-- Semua Pabrik --</option>}
+            {factoryOptions.length !== 1 && <option value="">-- Pilih Pabrik Asal Pengiriman --</option>}
             {factoryOptions.map((f) => (
               <option key={f.id} value={f.id}>
-                {f.name}
+                {f.name} {f.location ? `(${f.location})` : ''}
               </option>
             ))}
           </select>

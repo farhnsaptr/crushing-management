@@ -59,10 +59,14 @@ export class VerificationService {
         SUM(t.weight_kg) AS total_ng_kg
        FROM ng_transactions t
        JOIN master_parts mp ON t.master_part_id = mp.id
-       JOIN machines mc ON mp.machine_id = mc.id
-       JOIN factories fc ON mc.factory_id = fc.id
+       LEFT JOIN crushing_requests cr ON t.request_id = cr.id
+       LEFT JOIN factories req_fc ON cr.factory_id = req_fc.id
+       LEFT JOIN factories tx_fc ON t.factory_id = tx_fc.id
+       LEFT JOIN machines mc ON mp.machine_id = mc.id
+       LEFT JOIN factories mc_fc ON mc.factory_id = mc_fc.id
        LEFT JOIN master_materials mm ON mp.material_id = mm.id
-       WHERE DATE(t.transaction_date) = ? AND t.shift = ? AND fc.location = ?
+       WHERE DATE(t.transaction_date) = ? AND t.shift = ? 
+         AND COALESCE(req_fc.location, tx_fc.location, mc_fc.location) = ?
          AND t.recycle_type_snapshot = 'reuse'
        GROUP BY 1, 2`,
       [cleanDate, cleanShift, location]
@@ -75,9 +79,12 @@ export class VerificationService {
         COALESCE(mm.material_name, rmt.material_name_snapshot, 'Unassigned Material') AS material_name,
         SUM(rmt.total_runner_weight_kg) AS total_runner_kg
        FROM runner_material_transactions rmt
-       JOIN factories fc ON rmt.factory_id = fc.id
+       LEFT JOIN crushing_requests cr ON rmt.request_id = cr.id
+       LEFT JOIN factories req_fc ON cr.factory_id = req_fc.id
+       LEFT JOIN factories rmt_fc ON rmt.factory_id = rmt_fc.id
        ${RUNNER_MATERIAL_JOIN_SQL}
-       WHERE DATE(rmt.transaction_date) = ? AND rmt.shift = ? AND fc.location = ?
+       WHERE DATE(rmt.transaction_date) = ? AND rmt.shift = ? 
+         AND COALESCE(req_fc.location, rmt_fc.location, rmt.location) = ?
          AND (mm.recycle_type = 'reuse' OR (mm.recycle_type IS NULL AND LOWER(rmt.material_name_snapshot) NOT LIKE '%no reuse%'))
        GROUP BY 1, 2`,
       [cleanDate, cleanShift, location]
@@ -411,15 +418,22 @@ export class VerificationService {
       `SELECT 
         (SELECT COUNT(*) FROM ng_transactions t
          JOIN master_parts mp ON t.master_part_id = mp.id
-         JOIN machines mc ON mp.machine_id = mc.id
-         JOIN factories fc ON mc.factory_id = fc.id
-         WHERE DATE(t.transaction_date) = ? AND t.shift = ? AND fc.location = ?
+         LEFT JOIN crushing_requests cr ON t.request_id = cr.id
+         LEFT JOIN factories req_fc ON cr.factory_id = req_fc.id
+         LEFT JOIN factories tx_fc ON t.factory_id = tx_fc.id
+         LEFT JOIN machines mc ON mp.machine_id = mc.id
+         LEFT JOIN factories mc_fc ON mc.factory_id = mc_fc.id
+         WHERE DATE(t.transaction_date) = ? AND t.shift = ? 
+           AND COALESCE(req_fc.location, tx_fc.location, mc_fc.location) = ?
            AND t.recycle_type_snapshot = 'reuse')
         +
         (SELECT COUNT(*) FROM runner_material_transactions rmt 
-         JOIN factories fc ON rmt.factory_id = fc.id
+         LEFT JOIN crushing_requests cr ON rmt.request_id = cr.id
+         LEFT JOIN factories req_fc ON cr.factory_id = req_fc.id
+         LEFT JOIN factories rmt_fc ON rmt.factory_id = rmt_fc.id
          ${RUNNER_MATERIAL_JOIN_SQL}
-         WHERE DATE(rmt.transaction_date) = ? AND rmt.shift = ? AND fc.location = ?
+         WHERE DATE(rmt.transaction_date) = ? AND rmt.shift = ? 
+           AND COALESCE(req_fc.location, rmt_fc.location, rmt.location) = ?
            AND (mm.recycle_type = 'reuse' OR (mm.recycle_type IS NULL AND LOWER(rmt.material_name_snapshot) NOT LIKE '%no reuse%')))
         AS total_reuse_transactions`,
       [date, shift, location, date, shift, location]
