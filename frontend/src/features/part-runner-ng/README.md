@@ -29,6 +29,12 @@ part-runner-ng/
 └── README.md                           # Dokumentasi modul
 ```
 
+## Sinkronisasi Crusing API
+- Card **Sumber Data Crusing API** di tab "Catat Part Runner NG": pilih **satu plant**, **bulan**, dan **tahun**, lalu klik **Tarik Data**.
+- Berat runner dihitung dengan rumus yang sama (`act_total_pcs × berat_runner_gr / 1000`) setelah SEBANGO dicocokkan ke Master Parts.
+- Data hasil API disimpan dengan `location` dan batch `CRUSSING-API:<SC>:<periode>`; refresh berikutnya mengganti data API pada periode itu (data manual tidak dihapus).
+- Label **terakhir masuk** dan peringatan SEBANGO tidak cocok tampil di card yang sama.
+
 ## Fitur Utama
 
 1. **2-Tab Navigation Layout**:

@@ -13,12 +13,14 @@ import {
   UploadCloud,
   Calendar,
   RefreshCw,
-  Layers,
-  AlertCircle,
-  RotateCcw,
+ Layers,
+ AlertCircle,
+ RotateCcw,
+ MapPin,
 } from 'lucide-react';
 import { canManageData } from '../../../config/permissions.config';
 import { AnalyticsRollbackModal } from '../components/AnalyticsRollbackModal';
+import { CrussingSyncStatus } from '../../crussing-sync/components/CrussingSyncStatus';
 import { useIsNarrow } from '../../../hooks';
 
 export const AnalyticsPage: React.FC = () => {
@@ -37,11 +39,20 @@ export const AnalyticsPage: React.FC = () => {
     setSearch,
     page,
     setPage,
-    monthFilter,
-    setMonthFilter,
-    yearlyData,
-    records,
-    pagination,
+ monthFilter,
+ setMonthFilter,
+ locations,
+ location,
+ setLocation,
+ factoryOptions,
+ syncMonth,
+ syncStatus,
+ isLoadingSyncStatus,
+ isSyncing,
+ syncError,
+ yearlyData,
+ records,
+ pagination,
     batches,
     paretoMaterialsData,
     paretoPartsNgData,
@@ -58,19 +69,24 @@ export const AnalyticsPage: React.FC = () => {
     setIsUploadModalOpen,
     isRollbackModalOpen,
     setIsRollbackModalOpen,
-    fetchBatches,
-    refreshAll,
-    handleUploadReport,
-    handleRollbackLatestBatch,
-    handleDeleteBatch,
-  } = useAnalytics();
+ fetchBatches,
+ refreshAll,
+ handleSync,
+ handleUploadReport,
+ handleRollbackLatestBatch,
+ handleDeleteBatch,
+ } = useAnalytics();
 
-  const currentYear = new Date().getFullYear();
-  const yearOptions = [currentYear - 2, currentYear - 1, currentYear, currentYear + 1];
+ const currentYear = new Date().getFullYear();
+ const yearOptions = [currentYear - 2, currentYear - 1, currentYear, currentYear + 1];
 
-  const handleRefreshAll = () => {
-    refreshAll();
-  };
+ const handleRefreshAll = () => {
+ if (canManage) {
+ handleSync();
+ } else {
+ refreshAll();
+ }
+ };
 
   return (
     <div ref={containerRef} style={{ display: 'flex', flexDirection: 'column', gap: isNarrow ? '1.15rem' : '1.5rem', paddingBottom: '3rem' }}>
@@ -124,11 +140,36 @@ export const AnalyticsPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Action Controls Header */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', width: isNarrow ? '100%' : 'auto' }}>
-          {/* Year Selector */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', backgroundColor: '#ffffff', padding: '0.35rem 0.65rem', borderRadius: '10px', border: '1.5px solid #cbd5e1', flex: isNarrow ? 1 : 'none' }}>
-            <Calendar size={16} color="#64748b" style={{ flexShrink: 0 }} />
+ {/* Action Controls Header */}
+ <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', width: isNarrow ? '100%' : 'auto' }}>
+ {/* Location Selector */}
+ <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', backgroundColor: '#ffffff', padding: '0.35rem 0.65rem', borderRadius: '10px', border: '1.5px solid #cbd5e1', flex: isNarrow ? 1 : 'none' }}>
+ <MapPin size={16} color="#64748b" style={{ flexShrink: 0 }} />
+ <select
+ value={location}
+ onChange={(e) => setLocation(e.target.value)}
+ style={{
+ width: '100%',
+ border: 'none',
+ backgroundColor: 'transparent',
+ fontSize: '0.85rem',
+ fontWeight: 800,
+ color: '#0f172a',
+ outline: 'none',
+ cursor: 'pointer',
+ }}
+ >
+ {locations.map((loc) => (
+ <option key={loc} value={loc}>
+ {loc}
+ </option>
+ ))}
+ </select>
+ </div>
+
+ {/* Year Selector */}
+ <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', backgroundColor: '#ffffff', padding: '0.35rem 0.65rem', borderRadius: '10px', border: '1.5px solid #cbd5e1', flex: isNarrow ? 1 : 'none' }}>
+ <Calendar size={16} color="#64748b" style={{ flexShrink: 0 }} />
             <select
               value={year}
               onChange={(e) => setYear(parseInt(e.target.value, 10))}
@@ -155,13 +196,16 @@ export const AnalyticsPage: React.FC = () => {
           <Button
             type="button"
             variant="secondary"
-            onClick={handleRefreshAll}
-            isLoading={isLoadingChart || isLoadingRecords || isLoadingParetoMaterials || isLoadingParetoPartsNg}
-            leftIcon={<RefreshCw size={15} />}
-            style={{ padding: '0.5rem 0.85rem', fontSize: '0.825rem' }}
-          >
-            Segarkan
-          </Button>
+ onClick={handleRefreshAll}
+ isLoading={isLoadingChart || isLoadingRecords || isLoadingParetoMaterials || isLoadingParetoPartsNg || isSyncing}
+ leftIcon={<RefreshCw size={15} />}
+ style={{ padding: '0.5rem 0.85rem', fontSize: '0.825rem' }}
+ title={canManage
+ ? `Tarik data Crusing API ${new Date(year, syncMonth - 1, 1).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })} lalu refresh`
+ : 'Refresh data'}
+ >
+ Segarkan
+ </Button>
 
           {/* Rollback Data Button (Operator up to Super Admin only) */}
           {canManage && (
@@ -204,10 +248,17 @@ export const AnalyticsPage: React.FC = () => {
               Upload Data Produksi
             </Button>
           )}
-        </div>
-      </div>
+ </div>
+ </div>
 
-      {/* Navigation Tabs Bar - Horizontal Scrollable on Mobile */}
+ <CrussingSyncStatus
+ status={syncStatus}
+ isLoading={isLoadingSyncStatus}
+ isSyncing={isSyncing}
+ error={syncError}
+ />
+
+ {/* Navigation Tabs Bar - Horizontal Scrollable on Mobile */}
       <div
         className="no-scrollbar"
         style={{
@@ -324,10 +375,11 @@ export const AnalyticsPage: React.FC = () => {
             setPage={setPage}
             monthFilter={monthFilter}
             setMonthFilter={setMonthFilter}
-            factory={factory}
-            setFactory={setFactory}
-            isLoading={isLoadingRecords}
-          />
+ factory={factory}
+ setFactory={setFactory}
+ factoryOptions={factoryOptions}
+ isLoading={isLoadingRecords}
+ />
         </div>
       )}
 

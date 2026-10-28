@@ -6,6 +6,44 @@ import { RUNNER_MATERIAL_JOIN_SQL } from '../materials/runnerMaterialJoin';
 // Pareto Departemen dibatasi agar tabel dashboard muat tanpa scroll: peringkat teratas + 1 baris "Lainnya" (jumlah sisanya)
 const DEPARTMENT_PARETO_MAX_ROWS = 5;
 
+export interface BudomariBreakdown {
+ ok_use_pct: number;
+ ng_loss_pct: number;
+ runner_pct: number;
+ dango_pct: number;
+ dango_part_pct: number;
+}
+
+/**
+ * Normalisasi 5 komponen Budomari agar totalnya tepat 100%.
+ * Sumber: Crusing API (ok_use, ng_loss, runner, dango, dango_part).
+ */
+function normalizeBudomariBreakdown(row: any): BudomariBreakdown | null {
+ if (!row) return null;
+ const values = [
+ Number(row.ok_use_pct) || 0,
+ Number(row.ng_loss_pct) || 0,
+ Number(row.runner_pct) || 0,
+ Number(row.dango_pct) || 0,
+ Number(row.dango_part_pct) || 0,
+ ];
+ const sum = values.reduce((acc, v) => acc + v, 0);
+ if (sum <= 0) return null;
+
+ const rounded = values.map((v) => Number(((v / sum) * 100).toFixed(2)));
+ // Selisih pembulatan dimasukkan ke komponen pertama supaya total persis 100%.
+ const diff = Number((100 - rounded.reduce((acc, v) => acc + v, 0)).toFixed(2));
+ if (diff !== 0) rounded[0] = Number((rounded[0] + diff).toFixed(2));
+
+ return {
+ ok_use_pct: rounded[0],
+ ng_loss_pct: rounded[1],
+ runner_pct: rounded[2],
+ dango_pct: rounded[3],
+ dango_part_pct: rounded[4],
+ };
+}
+
 export class DashboardService {
   /**
    * KPI dashboard per bulan & lokasi:
@@ -48,7 +86,7 @@ export class DashboardService {
        LEFT JOIN factories rmt_fc ON rmt.factory_id = rmt_fc.id
        ${RUNNER_MATERIAL_JOIN_SQL}
        WHERE YEAR(rmt.transaction_date) = ? AND MONTH(rmt.transaction_date) = ? 
-         AND COALESCE(req_fc.location, rmt_fc.location) = ?`,
+         AND COALESCE(req_fc.location, rmt_fc.location, rmt.location) = ?`,
       [qYear, qMonth, location]
     );
 
@@ -120,7 +158,7 @@ export class DashboardService {
        LEFT JOIN factories rmt_fc ON rmt.factory_id = rmt_fc.id
        ${RUNNER_MATERIAL_JOIN_SQL}
        WHERE YEAR(rmt.transaction_date) = ? AND MONTH(rmt.transaction_date) = ? 
-         AND COALESCE(req_fc.location, rmt_fc.location) = ?
+         AND COALESCE(req_fc.location, rmt_fc.location, rmt.location) = ?
        GROUP BY DAY(rmt.transaction_date), rmt.shift
        ORDER BY day_num ASC`,
       [qYear, qMonth, location]
@@ -312,101 +350,86 @@ export class DashboardService {
     };
   }
 
-  static async getBudomariDailyChart(year?: number, month?: number, location: string = 'Cibitung') {
-    const now = new Date();
-    const qYear = year || now.getFullYear();
-    const qMonth = month || now.getMonth() + 1;
+ static async getBudomariDailyChart(year?: number, month?: number, location: string = 'Cibitung') {
+ const now = new Date();
+ const qYear = year || now.getFullYear();
+ const qMonth = month || now.getMonth() + 1;
 
-    // 1. Fetch daily aggregated budomari metrics
-    const [rows] = await pool.query<RowDataPacket[]>(
-      `SELECT
-        DAY(pai.production_date) AS day_num,
-        AVG(pai.budomari_pct) AS avg_budomari_pct,
-        MIN(pai.budomari_pct) AS min_budomari_pct,
-        MAX(pai.budomari_pct) AS max_budomari_pct,
-        COUNT(*) AS total_parts
-       FROM production_analytics_items pai
-       JOIN master_parts mp ON pai.master_part_id = mp.id
-       JOIN machines mc ON mp.machine_id = mc.id
-       JOIN factories fc ON mc.factory_id = fc.id
-       WHERE YEAR(pai.production_date) = ?
-         AND MONTH(pai.production_date) = ?
-         AND fc.location = ?
-         AND pai.budomari_pct IS NOT NULL
-       GROUP BY DAY(pai.production_date)
-       ORDER BY day_num ASC`,
-      [qYear, qMonth, location]
-    );
+ // 1. Fetch daily aggregated komposisi Budomari (5 komponen dari Crusing API).
+ // Setiap record API dinormalisasi agar totalnya 100%, lalu dirata-rata per hari.
+ const [rows] = await pool.query<RowDataPacket[]>(
+ `SELECT
+ DAY(pai.production_date) AS day_num,
+ AVG(pai.ok_use_pct) AS ok_use_pct,
+ AVG(pai.ng_loss_pct) AS ng_loss_pct,
+ AVG(pai.runner_pct) AS runner_pct,
+ AVG(pai.dango_pct) AS dango_pct,
+ AVG(pai.dango_part_pct) AS dango_part_pct,
+ COUNT(*) AS total_parts
+ FROM production_analytics_items pai
+ JOIN master_parts mp ON pai.master_part_id = mp.id
+ JOIN machines mc ON mp.machine_id = mc.id
+ JOIN factories fc ON mc.factory_id = fc.id
+ WHERE YEAR(pai.production_date) = ?
+ AND MONTH(pai.production_date) = ?
+ AND fc.location = ?
+ AND pai.ok_use_pct IS NOT NULL
+ GROUP BY DAY(pai.production_date)
+ ORDER BY day_num ASC`,
+ [qYear, qMonth, location]
+ );
 
-    // 2. Fetch monthly overall metrics
-    const [monthlyRows] = await pool.query<RowDataPacket[]>(
-      `SELECT
-        AVG(pai.budomari_pct) AS monthly_avg,
-        MIN(pai.budomari_pct) AS monthly_min,
-        MAX(pai.budomari_pct) AS monthly_max,
-        COUNT(*) AS total_records
-       FROM production_analytics_items pai
-       JOIN master_parts mp ON pai.master_part_id = mp.id
-       JOIN machines mc ON mp.machine_id = mc.id
-       JOIN factories fc ON mc.factory_id = fc.id
-       WHERE YEAR(pai.production_date) = ?
-         AND MONTH(pai.production_date) = ?
-         AND fc.location = ?
-         AND pai.budomari_pct IS NOT NULL`,
-      [qYear, qMonth, location]
-    );
+ // 2. Fetch monthly overall composition
+ const [monthlyRows] = await pool.query<RowDataPacket[]>(
+ `SELECT
+ AVG(pai.ok_use_pct) AS ok_use_pct,
+ AVG(pai.ng_loss_pct) AS ng_loss_pct,
+ AVG(pai.runner_pct) AS runner_pct,
+ AVG(pai.dango_pct) AS dango_pct,
+ AVG(pai.dango_part_pct) AS dango_part_pct,
+ COUNT(*) AS total_records
+ FROM production_analytics_items pai
+ JOIN master_parts mp ON pai.master_part_id = mp.id
+ JOIN machines mc ON mp.machine_id = mc.id
+ JOIN factories fc ON mc.factory_id = fc.id
+ WHERE YEAR(pai.production_date) = ?
+ AND MONTH(pai.production_date) = ?
+ AND fc.location = ?
+ AND pai.ok_use_pct IS NOT NULL`,
+ [qYear, qMonth, location]
+ );
 
-    const dataByDay = new Map<number, {
-      avg: number;
-      min: number;
-      max: number;
-      total: number;
-    }>();
+ const dataByDay = new Map<number, BudomariBreakdown & { total: number }>();
+ for (const r of rows) {
+ const normalized = normalizeBudomariBreakdown(r);
+ if (!normalized) continue;
+ dataByDay.set(Number(r.day_num), { ...normalized, total: Number(r.total_parts) || 0 });
+ }
 
-    for (const r of rows) {
-      dataByDay.set(Number(r.day_num), {
-        avg: Number(Number(r.avg_budomari_pct).toFixed(2)),
-        min: Number(Number(r.min_budomari_pct).toFixed(2)),
-        max: Number(Number(r.max_budomari_pct).toFixed(2)),
-        total: Number(r.total_parts) || 0,
-      });
-    }
+ const daysInMonth = new Date(qYear, qMonth, 0).getDate();
+ const chartItems = [];
 
-    const daysInMonth = new Date(qYear, qMonth, 0).getDate();
-    const chartItems = [];
+ for (let d = 1; d <= daysInMonth; d++) {
+ const dayStr = d < 10 ? `0${d}` : `${d}`;
+ const entry = dataByDay.get(d);
+ chartItems.push({
+ day: dayStr,
+ day_num: d,
+ ok_use_pct: entry ? entry.ok_use_pct : null,
+ ng_loss_pct: entry ? entry.ng_loss_pct : null,
+ runner_pct: entry ? entry.runner_pct : null,
+ dango_pct: entry ? entry.dango_pct : null,
+ dango_part_pct: entry ? entry.dango_part_pct : null,
+ total_parts: entry ? entry.total : 0,
+ });
+ }
 
-    for (let d = 1; d <= daysInMonth; d++) {
-      const dayStr = d < 10 ? `0${d}` : `${d}`;
-      const entry = dataByDay.get(d);
-      chartItems.push({
-        day: dayStr,
-        day_num: d,
-        avg_budomari_pct: entry ? entry.avg : null,
-        min_budomari_pct: entry ? entry.min : null,
-        max_budomari_pct: entry ? entry.max : null,
-        total_parts: entry ? entry.total : 0,
-      });
-    }
-
-    const monthlyAvg = monthlyRows[0]?.monthly_avg != null
-      ? Number(Number(monthlyRows[0].monthly_avg).toFixed(2))
-      : null;
-    const monthlyMin = monthlyRows[0]?.monthly_min != null
-      ? Number(Number(monthlyRows[0].monthly_min).toFixed(2))
-      : null;
-    const monthlyMax = monthlyRows[0]?.monthly_max != null
-      ? Number(Number(monthlyRows[0].monthly_max).toFixed(2))
-      : null;
-    const totalRecords = Number(monthlyRows[0]?.total_records) || 0;
-
-    return {
-      budomari_chart: chartItems,
-      monthly_avg_budomari_pct: monthlyAvg,
-      monthly_min_budomari_pct: monthlyMin,
-      monthly_max_budomari_pct: monthlyMax,
-      total_records: totalRecords,
-    };
-  }
+ return {
+ budomari_chart: chartItems,
+ monthly_breakdown: monthlyRows[0] ? normalizeBudomariBreakdown(monthlyRows[0]) : null,
+ total_records: Number(monthlyRows[0]?.total_records) || 0,
+ };
+ }
 
   static async getParetoMaterial(year?: number, month?: number, location: string = 'Cibitung') {
     const now = new Date();
@@ -446,7 +469,7 @@ export class DashboardService {
          LEFT JOIN factories rmt_fc ON rmt.factory_id = rmt_fc.id
          LEFT JOIN v_all_materials mm ON (rmt.material_id = mm.id OR rmt.material_name_snapshot = mm.material_name)
          WHERE YEAR(rmt.transaction_date) = ? AND MONTH(rmt.transaction_date) = ?
-           AND COALESCE(req_fc.location, rmt_fc.location) = ?
+           AND COALESCE(req_fc.location, rmt_fc.location, rmt.location) = ?
        ) combined
        GROUP BY material_name
        ORDER BY total_kg DESC
@@ -603,7 +626,7 @@ export class DashboardService {
        LEFT JOIN factories rmt_fc ON rmt.factory_id = rmt_fc.id
        ${RUNNER_MATERIAL_JOIN_SQL}
        LEFT JOIN crushing_request_items cri ON (rmt.request_id IS NOT NULL AND cri.request_id = rmt.request_id AND cri.item_type = 'runner_ng' AND (cri.material_id = rmt.material_id OR cri.material_name_snapshot = rmt.material_name_snapshot))
-       LEFT JOIN input_verifications iv ON (iv.verification_date = rmt.transaction_date AND iv.shift = rmt.shift AND iv.location = COALESCE(req_fc.location, rmt_fc.location))
+       LEFT JOIN input_verifications iv ON (iv.verification_date = rmt.transaction_date AND iv.shift = rmt.shift AND iv.location = COALESCE(req_fc.location, rmt_fc.location, rmt.location))
        LEFT JOIN input_verification_items ivi ON (
          ivi.verification_id = iv.id AND (
            (rmt.material_id IS NOT NULL AND ivi.material_id = rmt.material_id)
@@ -611,7 +634,7 @@ export class DashboardService {
          )
        )
        WHERE rmt.transaction_date BETWEEN ? AND ?
-         AND COALESCE(req_fc.location, rmt_fc.location) = ?
+         AND COALESCE(req_fc.location, rmt_fc.location, rmt.location) = ?
        ORDER BY rmt.transaction_date ASC, rmt.created_at ASC`,
       [qStart, qEnd, location]
     );

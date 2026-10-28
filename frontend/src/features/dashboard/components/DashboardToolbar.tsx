@@ -10,9 +10,10 @@ interface DashboardToolbarProps {
   onMonthChange: (month: number) => void;
   selectedYear: number;
   onYearChange: (year: number) => void;
-  onRefresh: () => void;
-  dateText: string;
-  userText: string;
+ onRefresh: () => void;
+ isSyncing?: boolean;
+ dateText: string;
+ userText: string;
 }
 
 const pillField: React.CSSProperties = {
@@ -35,10 +36,11 @@ export const DashboardToolbar: React.FC<DashboardToolbarProps> = ({
   selectedMonth,
   onMonthChange,
   selectedYear,
-  onYearChange,
-  onRefresh,
-  dateText,
-  userText,
+ onYearChange,
+ onRefresh,
+ isSyncing = false,
+ dateText,
+ userText,
 }) => {
   return (
     <div className="dash-bar">
@@ -111,23 +113,25 @@ export const DashboardToolbar: React.FC<DashboardToolbarProps> = ({
           />
         </div>
 
-        <button
-          type="button"
-          onClick={onRefresh}
-          title="Refresh Data"
-          style={{
-            padding: '0.35rem',
-            borderRadius: '50%',
-            border: '1px solid #cbd5e1',
-            backgroundColor: '#ffffff',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <RefreshCw size={15} color="#64748b" />
-        </button>
+ <button
+ type="button"
+ onClick={onRefresh}
+ disabled={isSyncing}
+ title={isSyncing ? 'Menarik data Crusing API...' : 'Tarik data & refresh'}
+ style={{
+ padding: '0.35rem',
+ borderRadius: '50%',
+ border: '1px solid #cbd5e1',
+ backgroundColor: '#ffffff',
+ cursor: isSyncing ? 'wait' : 'pointer',
+ opacity: isSyncing ? 0.65 : 1,
+ display: 'flex',
+ alignItems: 'center',
+ justifyContent: 'center',
+ }}
+ >
+ <RefreshCw size={15} color="#64748b" style={{ animation: isSyncing ? 'spin 1s linear infinite' : undefined }} />
+ </button>
       </div>
 
       <div className="dash-bar-right">

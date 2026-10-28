@@ -5,6 +5,13 @@ Modul ini menyediakan antarmuka analitik visual komprehensif untuk menghubungkan
 ## Hak Akses
 Upload dan Rollback hanya untuk `super-admin`, `admin`, `operator` (`canManageData` di `config/permissions.config.ts`). Role `pengirim` dan `guest` (viewer murni) hanya melihat tab, grafik, dan tabel; tombol serta modal Upload/Rollback tidak dirender.
 
+## Sinkronisasi Crusing API
+- Tombol **Segarkan** untuk `super-admin`/`admin`/`operator` menarik data **satu bulan** dari Crusing API (default: bulan berjalan, atau bulan yang dipilih di filter tabel), lalu me-refresh seluruh data analitik.
+- Pilihan **lokasi plant** (Cibitung/Karawang) menentukan data yang ditarik dan filter chart komparasi tahunan.
+- Label **terakhir masuk** menampilkan waktu sinkron sukses terakhir per lokasi + periode, plus peringatan `SEBANGO` tidak cocok dan data manual yang overlap.
+- Sync hanya mengganti data **hasil API** pada periode tersebut; data upload manual tidak dihapus (rollback manual bila tidak ingin dobel).
+- Filter pabrik pada tabel diambil dinamis dari master factories (`F2`, `F3`, `F4`, `SC2`, ...).
+
 ## Fitur Utama
 1. **Upload File Laporan Produksi Excel/CSV & Live Preview Kecocokan**:
    - Mendukung format file Excel Laporan Produksi (seperti `08. LAPORAN AGUSTUS 2026.xlsx`) serta retro-kompatibilitas file CSV `Report  Production.csv`.

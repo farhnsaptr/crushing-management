@@ -429,50 +429,82 @@ export class RunnerMaterialService {
    * Supports individual item-level transaction_date or default transactionDate.
    * Enforces master_materials names from database if any differences exist.
    */
-  static async saveRecords(
-    materialItems: MaterialRunnerSaveItemDto[],
-    transactionDate: string,
-    batchRef?: string
-  ) {
-    if (!materialItems || materialItems.length === 0) {
-      throw new Error('Tidak ada data material runner yang akan disimpan.');
-    }
+ static async saveRecords(
+ materialItems: MaterialRunnerSaveItemDto[],
+ transactionDate: string,
+ batchRef?: string,
+ options?: {
+ location?: 'Cibitung' | 'Karawang';
+ replaceScope?: { date_from: string; date_to: string };
+ }
+ ) {
+ const replaceScope = options?.replaceScope;
+ if ((!materialItems || materialItems.length === 0) && !replaceScope) {
+ throw new Error('Tidak ada data material runner yang akan disimpan.');
+ }
+ if (replaceScope && !options?.location) {
+ throw new Error('Location wajib diisi untuk mengganti data runner per periode.');
+ }
 
-    const matLookup = await getMasterMaterialsLookup();
-    const importBatch = batchRef || `batch_runner_${Date.now()}`;
-    const defaultDate = transactionDate && transactionDate !== 'all'
-      ? transactionDate
-      : new Date().toISOString().substring(0, 10);
-    let successCount = 0;
+ const matLookup = await getMasterMaterialsLookup();
+ const importBatch = batchRef || `batch_runner_${Date.now()}`;
+ const defaultDate = transactionDate && transactionDate !== 'all'
+ ? transactionDate
+ : new Date().toISOString().substring(0, 10);
+ const location = options?.location || null;
 
-    for (const item of materialItems) {
-      const id = randomUUID();
-      // Ensure the official material name from database master_materials is used
-      const resolvedMat = matLookup.resolve(item.material_id, item.material_name);
-      const matId = resolvedMat.id;
-      const matName = resolvedMat.name;
-      const normShift = normalizeShift(item.shift);
-      const pcs = Number(item.total_pcs) || 0;
-      const weightKg = Number(item.total_runner_weight_kg) || 0;
-      const itemDate = (item.transaction_date && item.transaction_date !== 'all')
-        ? item.transaction_date
-        : defaultDate;
+ const resolvedItems = (materialItems || []).map((item) => {
+ // Ensure the official material name from database master_materials is used
+ const resolvedMat = matLookup.resolve(item.material_id, item.material_name);
+ return {
+ id: randomUUID(),
+ materialId: resolvedMat.id,
+ materialName: resolvedMat.name,
+ pcs: Number(item.total_pcs) || 0,
+ weightKg: Number(item.total_runner_weight_kg) || 0,
+ itemDate: (item.transaction_date && item.transaction_date !== 'all')
+ ? item.transaction_date
+ : defaultDate,
+ shift: normalizeShift(item.shift),
+ };
+ });
 
-      await pool.query(
-        `INSERT INTO runner_material_transactions
-         (id, material_id, material_name_snapshot, total_pcs, total_runner_weight_kg, transaction_date, shift, import_batch_ref)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        [id, matId, matName, pcs, weightKg, itemDate, normShift, importBatch]
-      );
-      successCount++;
-    }
+ const connection = await pool.getConnection();
+ try {
+ await connection.beginTransaction();
 
-    return {
-      batchRef: importBatch,
-      savedCount: successCount,
-      transactionDate,
-    };
-  }
+ // Sinkronisasi API bersifat replace per lokasi+periode agar tidak dobel saat refresh.
+ if (replaceScope) {
+ await connection.query(
+ `DELETE FROM runner_material_transactions
+ WHERE location = ? AND transaction_date BETWEEN ? AND ?`,
+ [location, replaceScope.date_from, replaceScope.date_to]
+ );
+ }
+
+ for (const item of resolvedItems) {
+ await connection.query(
+ `INSERT INTO runner_material_transactions
+ (id, material_id, material_name_snapshot, total_pcs, total_runner_weight_kg, transaction_date, shift, location, import_batch_ref)
+ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+ [item.id, item.materialId, item.materialName, item.pcs, item.weightKg, item.itemDate, item.shift, location, importBatch]
+ );
+ }
+
+ await connection.commit();
+ } catch (error) {
+ await connection.rollback();
+ throw error;
+ } finally {
+ connection.release();
+ }
+
+ return {
+ batchRef: importBatch,
+ savedCount: resolvedItems.length,
+ transactionDate,
+ };
+ }
 
   /**
    * List paginated runner material transactions.
@@ -605,6 +637,10 @@ export class RunnerMaterialService {
       'DELETE FROM runner_material_transactions WHERE import_batch_ref = ?',
       [batchRef.trim()]
     );
+
+    if (result.affectedRows === 0) {
+      throw new Error(`Batch "${batchRef.trim()}" tidak ditemukan atau sudah pernah di-rollback.`);
+    }
 
     return {
       batchRef: batchRef.trim(),

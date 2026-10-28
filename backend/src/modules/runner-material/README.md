@@ -43,3 +43,7 @@ Modul ini bertanggung jawab mengelola pencatatan data **Part Runner NG per Jenis
 - `DELETE /api/runner-material/:id` — Hapus individual record (Admin/Super-Admin).
 - `DELETE /api/runner-material/all` — Hapus seluruh data runner (Super-Admin - legacy).
 
+5. **Sinkronisasi Crusing API**:
+ - `runnerMaterial.service.ts` dipakai juga oleh modul `crussing-sync` lewat `previewImport()` + `saveRecords(..., { location, replaceScope })`.
+ - Baris hasil sinkronisasi menyimpan `location` (`Cibitung`/`Karawang`) dan `import_batch_ref = CRUSSING-API:<SC>:<periode>`.
+ - `replaceScope` menghapus hanya baris API pada lokasi + periode yang sama sebelum insert (transaksi), sehingga refresh tidak membuat data dobel. Data manual tidak dihapus.

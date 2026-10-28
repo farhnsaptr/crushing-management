@@ -108,6 +108,7 @@ export class RunnerMaterialController {
 
   static async listBatches(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
       const batches = await RunnerMaterialService.listBatches();
       sendSuccess(res, batches, 'Daftar batch runner material berhasil diambil');
     } catch (error: any) {

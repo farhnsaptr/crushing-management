@@ -15,21 +15,38 @@ export interface RawProductionRecord {
   shift?: string;
   operator?: string;
   mesin?: string;
-  act_total?: number | string;
-  act_ok?: number | string;
-  ng_total?: number | string;
-  budomari_pct?: number | null;
+ act_total?: number | string;
+ act_ok?: number | string;
+ ng_total?: number | string;
+ budomari_pct?: number | null;
+ // Komposisi Budomari dari Crusing API (total = 100%). NULL untuk upload manual.
+ ok_use_pct?: number | null;
+ ng_loss_pct?: number | null;
+ runner_pct?: number | null;
+ dango_pct?: number | null;
+ dango_part_pct?: number | null;
 }
 
 export interface ImportProductionReportPayload {
-  filename: string;
-  batch_name?: string;
-  records: RawProductionRecord[];
+ filename: string;
+ batch_name?: string;
+ records: RawProductionRecord[];
+ source?: 'manual_upload' | 'crussing_api';
+ source_ref?: string;
+ external_location?: string;
+ allow_empty?: boolean;
 }
 
 /**
  * Standardizes various date formats (DD-MM-YYYY, YYYY-MM-DD, Excel serial date) to YYYY-MM-DD.
  */
+/** Persentase komposisi Budomari: angka valid atau NULL (bukan 0) bila tidak tersedia. */
+function toPctOrNull(val: any): number | null {
+ if (val === undefined || val === null || val === '') return null;
+ const n = Number(val);
+ return Number.isFinite(n) ? Number(n.toFixed(3)) : null;
+}
+
 function formatStandardDate(val: any): string {
   if (!val) return '';
   if (typeof val === 'number') {
@@ -219,10 +236,15 @@ export class AnalyticsService {
           act_total: Math.max(0, parseInt(String(r.act_total || 0), 10) || 0),
           act_ok: Math.max(0, parseInt(String(r.act_ok || 0), 10) || 0),
           ng_total: Math.max(0, parseInt(String(r.ng_total || 0), 10) || 0),
-          budomari_pct: typeof r.budomari_pct === 'number' && !isNaN(r.budomari_pct) ? r.budomari_pct : null,
-        };
-      })
-      .filter((r) => r.date && r.sebango);
+ budomari_pct: typeof r.budomari_pct === 'number' && !isNaN(r.budomari_pct) ? r.budomari_pct : null,
+ ok_use_pct: toPctOrNull(r.ok_use_pct),
+ ng_loss_pct: toPctOrNull(r.ng_loss_pct),
+ runner_pct: toPctOrNull(r.runner_pct),
+ dango_pct: toPctOrNull(r.dango_pct),
+ dango_part_pct: toPctOrNull(r.dango_part_pct),
+ };
+ })
+ .filter((r) => r.date && r.sebango);
 
     if (cleanedRecords.length === 0) {
       throw new Error('Tidak ada baris yang valid dengan Tanggal dan Sebango yang lengkap.');
@@ -272,6 +294,11 @@ export class AnalyticsService {
  act_ok: r.act_ok,
  ng_total: r.ng_total,
  budomari_pct: r.budomari_pct ?? null,
+ ok_use_pct: r.ok_use_pct ?? null,
+ ng_loss_pct: r.ng_loss_pct ?? null,
+ runner_pct: r.runner_pct ?? null,
+ dango_pct: r.dango_pct ?? null,
+ dango_part_pct: r.dango_part_pct ?? null,
  is_matched: false,
  part_number: null,
  part_name: null,
@@ -360,6 +387,11 @@ export class AnalyticsService {
  act_ok: r.act_ok,
  ng_total: r.ng_total,
  budomari_pct: r.budomari_pct ?? null,
+ ok_use_pct: r.ok_use_pct ?? null,
+ ng_loss_pct: r.ng_loss_pct ?? null,
+ runner_pct: r.runner_pct ?? null,
+ dango_pct: r.dango_pct ?? null,
+ dango_part_pct: r.dango_part_pct ?? null,
  is_matched: true,
  part_number: masterPart.part_number,
  part_name: masterPart.part_name,
@@ -408,14 +440,31 @@ export class AnalyticsService {
  * Combined Sebangos are expanded and each resolved Sebango keeps the full quantity.
  * Unmatched Sebangos are skipped from records but returned in `unresolved`.
  */
-  static async importProductionReport(
-    payload: ImportProductionReportPayload,
-    userId?: string | null
-  ) {
-    const { filename, batch_name, records } = payload;
-    if (!Array.isArray(records) || records.length === 0) {
-      throw new Error('Data laporan produksi kosong atau tidak valid.');
-    }
+ static async importProductionReport(
+ payload: ImportProductionReportPayload,
+ userId?: string | null,
+ // Pool atau connection (dipakai sync agar delete+insert satu transaksi).
+ db: any = pool
+) {
+ const { filename, batch_name, records, source, source_ref, external_location, allow_empty } = payload;
+ if (!Array.isArray(records) || records.length === 0) {
+ if (allow_empty) {
+ return {
+ batch_id: null,
+ batch_name: batch_name || '',
+ filename,
+ date_range: { min_date: null, max_date: null },
+ total_rows: 0,
+ matched_rows: 0,
+ unmatched_rows: 0,
+ resolved_rows: 0,
+ expanded_rows: 0,
+ total_allowance_kg: 0,
+ unresolved: [],
+ };
+ }
+ throw new Error('Data laporan produksi kosong atau tidak valid.');
+ }
 
     const cleanedRecords = records
       .map((r) => {
@@ -435,10 +484,15 @@ export class AnalyticsService {
           act_total: Math.max(0, parseInt(String(r.act_total || 0), 10) || 0),
           act_ok: Math.max(0, parseInt(String(r.act_ok || 0), 10) || 0),
           ng_total: Math.max(0, parseInt(String(r.ng_total || 0), 10) || 0),
-          budomari_pct: typeof r.budomari_pct === 'number' && !isNaN(r.budomari_pct) ? r.budomari_pct : null,
-        };
-      })
-      .filter((r) => r.date && r.sebango);
+ budomari_pct: typeof r.budomari_pct === 'number' && !isNaN(r.budomari_pct) ? r.budomari_pct : null,
+ ok_use_pct: toPctOrNull(r.ok_use_pct),
+ ng_loss_pct: toPctOrNull(r.ng_loss_pct),
+ runner_pct: toPctOrNull(r.runner_pct),
+ dango_pct: toPctOrNull(r.dango_pct),
+ dango_part_pct: toPctOrNull(r.dango_part_pct),
+ };
+ })
+ .filter((r) => r.date && r.sebango);
 
     if (cleanedRecords.length === 0) {
       throw new Error('Tidak ada baris yang valid dengan Tanggal dan Sebango yang lengkap.');
@@ -542,43 +596,62 @@ export class AnalyticsService {
  calculated_shikake: dynamicShikake,
  allowance_kg: allowanceKg,
  budomari_pct: r.budomari_pct ?? null,
+ ok_use_pct: r.ok_use_pct ?? null,
+ ng_loss_pct: r.ng_loss_pct ?? null,
+ runner_pct: r.runner_pct ?? null,
+ dango_pct: r.dango_pct ?? null,
+ dango_part_pct: r.dango_part_pct ?? null,
  });
- }
+}
+
+ const batchTitle = batch_name || `Laporan Produksi ${minDate} s/d ${maxDate}`;
 
  if (processedItems.length === 0) {
- throw new Error('Tidak ada baris yang cocok dengan Master Part. Seluruh baris di-skip sehingga import dibatalkan.');
+ if (allow_empty) {
+ return {
+ batch_id: null,
+ batch_name: batchTitle,
+ filename,
+ date_range: { min_date: minDate, max_date: maxDate },
+ total_rows: cleanedRecords.length,
+ matched_rows: 0,
+ unmatched_rows: unresolved.length,
+ resolved_rows: 0,
+ expanded_rows: expandedRows,
+ total_allowance_kg: 0,
+ unresolved,
+ };
  }
+ throw new Error('Tidak ada baris yang cocok dengan Master Part. Seluruh baris di-skip sehingga import dibatalkan.');
+}
 
  totalBatchAllowanceKg = Number(totalBatchAllowanceKg.toFixed(3));
 
- // 6. Save Batch Header
+// 6. Save Batch Header
  const batchId = randomUUID();
- const batchTitle = batch_name || `Laporan Produksi ${minDate} s/d ${maxDate}`;
 
- await pool.query(
- `INSERT INTO production_analytics_batches
- (id, batch_name, filename, min_production_date, max_production_date, total_rows, matched_rows, total_allowance_kg, uploaded_by)
- VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
- [
- batchId,
- batchTitle,
- filename,
- minDate,
- maxDate,
- cleanedRecords.length,
- processedItems.length,
- totalBatchAllowanceKg,
- userId || null,
- ]
- );
+ await db.query(
+`INSERT INTO production_analytics_batches
+(id, batch_name, filename, min_production_date, max_production_date, total_rows, matched_rows, total_allowance_kg, source, source_ref, external_location, uploaded_by)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+[
+batchId,
+batchTitle,
+filename,
+minDate,
+maxDate,
+cleanedRecords.length,
+processedItems.length,
+totalBatchAllowanceKg,
+source || 'manual_upload',
+source_ref || null,
+external_location || null,
+userId || null,
+]
+);
 
- // 7. Bulk Insert Items (Only matched items)
- for (const item of processedItems) {
- await pool.query(
- `INSERT INTO production_analytics_items
- (id, batch_id, production_date, shift, factory_raw, tonase_raw, sebango_code, sebango_code_raw, source_row_number, mesin_raw, act_total_pcs, act_ok_pcs, ng_total_pcs, master_part_id, part_number_snapshot, part_name_snapshot, berat_part_gr_snapshot, calculated_shikake, allowance_kg, budomari_pct)
- VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
- [
+// 7. Bulk Insert Items (Only matched items) - chunked agar sinkronisasi bulanan cepat
+ const itemRows = processedItems.map((item) => [
  item.id,
  batchId,
  item.production_date,
@@ -599,9 +672,18 @@ export class AnalyticsService {
  item.calculated_shikake,
  item.allowance_kg,
  item.budomari_pct,
- ]
- );
- }
+ item.ok_use_pct,
+ item.ng_loss_pct,
+ item.runner_pct,
+ item.dango_pct,
+ item.dango_part_pct,
+]);
+ const insertItemSql = `INSERT INTO production_analytics_items
+(id, batch_id, production_date, shift, factory_raw, tonase_raw, sebango_code, sebango_code_raw, source_row_number, mesin_raw, act_total_pcs, act_ok_pcs, ng_total_pcs, master_part_id, part_number_snapshot, part_name_snapshot, berat_part_gr_snapshot, calculated_shikake, allowance_kg, budomari_pct, ok_use_pct, ng_loss_pct, runner_pct, dango_pct, dango_part_pct)
+VALUES ?`;
+ for (let i = 0; i < itemRows.length; i += 500) {
+ await db.query(insertItemSql, [itemRows.slice(i, i + 500)]);
+}
 
  return {
  batch_id: batchId,
@@ -718,7 +800,7 @@ export class AnalyticsService {
         LEFT JOIN factories req_fc ON cr.factory_id = req_fc.id
         LEFT JOIN factories rmt_fc ON rmt.factory_id = rmt_fc.id
         WHERE YEAR(rmt.transaction_date) = ? 
-          AND COALESCE(req_fc.location, rmt_fc.location) = ?
+          AND COALESCE(req_fc.location, rmt_fc.location, rmt.location) = ?
       `;
       runnerParams.push(location);
     } else {

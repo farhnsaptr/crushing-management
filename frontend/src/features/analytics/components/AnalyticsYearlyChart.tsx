@@ -17,6 +17,7 @@ export const AnalyticsYearlyChart: React.FC<AnalyticsYearlyChartProps> = ({
 }) => {
   const [containerRef, isNarrow] = useIsNarrow<HTMLDivElement>(768);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  const [cursorPos, setCursorPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
 
   // Find max value across allowance, input, and actual output for dynamic scaling of bars
   const maxValue = Math.max(
@@ -112,15 +113,19 @@ export const AnalyticsYearlyChart: React.FC<AnalyticsYearlyChartProps> = ({
                 const inputHeightPct = maxValue > 0 ? ((item.input_kg || (item.system_ng_kg + item.system_runner_kg)) / maxValue) * 100 : 0;
                 const outputHeightPct = maxValue > 0 ? (item.actual_output_kg / maxValue) * 100 : 0;
                 const isHovered = hoveredIndex === idx;
-
                 const inputVal = item.input_kg ?? (item.system_ng_kg + item.system_runner_kg);
-                const gapNg = item.gap_ng_kg ?? Number((item.allowance_kg - inputVal).toFixed(2));
-                const gapCrushing = item.gap_crushing_kg ?? Number((inputVal - item.actual_output_kg).toFixed(2));
+
 
                 return (
                   <div
                     key={idx}
-                    onMouseEnter={() => setHoveredIndex(idx)}
+                    onMouseEnter={(e) => {
+                      setHoveredIndex(idx);
+                      setCursorPos({ x: e.clientX, y: e.clientY });
+                    }}
+                    onMouseMove={(e) => {
+                      setCursorPos({ x: e.clientX, y: e.clientY });
+                    }}
                     onMouseLeave={() => setHoveredIndex(null)}
                     style={{
                       display: 'flex',
@@ -136,54 +141,6 @@ export const AnalyticsYearlyChart: React.FC<AnalyticsYearlyChartProps> = ({
                       transition: 'all 0.15s ease',
                     }}
                   >
-                    {/* Tooltip Popup on Hover */}
-                    {isHovered && (
-                      <div
-                        style={{
-                          position: 'absolute',
-                          bottom: '105%',
-                          left: '50%',
-                          transform: 'translateX(-50%)',
-                          backgroundColor: '#0f172a',
-                          color: '#ffffff',
-                          padding: '0.75rem 1rem',
-                          borderRadius: '10px',
-                          fontSize: '0.75rem',
-                          whiteSpace: 'nowrap',
-                          zIndex: 30,
-                          boxShadow: '0 10px 25px rgba(0,0,0,0.3)',
-                          pointerEvents: 'none',
-                        }}
-                      >
-                        <div style={{ fontWeight: 800, borderBottom: '1px solid rgba(255,255,255,0.2)', paddingBottom: '0.35rem', marginBottom: '0.45rem', color: '#f8fafc' }}>
-                          Bulan {item.month_name} {year}
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem' }}>
-                            <span style={{ color: '#86efac' }}>Allowance:</span>
-                            <strong>{item.allowance_kg.toLocaleString('id-ID')} kg</strong>
-                          </div>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem' }}>
-                            <span style={{ color: '#93c5fd' }}>Input Sistem:</span>
-                            <strong>{inputVal.toLocaleString('id-ID')} kg</strong>
-                          </div>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem' }}>
-                            <span style={{ color: '#fdba74' }}>Aktual Output:</span>
-                            <strong>{item.actual_output_kg.toLocaleString('id-ID')} kg</strong>
-                          </div>
-                          <div style={{ borderTop: '1px solid rgba(255,255,255,0.15)', paddingTop: '0.35rem', marginTop: '0.25rem' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', color: gapNg >= 0 ? '#86efac' : '#f87171' }}>
-                              <span>Gap NG:</span>
-                              <strong>{gapNg > 0 ? `+${gapNg}` : gapNg} kg</strong>
-                            </div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', color: gapCrushing >= 0 ? '#86efac' : '#f87171' }}>
-                              <span>Gap Crushing:</span>
-                              <strong>{gapCrushing > 0 ? `+${gapCrushing}` : gapCrushing} kg</strong>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
 
                     {/* Bars Container */}
                     <div
@@ -261,6 +218,97 @@ export const AnalyticsYearlyChart: React.FC<AnalyticsYearlyChartProps> = ({
           </div>
         </div>
       )}
+
+      {/* Floating Cursor-Following Detail Card (Dashboard Theme) */}
+      {hoveredIndex !== null && monthlyData[hoveredIndex] && (() => {
+        const item = monthlyData[hoveredIndex];
+        const inputVal = item.input_kg ?? (item.system_ng_kg + item.system_runner_kg);
+        const gapNg = item.gap_ng_kg ?? Number((item.allowance_kg - inputVal).toFixed(2));
+        const gapCrushing = item.gap_crushing_kg ?? Number((inputVal - item.actual_output_kg).toFixed(2));
+
+        const tooltipWidth = 240;
+        const tooltipHeight = 185;
+        const left = cursorPos.x + 16 + tooltipWidth > window.innerWidth
+          ? cursorPos.x - tooltipWidth - 12
+          : cursorPos.x + 16;
+        const top = cursorPos.y + 16 + tooltipHeight > window.innerHeight
+          ? cursorPos.y - tooltipHeight - 12
+          : cursorPos.y + 16;
+
+        return (
+          <div
+            style={{
+              position: 'fixed',
+              left: `${left}px`,
+              top: `${top}px`,
+              backgroundColor: '#ffffff',
+              borderRadius: '12px',
+              padding: '0.75rem 1rem',
+              boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.25)',
+              border: '1.5px solid #cbd5e1',
+              color: '#0f172a',
+              fontSize: '0.8rem',
+              minWidth: `${tooltipWidth}px`,
+              zIndex: 9999,
+              pointerEvents: 'none',
+            }}
+          >
+            <div
+              style={{
+                fontSize: '0.9rem',
+                fontWeight: 900,
+                marginBottom: '0.4rem',
+                color: '#0f172a',
+                borderBottom: '1px solid #e2e8f0',
+                paddingBottom: '0.25rem',
+              }}
+            >
+              Bulan {item.month_name} {year}
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', color: '#475569', fontWeight: 600 }}>
+                  <span style={{ width: '8px', height: '8px', borderRadius: '2px', backgroundColor: '#008d51' }} />
+                  Allowance
+                </span>
+                <strong style={{ color: '#0f172a' }}>{item.allowance_kg.toLocaleString('id-ID')} kg</strong>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', color: '#475569', fontWeight: 600 }}>
+                  <span style={{ width: '8px', height: '8px', borderRadius: '2px', backgroundColor: '#2563eb' }} />
+                  Input Sistem
+                </span>
+                <strong style={{ color: '#0f172a' }}>{inputVal.toLocaleString('id-ID')} kg</strong>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', color: '#475569', fontWeight: 600 }}>
+                  <span style={{ width: '8px', height: '8px', borderRadius: '2px', backgroundColor: '#e76114' }} />
+                  Aktual Output
+                </span>
+                <strong style={{ color: '#0f172a' }}>{item.actual_output_kg.toLocaleString('id-ID')} kg</strong>
+              </div>
+
+              <div style={{ borderTop: '1px dashed #e2e8f0', paddingTop: '0.35rem', marginTop: '0.25rem', display: 'flex', flexDirection: 'column', gap: '0.2rem', fontSize: '0.75rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ color: '#64748b', fontWeight: 600 }}>Gap NG:</span>
+                  <strong style={{ color: gapNg >= 0 ? '#059669' : '#dc2626' }}>
+                    {gapNg > 0 ? `+${gapNg.toLocaleString('id-ID')}` : gapNg.toLocaleString('id-ID')} kg
+                  </strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ color: '#64748b', fontWeight: 600 }}>Gap Crushing:</span>
+                  <strong style={{ color: gapCrushing >= 0 ? '#059669' : '#dc2626' }}>
+                    {gapCrushing > 0 ? `+${gapCrushing.toLocaleString('id-ID')}` : gapCrushing.toLocaleString('id-ID')} kg
+                  </strong>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </Card>
   );
 };

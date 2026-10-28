@@ -3,15 +3,18 @@ import { DashboardService } from '../services/dashboard.service';
 import { useAuth } from '../../../context/AuthContext';
 import { extractErrorMessage } from '../../../services/api.client';
 import { usePlantLocation } from '../../factories/hooks/usePlantLocation';
+import { canManageData } from '../../../config/permissions.config';
+import { useCrussingSync } from '../../crussing-sync/hooks/useCrussingSync';
 import type {
-  DashboardSummaryStats,
-  DailyRecycleChartItem,
-  BudomariDailyItem,
-  ParetoMaterialItem,
-  TopNgPartItem,
-  DepartmentParetoItem,
-  SenderDashboardStats,
-  PlantLocation,
+ DashboardSummaryStats,
+ DailyRecycleChartItem,
+ BudomariDailyItem,
+ BudomariBreakdown,
+ ParetoMaterialItem,
+ TopNgPartItem,
+ DepartmentParetoItem,
+ SenderDashboardStats,
+ PlantLocation,
 } from '../types/dashboard.types';
 
 export const MONTH_OPTIONS = [
@@ -45,11 +48,9 @@ export function useDashboard() {
   // Plant / Operator / Admin Dashboard Data
   const [summaryStats, setSummaryStats] = useState<DashboardSummaryStats | null>(null);
   const [dailyChart, setDailyChart] = useState<DailyRecycleChartItem[]>([]);
-  const [budomariChart, setBudomariChart] = useState<BudomariDailyItem[]>([]);
-  const [monthlyAvgBudomari, setMonthlyAvgBudomari] = useState<number | null>(null);
-  const [monthlyMinBudomari, setMonthlyMinBudomari] = useState<number | null>(null);
-  const [monthlyMaxBudomari, setMonthlyMaxBudomari] = useState<number | null>(null);
-  const [paretoMaterials, setParetoMaterials] = useState<ParetoMaterialItem[]>([]);
+ const [budomariChart, setBudomariChart] = useState<BudomariDailyItem[]>([]);
+ const [monthlyBreakdown, setMonthlyBreakdown] = useState<BudomariBreakdown | null>(null);
+ const [paretoMaterials, setParetoMaterials] = useState<ParetoMaterialItem[]>([]);
   const [topParts, setTopParts] = useState<TopNgPartItem[]>([]);
   const [departmentPareto, setDepartmentPareto] = useState<DepartmentParetoItem[]>([]);
 
@@ -60,9 +61,24 @@ export function useDashboard() {
   const [isExporting, setIsExporting] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const role = user?.role;
+ const role = user?.role;
+ const canSync = canManageData(role);
 
-  const fetchDashboardData = useCallback(async () => {
+ // Status & trigger sinkronisasi Crusing API (hanya untuk role yang boleh mengubah data).
+ const {
+ status: syncStatus,
+ isLoadingStatus: isLoadingSyncStatus,
+ isSyncing,
+ error: syncError,
+ sync: runSync,
+ } = useCrussingSync({
+ location: selectedLocation,
+ year: selectedYear,
+ month: selectedMonth,
+ enabled: role !== 'pengirim' && !!selectedLocation,
+ });
+
+ const fetchDashboardData = useCallback(async () => {
     // Lokasi belum tersedia dari backend: tunggu (atau selesai bila memang tidak ada lokasi)
     if (role !== 'pengirim' && !selectedLocation) {
       setIsLoading(!isLocationsLoaded);
@@ -86,11 +102,9 @@ export function useDashboard() {
 
         setSummaryStats(statsData);
         setDailyChart(chartResult.daily_chart || []);
-        setBudomariChart(budomariResult.budomari_chart || []);
-        setMonthlyAvgBudomari(budomariResult.monthly_avg_budomari_pct);
-        setMonthlyMinBudomari(budomariResult.monthly_min_budomari_pct);
-        setMonthlyMaxBudomari(budomariResult.monthly_max_budomari_pct);
-        setParetoMaterials(paretoData);
+ setBudomariChart(budomariResult.budomari_chart || []);
+ setMonthlyBreakdown(budomariResult.monthly_breakdown);
+ setParetoMaterials(paretoData);
         setTopParts(topPartsData);
         setDepartmentPareto(deptParetoData);
       }
@@ -102,11 +116,19 @@ export function useDashboard() {
     }
   }, [role, selectedYear, selectedMonth, selectedLocation, isLocationsLoaded]);
 
-  useEffect(() => {
-    fetchDashboardData();
-  }, [fetchDashboardData]);
+ useEffect(() => {
+ fetchDashboardData();
+ }, [fetchDashboardData]);
 
-  const handleExportExcel = async (startDate: string, endDate: string, location?: PlantLocation) => {
+ // Tombol refresh: tarik data API dulu (kalau boleh), lalu refetch data lokal.
+ const handleRefresh = useCallback(async () => {
+ if (canSync) {
+ await runSync();
+ }
+ await fetchDashboardData();
+ }, [canSync, runSync, fetchDashboardData]);
+
+ const handleExportExcel = async (startDate: string, endDate: string, location?: PlantLocation) => {
     setIsExporting(true);
     try {
       await DashboardService.downloadExcelReport(startDate, endDate, location || selectedLocation);
@@ -129,18 +151,22 @@ export function useDashboard() {
     setSelectedLocation,
     summaryStats,
     dailyChart,
-    budomariChart,
-    monthlyAvgBudomari,
-    monthlyMinBudomari,
-    monthlyMaxBudomari,
-    paretoMaterials,
-    topParts,
-    departmentPareto,
-    senderStats,
-    isLoading,
-    isExporting,
-    errorMessage,
-    fetchDashboardData,
-    handleExportExcel,
-  };
+ budomariChart,
+ monthlyBreakdown,
+ paretoMaterials,
+ topParts,
+ departmentPareto,
+ senderStats,
+ isLoading,
+ isExporting,
+ errorMessage,
+ fetchDashboardData,
+ handleRefresh,
+ handleExportExcel,
+ canSync,
+ syncStatus,
+ isLoadingSyncStatus,
+ isSyncing,
+ syncError,
+ };
 }

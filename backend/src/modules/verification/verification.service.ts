@@ -84,7 +84,7 @@ export class VerificationService {
        LEFT JOIN factories rmt_fc ON rmt.factory_id = rmt_fc.id
        ${RUNNER_MATERIAL_JOIN_SQL}
        WHERE DATE(rmt.transaction_date) = ? AND rmt.shift = ? 
-         AND COALESCE(req_fc.location, rmt_fc.location) = ?
+         AND COALESCE(req_fc.location, rmt_fc.location, rmt.location) = ?
          AND (mm.recycle_type = 'reuse' OR (mm.recycle_type IS NULL AND LOWER(rmt.material_name_snapshot) NOT LIKE '%no reuse%'))
        GROUP BY 1, 2`,
       [cleanDate, cleanShift, location]
@@ -433,7 +433,7 @@ export class VerificationService {
          LEFT JOIN factories rmt_fc ON rmt.factory_id = rmt_fc.id
          ${RUNNER_MATERIAL_JOIN_SQL}
          WHERE DATE(rmt.transaction_date) = ? AND rmt.shift = ? 
-           AND COALESCE(req_fc.location, rmt_fc.location) = ?
+           AND COALESCE(req_fc.location, rmt_fc.location, rmt.location) = ?
            AND (mm.recycle_type = 'reuse' OR (mm.recycle_type IS NULL AND LOWER(rmt.material_name_snapshot) NOT LIKE '%no reuse%')))
         AS total_reuse_transactions`,
       [date, shift, location, date, shift, location]

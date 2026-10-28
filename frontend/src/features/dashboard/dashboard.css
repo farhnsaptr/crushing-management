@@ -98,6 +98,10 @@
   min-width: 0;
   min-height: 220px;
 }
+.dash-chart.dash-chart-budomari {
+  height: 480px;
+  min-height: 480px;
+}
 .dash-chart-box {
   position: relative;
   flex: 1;
@@ -232,6 +236,9 @@
       flex: none;
       height: 280px;
     }
+    .dash-chart.dash-chart-budomari {
+      height: 480px;
+    }
     /* Tinggi section tabel DIKUNCI untuk header + --dash-rows baris, berapa pun jumlah barisnya,
        sehingga ukuran grafik tidak berubah saat data tabel masih sedikit. */
     .dash-table-box {
@@ -260,6 +267,9 @@
   .dash-chart {
     flex: none;
     height: 260px;
+  }
+  .dash-chart.dash-chart-budomari {
+    height: 420px;
   }
   .dash-tables {
     grid-template-columns: 1fr 1fr;

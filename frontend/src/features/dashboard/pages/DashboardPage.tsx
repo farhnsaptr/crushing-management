@@ -10,6 +10,7 @@ import { DepartmentParetoTable } from '../components/DepartmentParetoTable';
 import { SenderDashboardView } from '../components/SenderDashboardView';
 import { DashboardToolbar } from '../components/DashboardToolbar';
 import { RotateDeviceOverlay } from '../components/RotateDeviceOverlay';
+import { CrussingSyncStatus } from '../../crussing-sync/components/CrussingSyncStatus';
 import '../dashboard.css';
 
 export const DashboardPage: React.FC = () => {
@@ -25,17 +26,19 @@ export const DashboardPage: React.FC = () => {
     setSelectedLocation,
     summaryStats,
     dailyChart,
-    budomariChart,
-    monthlyAvgBudomari,
-    monthlyMinBudomari,
-    monthlyMaxBudomari,
-    paretoMaterials,
-    topParts,
-    departmentPareto,
-    senderStats,
-    isLoading,
-    fetchDashboardData,
-  } = useDashboard();
+ budomariChart,
+ monthlyBreakdown,
+ paretoMaterials,
+ topParts,
+ departmentPareto,
+ senderStats,
+ isLoading,
+ handleRefresh,
+ syncStatus,
+ isLoadingSyncStatus,
+ isSyncing,
+ syncError,
+ } = useDashboard();
 
   // If logged-in user is 'pengirim', render personalized Sender Dashboard View
   if (user?.role === 'pengirim') {
@@ -76,24 +79,30 @@ export const DashboardPage: React.FC = () => {
           onMonthChange={setSelectedMonth}
           selectedYear={selectedYear}
           onYearChange={setSelectedYear}
-          onRefresh={fetchDashboardData}
-          dateText={formattedTodayDate}
-          userText={`${user?.full_name || user?.username || 'User'} (${user?.role.toUpperCase()})`}
-        />
+ onRefresh={handleRefresh}
+ isSyncing={isSyncing}
+ dateText={formattedTodayDate}
+ userText={`${user?.full_name || user?.username || 'User'} (${user?.role.toUpperCase()})`}
+ />
 
-        {/* KPI: Scrap, Input, Output, Gap */}
-        <DashboardMetricCards summary={summaryStats} isLoading={isLoading} />
+ <CrussingSyncStatus
+ status={syncStatus}
+ isLoading={isLoadingSyncStatus}
+ isSyncing={isSyncing}
+ error={syncError}
+ />
 
-        {/* Grafik KPI Budomari Material (%) — Efisiensi Harian */}
-        <BudomariChart
-          data={budomariChart}
-          monthlyAvg={monthlyAvgBudomari}
-          monthlyMin={monthlyMinBudomari}
-          monthlyMax={monthlyMaxBudomari}
-          isLoading={isLoading}
-          monthLabel={MONTH_OPTIONS.find((m) => m.value === selectedMonth)?.label || 'Bulan'}
-          year={selectedYear}
-        />
+ {/* KPI: Scrap, Input, Output, Gap */}
+ <DashboardMetricCards summary={summaryStats} isLoading={isLoading} />
+
+ {/* Grafik KPI Budomari Material (%) — Komposisi 100% */}
+ <BudomariChart
+ data={budomariChart}
+ monthlyBreakdown={monthlyBreakdown}
+ isLoading={isLoading}
+ monthLabel={MONTH_OPTIONS.find((m) => m.value === selectedMonth)?.label || 'Bulan'}
+ year={selectedYear}
+ />
 
         {/* Grafik harian: Total Part NG & Runner per Shift */}
         <DailyRecycleChart

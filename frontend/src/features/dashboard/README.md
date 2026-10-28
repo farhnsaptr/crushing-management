@@ -10,7 +10,7 @@ Dashboard admin/operator/guest dirancang muat dalam satu layar tanpa scroll (des
 - **< 600px (HP)**: toolbar menumpuk, KPI 2×2, tabel 1 kolom.
 - **HP posisi vertikal** (lebar ≤ 767px & portrait): dashboard di-blur dan muncul pesan "Putar perangkat Anda" (`RotateDeviceOverlay`); tidak bisa di-scroll sampai diputar ke landscape. Header aplikasi tetap bisa diakses. Tablet portrait (≥ 768px) tidak terpengaruh.
 - Layar lebih pendek dari 640px: kembali ke layout bertumpuk (scroll halaman).
-- Komponen: `DashboardToolbar`, `DashboardMetricCards`, `DailyRecycleChart`/`ShiftLineChart`, dan tiga tabel. Pareto Departemen dibatasi 5 baris dari backend (4 teratas + "Lainnya"), Pareto Material 5 teratas.
+- Komponen: `DashboardToolbar`, `DashboardMetricCards`, `BudomariChart`, `DailyRecycleChart`/`ShiftLineChart`, `CrussingSyncStatus`, dan tiga tabel. Pareto Departemen dibatasi 5 baris dari backend (4 teratas + "Lainnya"), Pareto Material 5 teratas.
 
 ## Fitur Utama
 - **Role Pengirim (`pengirim`)**:
@@ -25,7 +25,7 @@ Dashboard admin/operator/guest dirancang muat dalam satu layar tanpa scroll (des
   - Executive KPI Cards (semua angka dari backend, per bulan & lokasi): **Material No-Reuse (Scrap)**, **Input** (reuse NG + runner), **Output** (hasil timbang verifikasi operator), **Gap** (jumlah kekurangan per material = max(0, berat sistem − hasil timbang), hanya shift yang sudah divalidasi; tidak pernah minus, kelebihan timbangan tidak ditampilkan).
   - Toggle lokasi plant diambil dari backend (`/api/factories/locations`); pilihan terakhir tersimpan per user di browser (`usePlantLocation`, berbagi dengan form Verifikasi).
   - Grafik garis harian daur ulang per shift (Pagi & Malam, total NG + Runner), ditambah **garis putus-putus Planning Harian** (allowance dari upload data produksi di Analitik). Garis hanya muncul di hari yang data produksinya sudah diupload; nilainya juga tampil di tooltip.
-  - **KPI Budomari Material (%) Chart**: Grafik harian efisiensi material injection molding (`BudomariChart`) yang bersumber dari upload data produksi Excel di fitur Data Analitik. Menampilkan rata-rata persentase harian, rentang min-max, rata-rata bulanan (reference line), dan badge statistik.
+  - **KPI Budomari Material (%) Chart**: Grafik batang tumpuk harian komposisi material (**OK Use, NG Loss, Runner, Dango, Dango Part**) dengan total tepat **100%**. Sumber data: sinkronisasi **Crusing API** (tombol refresh di toolbar). Menampilkan label **terakhir masuk**, rata-rata komposisi bulanan, dan peringatan bila ada SEBANGO tidak cocok atau data manual pada periode yang sama.
   - **Pareto Departemen Pengirim Part NG Terbanyak** (Peringkat, Nama Departemen, Total Transaksi, Jumlah Pcs, Total Berat kg, Proporsi %).
   - Top Part NG terbanyak.
   - Pareto Material / Resin.

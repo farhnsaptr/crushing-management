@@ -274,8 +274,10 @@ export const useRunnerImport = () => {
       setIsRollbackModalOpen(false);
       setSelectedBatchToRollback('');
       setPage(1);
-      await fetchHistory(1, limit);
-      await fetchBatches();
+      await Promise.all([
+        fetchHistory(1, limit),
+        fetchBatches(),
+      ]);
     } catch (err: any) {
       console.error('Error rolling back batch:', err);
       setToast({

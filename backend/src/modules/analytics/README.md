@@ -14,6 +14,7 @@ Modul ini menyediakan layanan analitik produksi, komparasi 3-komponen (*Allowanc
    - Memproses data dari file Excel Laporan Produksi atau file CSV.
  - Menyimpan batch header ke `production_analytics_batches` dan rincian ke `production_analytics_items` (termasuk `sebango_code_raw` dan `source_row_number` untuk jejak audit).
  - Baris dengan Sebango yang tidak terdaftar di Master Part **otomatis di-skip**, tetapi kode yang gagal dicocokkan tetap dikembalikan di `unresolved` (tidak hilang diam-diam).
+ - Payload mendukung `source` (`manual_upload` | `crussing_api`), `source_ref`, `external_location`, dan `allow_empty` untuk dipakai modul `crussing-sync`. Kolom persentase komposisi (`ok_use_pct`, `ng_loss_pct`, `runner_pct`, `dango_pct`, `dango_part_pct`) ikut disimpan bila ada.
 
 3. **Rollback Batch Produksi (`POST /api/analytics/rollback`)**:
    - Menghapus 1 batch upload data produksi paling mutakhir secara otomatis dengan transaksi database ACID yang aman.

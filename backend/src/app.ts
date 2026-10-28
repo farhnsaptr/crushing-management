@@ -29,6 +29,7 @@ import verificationRoutes from './modules/verification/verification.routes';
 import analyticsRoutes from './modules/analytics/analytics.routes';
 import uploadsRoutes from './modules/uploads/uploads.routes';
 import databaseManagementRoutes from './modules/database-management/databaseManagement.routes';
+import crussingSyncRoutes from './modules/crussing-sync/crussingSync.routes';
 
 const app: Application = express();
 
@@ -105,6 +106,7 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/site-config', siteConfigRoutes);
 app.use('/api/admin/logs', globalLogsRoutes);
 app.use('/api/admin/database', databaseManagementRoutes);
+app.use('/api/crussing-sync', crussingSyncRoutes);
 
 // Error Handling Middleware
 app.use(errorHandler);

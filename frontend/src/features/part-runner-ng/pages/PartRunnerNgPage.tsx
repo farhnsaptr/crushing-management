@@ -13,25 +13,64 @@ import { Card } from '../../../components/common/Card';
 import { Button } from '../../../components/common/Button';
 import { Toast } from '../../../components/common/Toast';
 import { Badge } from '../../../components/common/Badge';
+import { usePlantLocation } from '../../factories/hooks/usePlantLocation';
+import { useCrussingSync } from '../../crussing-sync/hooks/useCrussingSync';
+import { CrussingSyncStatus } from '../../crussing-sync/components/CrussingSyncStatus';
+import { canManageData } from '../../../config/permissions.config';
 import {
-  History,
-  Layers,
-  FileSpreadsheet,
-  PlusCircle,
-  Edit2,
-  Trash2,
-  ChevronLeft,
-  ChevronRight,
-  BarChart3,
-  RotateCcw,
+ History,
+ Layers,
+ FileSpreadsheet,
+ PlusCircle,
+ Edit2,
+ Trash2,
+ ChevronLeft,
+ ChevronRight,
+ BarChart3,
+ RotateCcw,
+ RefreshCw,
 } from 'lucide-react';
 
-export const PartRunnerNgPage: React.FC = () => {
-  const { user } = useAuth();
-  const isAdminOrSuperAdmin = user?.role === 'super-admin' || user?.role === 'admin';
+const SYNC_MONTHS = [
+ { value: 1, label: 'Januari' },
+ { value: 2, label: 'Februari' },
+ { value: 3, label: 'Maret' },
+ { value: 4, label: 'April' },
+ { value: 5, label: 'Mei' },
+ { value: 6, label: 'Juni' },
+ { value: 7, label: 'Juli' },
+ { value: 8, label: 'Agustus' },
+ { value: 9, label: 'September' },
+ { value: 10, label: 'Oktober' },
+ { value: 11, label: 'November' },
+ { value: 12, label: 'Desember' },
+];
 
-  // Main Page Tabs: 'catat' (Input / Record Form & History) vs 'detail' (Material Analytics & Monthly Charts)
-  const [activeMainTab, setActiveMainTab] = useState<'catat' | 'detail'>('catat');
+export const PartRunnerNgPage: React.FC = () => {
+ const { user } = useAuth();
+ const isAdminOrSuperAdmin = user?.role === 'super-admin' || user?.role === 'admin';
+ const canSync = canManageData(user?.role);
+
+ // Main Page Tabs: 'catat' (Input / Record Form & History) vs 'detail' (Material Analytics & Monthly Charts)
+ const [activeMainTab, setActiveMainTab] = useState<'catat' | 'detail'>('catat');
+
+ // Periode & lokasi khusus sinkronisasi Crusing API (terpisah dari filter tab detail).
+ const now = new Date();
+ const [syncYear, setSyncYear] = useState<number>(now.getFullYear());
+ const [syncMonth, setSyncMonth] = useState<number>(now.getMonth() + 1);
+ const { locations, location, setLocation } = usePlantLocation();
+ const {
+ status: syncStatus,
+ isLoadingStatus: isLoadingSyncStatus,
+ isSyncing,
+ error: syncError,
+ sync: runSync,
+ } = useCrussingSync({
+ location,
+ year: syncYear,
+ month: syncMonth,
+ enabled: !!location,
+ });
 
   // Hook for Input & History
   const {
@@ -73,10 +112,11 @@ export const PartRunnerNgPage: React.FC = () => {
     handleRollbackBatch,
     isActionLoading,
     handleUpdateRecord,
-    handleDeleteRecord,
-    toast,
-    setToast,
-  } = useRunnerImport();
+ handleDeleteRecord,
+ fetchHistory,
+ toast,
+ setToast,
+ } = useRunnerImport();
 
   // Hook for Analytics Summary & Monthly Chart Detail Modal
   const {
@@ -100,9 +140,27 @@ export const PartRunnerNgPage: React.FC = () => {
     isLoadingDetail,
   } = useRunnerDetail();
 
-  const safeRecords = Array.isArray(historyRecords) ? historyRecords : [];
+ const safeRecords = Array.isArray(historyRecords) ? historyRecords : [];
 
-  const formatDate = (dateStr?: string) => {
+ const handleSync = async () => {
+ await runSync();
+ setPage(1);
+ await fetchHistory(1, limit);
+ fetchSummary();
+ };
+
+ const syncSelectStyle: React.CSSProperties = {
+ padding: '0.3rem 0.45rem',
+ borderRadius: '6px',
+ border: '1px solid var(--border-color, #cbd5e1)',
+ backgroundColor: 'var(--bg-card, #ffffff)',
+ color: 'var(--text-main, #0f172a)',
+ fontSize: '0.8rem',
+ fontWeight: 700,
+ cursor: 'pointer',
+ };
+
+ const formatDate = (dateStr?: string) => {
     if (!dateStr) return '-';
     try {
       const d = new Date(dateStr);
@@ -217,9 +275,54 @@ export const PartRunnerNgPage: React.FC = () => {
       </div>
 
       {/* TAB 1: CATAT PART RUNNER NG */}
-      {activeMainTab === 'catat' && (
-        <>
-          {/* Mode Switcher Sub-Bar (CSV Import vs Manual Form) */}
+ {activeMainTab === 'catat' && (
+ <>
+ {/* Tarik data runner dari Crusing API (satu plant + satu bulan per klik) */}
+ <Card style={{ padding: '0.85rem 1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem' }}>
+ <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+ <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-main, #0f172a)' }}>
+ Sumber Data Crusing API
+ </span>
+ <select value={location} onChange={(e) => setLocation(e.target.value)} style={syncSelectStyle} title="Lokasi plant">
+ {locations.map((loc) => (
+ <option key={loc} value={loc}>{loc}</option>
+ ))}
+ </select>
+ <select value={syncMonth} onChange={(e) => setSyncMonth(Number(e.target.value))} style={syncSelectStyle} title="Bulan">
+ {SYNC_MONTHS.map((m) => (
+ <option key={m.value} value={m.value}>{m.label}</option>
+ ))}
+ </select>
+ <input
+ type="number"
+ value={syncYear}
+ onChange={(e) => setSyncYear(Number(e.target.value))}
+ min={2020}
+ max={2035}
+ style={{ ...syncSelectStyle, width: '80px', textAlign: 'center' }}
+ title="Tahun"
+ />
+ {canSync && (
+ <Button
+ size="sm"
+ variant="primary"
+ onClick={handleSync}
+ isLoading={isSyncing}
+ leftIcon={<RefreshCw size={14} />}
+ >
+ Tarik Data
+ </Button>
+ )}
+ </div>
+ <CrussingSyncStatus
+ status={syncStatus}
+ isLoading={isLoadingSyncStatus}
+ isSyncing={isSyncing}
+ error={syncError}
+ />
+ </Card>
+
+ {/* Mode Switcher Sub-Bar (CSV Import vs Manual Form) */}
           <div
             style={{
               display: 'flex',
@@ -654,6 +757,7 @@ export const PartRunnerNgPage: React.FC = () => {
         onClose={() => setIsRollbackModalOpen(false)}
         batches={batchesList}
         isLoadingBatches={isLoadingBatches}
+        onRefreshBatches={fetchBatches}
         onConfirmRollback={async (batchRef) => {
           await handleRollbackBatch(batchRef);
           fetchSummary();

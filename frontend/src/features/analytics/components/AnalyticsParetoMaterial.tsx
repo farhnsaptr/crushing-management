@@ -18,6 +18,7 @@ export const AnalyticsParetoMaterial: React.FC<AnalyticsParetoMaterialProps> = (
 }) => {
   const [containerRef, isNarrow] = useIsNarrow<HTMLDivElement>(768);
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
+  const [cursorPos, setCursorPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
 
   const items = data?.items || [];
   const topItems = items.slice(0, 15); // Top 15 materials for chart
@@ -151,7 +152,13 @@ export const AnalyticsParetoMaterial: React.FC<AnalyticsParetoMaterialProps> = (
                 return (
                   <div
                     key={idx}
-                    onMouseEnter={() => setHoveredIdx(idx)}
+                    onMouseEnter={(e) => {
+                      setHoveredIdx(idx);
+                      setCursorPos({ x: e.clientX, y: e.clientY });
+                    }}
+                    onMouseMove={(e) => {
+                      setCursorPos({ x: e.clientX, y: e.clientY });
+                    }}
                     onMouseLeave={() => setHoveredIdx(null)}
                     style={{
                       display: 'flex',
@@ -167,39 +174,6 @@ export const AnalyticsParetoMaterial: React.FC<AnalyticsParetoMaterialProps> = (
                       transition: 'all 0.15s ease',
                     }}
                   >
-                    {/* Tooltip on Hover */}
-                    {isHovered && (
-                      <div
-                        style={{
-                          position: 'absolute',
-                          bottom: '105%',
-                          left: '50%',
-                          transform: 'translateX(-50%)',
-                          backgroundColor: '#0f172a',
-                          color: '#ffffff',
-                          padding: '0.75rem 0.95rem',
-                          borderRadius: '10px',
-                          fontSize: '0.75rem',
-                          whiteSpace: 'nowrap',
-                          zIndex: 40,
-                          boxShadow: '0 10px 25px rgba(0,0,0,0.3)',
-                          pointerEvents: 'none',
-                        }}
-                      >
-                        <div style={{ fontWeight: 800, borderBottom: '1px solid rgba(255,255,255,0.2)', paddingBottom: '0.35rem', marginBottom: '0.35rem' }}>
-                          #{item.rank} {item.material_name}
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
-                          <div>Total Berat: <strong>{item.total_weight_kg.toFixed(2)} kg</strong></div>
-                          <div style={{ color: '#93c5fd' }}>Part NG: {item.ng_weight_kg.toFixed(2)} kg</div>
-                          <div style={{ color: '#c084fc' }}>Runner: {item.runner_weight_kg.toFixed(2)} kg</div>
-                          <div style={{ color: '#86efac' }}>Kontribusi: <strong>{item.percentage}%</strong></div>
-                          <div style={{ color: '#fdba74', fontWeight: 800, borderTop: '1px dashed rgba(255,255,255,0.2)', paddingTop: '0.25rem', marginTop: '0.15rem' }}>
-                            Kumulatif: {item.cumulative_percentage}%
-                          </div>
-                        </div>
-                      </div>
-                    )}
 
                     {/* Bar Component */}
                     <div
@@ -265,6 +239,80 @@ export const AnalyticsParetoMaterial: React.FC<AnalyticsParetoMaterialProps> = (
           </div>
         </div>
         )}
+
+        {/* Floating Cursor-Following Detail Card (Dashboard Theme) */}
+        {hoveredIdx !== null && topItems[hoveredIdx] && (() => {
+          const item = topItems[hoveredIdx];
+          const isVital80 = item.cumulative_percentage <= 80 || (hoveredIdx > 0 && topItems[hoveredIdx - 1].cumulative_percentage < 80);
+          const tooltipWidth = 260;
+          const tooltipHeight = 175;
+          const left = cursorPos.x + 16 + tooltipWidth > window.innerWidth
+            ? cursorPos.x - tooltipWidth - 12
+            : cursorPos.x + 16;
+          const top = cursorPos.y + 16 + tooltipHeight > window.innerHeight
+            ? cursorPos.y - tooltipHeight - 12
+            : cursorPos.y + 16;
+
+          return (
+            <div
+              style={{
+                position: 'fixed',
+                left: `${left}px`,
+                top: `${top}px`,
+                backgroundColor: '#ffffff',
+                borderRadius: '12px',
+                padding: '0.75rem 1rem',
+                boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.25)',
+                border: '1.5px solid #cbd5e1',
+                color: '#0f172a',
+                fontSize: '0.8rem',
+                minWidth: `${tooltipWidth}px`,
+                zIndex: 9999,
+                pointerEvents: 'none',
+              }}
+            >
+              <div
+                style={{
+                  fontSize: '0.88rem',
+                  fontWeight: 900,
+                  marginBottom: '0.4rem',
+                  color: '#0f172a',
+                  borderBottom: '1px solid #e2e8f0',
+                  paddingBottom: '0.25rem',
+                }}
+              >
+                #{item.rank} {item.material_name}
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ color: '#008d51', fontWeight: 700 }}>Total Berat:</span>
+                  <strong style={{ color: '#008d51', fontSize: '0.9rem' }}>{item.total_weight_kg.toFixed(2)} kg</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b', fontSize: '0.75rem' }}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#2563eb' }} />
+                    Part NG:
+                  </span>
+                  <strong style={{ color: '#0f172a' }}>{item.ng_weight_kg.toFixed(2)} kg</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b', fontSize: '0.75rem' }}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#7c3aed' }} />
+                    Runner:
+                  </span>
+                  <strong style={{ color: '#0f172a' }}>{item.runner_weight_kg.toFixed(2)} kg</strong>
+                </div>
+                <div style={{ borderTop: '1px dashed #e2e8f0', paddingTop: '0.3rem', marginTop: '0.2rem', display: 'flex', justifyContent: 'space-between', color: '#64748b', fontSize: '0.75rem' }}>
+                  <span>Kontribusi / Kumulatif:</span>
+                  <strong style={{ color: isVital80 ? '#e76114' : '#64748b' }}>
+                    {item.percentage}% ({item.cumulative_percentage.toFixed(1)}%)
+                  </strong>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
       </Card>
 
       {/* Pareto Materials Ranking Table */}

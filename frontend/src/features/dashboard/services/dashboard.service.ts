@@ -41,15 +41,13 @@ export class DashboardService {
     const response = await apiClient.get('/api/dashboard/budomari-chart', {
       params: { year, month, location },
     });
-    return (
-      response.data.data || {
-        budomari_chart: [],
-        monthly_avg_budomari_pct: null,
-        monthly_min_budomari_pct: null,
-        monthly_max_budomari_pct: null,
-        total_records: 0,
-      }
-    );
+ return (
+ response.data.data || {
+ budomari_chart: [],
+ monthly_breakdown: null,
+ total_records: 0,
+ }
+ );
   }
 
   static async getParetoMaterial(

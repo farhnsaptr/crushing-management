@@ -97,7 +97,8 @@ export class RunnerMaterialService {
    */
   static async listBatches(): Promise<RunnerBatchItem[]> {
     const response = await apiClient.get<{ success: boolean; data: RunnerBatchItem[] }>(
-      '/api/runner-material/batches'
+      '/api/runner-material/batches',
+      { params: { _t: Date.now() } }
     );
     return response.data.data;
   }

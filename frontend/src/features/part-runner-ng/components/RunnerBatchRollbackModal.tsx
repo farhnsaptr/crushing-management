@@ -3,7 +3,7 @@ import { Modal } from '../../../components/common/Modal';
 import { Button } from '../../../components/common/Button';
 import { Badge } from '../../../components/common/Badge';
 import type { RunnerBatchItem } from '../types/runnerMaterial.types';
-import { AlertTriangle, RotateCcw, Calendar, Layers, Clock, FileCheck2 } from 'lucide-react';
+import { AlertTriangle, RotateCcw, Calendar, Layers, Clock, FileCheck2, RefreshCw } from 'lucide-react';
 
 interface RunnerBatchRollbackModalProps {
   isOpen: boolean;
@@ -13,6 +13,7 @@ interface RunnerBatchRollbackModalProps {
   onConfirmRollback: (batchRef: string) => Promise<void>;
   initialBatchRef?: string;
   isActionLoading: boolean;
+  onRefreshBatches?: () => Promise<void> | void;
 }
 
 export const RunnerBatchRollbackModal: React.FC<RunnerBatchRollbackModalProps> = ({
@@ -23,16 +24,37 @@ export const RunnerBatchRollbackModal: React.FC<RunnerBatchRollbackModalProps> =
   onConfirmRollback,
   initialBatchRef,
   isActionLoading,
+  onRefreshBatches,
 }) => {
   const [selectedBatchRef, setSelectedBatchRef] = useState<string>('');
 
+  // Re-fetch batches whenever modal is opened
   useEffect(() => {
-    if (initialBatchRef) {
-      setSelectedBatchRef(initialBatchRef);
-    } else if (batches.length > 0 && !selectedBatchRef) {
-      setSelectedBatchRef(batches[0].batch_ref);
+    if (isOpen && onRefreshBatches) {
+      onRefreshBatches();
     }
-  }, [initialBatchRef, batches, isOpen]);
+  }, [isOpen, onRefreshBatches]);
+
+  // Synchronize selectedBatchRef with batches and initialBatchRef
+  useEffect(() => {
+    if (!isOpen) {
+      setSelectedBatchRef('');
+      return;
+    }
+
+    if (initialBatchRef && batches.some((b) => b.batch_ref === initialBatchRef)) {
+      setSelectedBatchRef(initialBatchRef);
+    } else if (initialBatchRef && batches.length === 0 && isLoadingBatches) {
+      setSelectedBatchRef(initialBatchRef);
+    } else if (batches.length > 0) {
+      const isValid = batches.some((b) => b.batch_ref === selectedBatchRef);
+      if (!isValid) {
+        setSelectedBatchRef(batches[0].batch_ref);
+      }
+    } else {
+      setSelectedBatchRef('');
+    }
+  }, [isOpen, initialBatchRef, batches, isLoadingBatches]);
 
   const activeBatch = batches.find((b) => b.batch_ref === selectedBatchRef);
 
@@ -97,17 +119,41 @@ export const RunnerBatchRollbackModal: React.FC<RunnerBatchRollbackModalProps> =
 
         {/* Batch Selector Dropdown */}
         <div>
-          <label
-            style={{
-              fontSize: '0.8rem',
-              fontWeight: 700,
-              color: 'var(--text-main, #0f172a)',
-              marginBottom: '0.4rem',
-              display: 'block',
-            }}
-          >
-            Pilih Batch yang Ingin Di-rollback:
-          </label>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.4rem' }}>
+            <label
+              style={{
+                fontSize: '0.8rem',
+                fontWeight: 700,
+                color: 'var(--text-main, #0f172a)',
+                display: 'block',
+              }}
+            >
+              Pilih Batch yang Ingin Di-rollback:
+            </label>
+            {onRefreshBatches && (
+              <button
+                type="button"
+                onClick={() => onRefreshBatches()}
+                disabled={isLoadingBatches || isActionLoading}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--primary-color, #008d51)',
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.25rem',
+                  padding: '2px 6px',
+                  borderRadius: '4px',
+                }}
+              >
+                <RefreshCw size={12} className={isLoadingBatches ? 'spin' : ''} />
+                Segarkan
+              </button>
+            )}
+          </div>
           {isLoadingBatches ? (
             <div style={{ padding: '0.75rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
               Memuat daftar batch...
