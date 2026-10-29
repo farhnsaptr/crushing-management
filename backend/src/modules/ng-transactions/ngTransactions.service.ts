@@ -212,14 +212,12 @@ export class NgTransactionsService {
   static async getPartMonthlyDetail(partId: string, year: number, month: number, location: 'Cibitung' | 'Karawang' = 'Cibitung') {
     // 1. Get part details with factory location join
     const [partRows] = await pool.query<RowDataPacket[]>(
-      `SELECT mp.id, mp.part_name, mp.part_number, mp.allowance_kg, mp.berat_part_gr, COALESCE(xm.mixed_name, mm.material_name, mp.material) AS material, m.model_code, fc.location AS plant_location
-       FROM master_parts mp
-       JOIN machines mc ON mp.machine_id = mc.id
-       JOIN factories fc ON mc.factory_id = fc.id
-       JOIN master_models m ON mp.model_id = m.id
-       LEFT JOIN master_materials mm ON mp.material_id = mm.id
-       LEFT JOIN mixed_materials xm ON xm.id = mm.mixed_material_id
-       WHERE mp.id = ?`,
+ `SELECT mp.id, mp.part_name, mp.part_number, mp.allowance_kg, mp.berat_part_gr, COALESCE(xm.mixed_name, mm.material_name, mp.material) AS material, m.model_code
+ FROM master_parts mp
+ JOIN master_models m ON mp.model_id = m.id
+ LEFT JOIN master_materials mm ON mp.material_id = mm.id
+ LEFT JOIN mixed_materials xm ON xm.id = mm.mixed_material_id
+ WHERE mp.id = ?`,
       [partId]
     );
 
@@ -237,15 +235,19 @@ export class NgTransactionsService {
         t.shift,
         SUM(t.weight_kg) AS total_weight_kg,
         SUM(t.quantity_pcs) AS total_quantity_pcs
-       FROM ng_transactions t
-       JOIN master_parts mp ON t.master_part_id = mp.id
-       JOIN machines mc ON mp.machine_id = mc.id
-       JOIN factories fc ON mc.factory_id = fc.id
-       WHERE t.master_part_id = ? AND YEAR(t.transaction_date) = ? AND MONTH(t.transaction_date) = ? AND fc.location = ?
-       GROUP BY DAY(t.transaction_date), t.transaction_date, t.shift
-       ORDER BY day_num ASC`,
-      [partId, year, month, location]
-    );
+ FROM ng_transactions t
+ JOIN master_parts mp ON t.master_part_id = mp.id
+ LEFT JOIN crushing_requests cr ON t.request_id = cr.id
+ LEFT JOIN factories req_fc ON cr.factory_id = req_fc.id
+ LEFT JOIN factories tx_fc ON t.factory_id = tx_fc.id
+ LEFT JOIN machines mc ON mp.machine_id = mc.id
+ LEFT JOIN factories mc_fc ON mc.factory_id = mc_fc.id
+ WHERE t.master_part_id = ? AND YEAR(t.transaction_date) = ? AND MONTH(t.transaction_date) = ?
+ AND COALESCE(req_fc.location, tx_fc.location, mc_fc.location, 'Cibitung') = ?
+ GROUP BY DAY(t.transaction_date), t.transaction_date, t.shift
+ ORDER BY day_num ASC`,
+ [partId, year, month, location]
+ );
 
     // Generate full days for the month (1..daysInMonth)
     const daysInMonth = new Date(year, month, 0).getDate();
@@ -293,14 +295,18 @@ export class NgTransactionsService {
 
     // 3. Get transaction log list for selected location
     const [transRows] = await pool.query<RowDataPacket[]>(
-      `SELECT t.*, u.full_name AS input_by_name
-       FROM ng_transactions t
-       JOIN master_parts mp ON t.master_part_id = mp.id
-       JOIN machines mc ON mp.machine_id = mc.id
-       JOIN factories fc ON mc.factory_id = fc.id
-       JOIN users u ON t.input_by = u.id
-       WHERE t.master_part_id = ? AND YEAR(t.transaction_date) = ? AND MONTH(t.transaction_date) = ? AND fc.location = ?
-       ORDER BY t.transaction_date DESC, t.created_at DESC`,
+ `SELECT t.*, u.full_name AS input_by_name
+ FROM ng_transactions t
+ JOIN master_parts mp ON t.master_part_id = mp.id
+ LEFT JOIN crushing_requests cr ON t.request_id = cr.id
+ LEFT JOIN factories req_fc ON cr.factory_id = req_fc.id
+ LEFT JOIN factories tx_fc ON t.factory_id = tx_fc.id
+ LEFT JOIN machines mc ON mp.machine_id = mc.id
+ LEFT JOIN factories mc_fc ON mc.factory_id = mc_fc.id
+ JOIN users u ON t.input_by = u.id
+ WHERE t.master_part_id = ? AND YEAR(t.transaction_date) = ? AND MONTH(t.transaction_date) = ?
+ AND COALESCE(req_fc.location, tx_fc.location, mc_fc.location, 'Cibitung') = ?
+ ORDER BY t.transaction_date DESC, t.created_at DESC`,
       [partId, year, month, location]
     );
 
@@ -311,7 +317,7 @@ export class NgTransactionsService {
         part_number: part.part_number,
         model: part.model_code,
         material: part.material,
-        plant_location: part.plant_location || location,
+        plant_location: location,
         berat_part_gr: Number(part.berat_part_gr),
         allowance_kg: allowanceKg,
       },

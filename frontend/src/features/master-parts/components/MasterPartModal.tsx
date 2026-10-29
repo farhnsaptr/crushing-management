@@ -5,6 +5,7 @@ import { Button } from '../../../components/common/Button';
 import { Badge } from '../../../components/common/Badge';
 import type { MasterPart, CreateMasterPartPayload, MasterModel } from '../types/masterParts.types';
 import type { Machine } from '../../machines/types/machines.types';
+import type { Factory } from '../../factories/types/factories.types';
 import { MasterPartsService } from '../services/masterParts.service';
 import { MaterialsService } from '../../materials/services/materials.service';
 import type { Material } from '../../materials/types/materials.types';
@@ -14,22 +15,25 @@ import { extractErrorMessage } from '../../../services/api.client';
 interface MasterPartModalProps {
   isOpen: boolean;
   onClose: () => void;
-  editingPart?: MasterPart | null;
-  machines: Machine[];
-  onCreateSubmit: (payload: CreateMasterPartPayload) => Promise<void>;
+ editingPart?: MasterPart | null;
+ machines: Machine[];
+ factories: Factory[];
+ onCreateSubmit: (payload: CreateMasterPartPayload) => Promise<void>;
   onUpdateSubmit: (id: string, payload: Partial<CreateMasterPartPayload>) => Promise<void>;
 }
 
 export const MasterPartModal: React.FC<MasterPartModalProps> = ({
   isOpen,
   onClose,
-  editingPart,
-  machines,
-  onCreateSubmit,
-  onUpdateSubmit,
+ editingPart,
+ machines,
+ factories,
+ onCreateSubmit,
+ onUpdateSubmit,
 }) => {
-  const [sebangoCode, setSebangoCode] = useState<string>('');
-  const [machineId, setMachineId] = useState<string>('');
+ const [sebangoCode, setSebangoCode] = useState<string>('');
+ const [machineId, setMachineId] = useState<string>('');
+ const [factoryIds, setFactoryIds] = useState<string[]>([]);
   const [customer, setCustomer] = useState<string>('');
   const [modelCode, setModelCode] = useState<string>('');
   const [modelId, setModelId] = useState<string>('');
@@ -99,14 +103,24 @@ export const MasterPartModal: React.FC<MasterPartModalProps> = ({
   }, []);
 
   useEffect(() => {
+    if (!isOpen) return;
+
     if (editingPart) {
-      setSebangoCode(editingPart.sebango_code);
-      setMachineId(editingPart.machine_id);
+      setSebangoCode(editingPart.sebango_code || '');
+      setMachineId(editingPart.machine_id || '');
+      const editedMachine = machines.find((m) => m.id === editingPart.machine_id);
+      setFactoryIds(
+        editingPart.factory_ids?.length
+          ? editingPart.factory_ids
+          : editedMachine
+          ? [editedMachine.factory_id]
+          : []
+      );
       setCustomer(editingPart.customer || '');
       setModelCode(editingPart.model_code || '');
       setModelId(editingPart.model_id || '');
-      setPartNumber(editingPart.part_number);
-      setPartName(editingPart.part_name);
+      setPartNumber(editingPart.part_number || '');
+      setPartName(editingPart.part_name || '');
       setJenisPart(editingPart.jenis_part || '');
       setMaterial(editingPart.material || '');
       setMaterialId('');
@@ -116,6 +130,7 @@ export const MasterPartModal: React.FC<MasterPartModalProps> = ({
     } else {
       setSebangoCode('');
       setMachineId(machines.length > 0 ? machines[0].id : '');
+      setFactoryIds(machines.length > 0 ? [machines[0].factory_id] : []);
       setCustomer('');
       setModelCode('');
       setModelId('');
@@ -131,7 +146,17 @@ export const MasterPartModal: React.FC<MasterPartModalProps> = ({
     setError(null);
     setIsMaterialDropdownOpen(false);
     setIsModelDropdownOpen(false);
-  }, [editingPart, isOpen, machines]);
+  }, [editingPart, isOpen]);
+
+  // If machines loaded after create modal was opened, select default machine
+  useEffect(() => {
+    if (isOpen && !editingPart && !machineId && machines.length > 0) {
+      setMachineId(machines[0].id);
+      if (factoryIds.length === 0 && machines[0].factory_id) {
+        setFactoryIds([machines[0].factory_id]);
+      }
+    }
+  }, [isOpen, editingPart, machineId, machines, factoryIds.length]);
 
   const filteredMaterials = materialsList.filter((m) =>
     m.material_name.toLowerCase().includes(material.toLowerCase())
@@ -146,19 +171,25 @@ export const MasterPartModal: React.FC<MasterPartModalProps> = ({
     e.preventDefault();
     setError(null);
 
-    if (!sebangoCode.trim() || !machineId || !partNumber.trim() || !partName.trim() || !beratPartGr) {
-      setError('Sebango Code, Mesin, Part Number, Part Name, dan Berat Part wajib diisi.');
-      return;
-    }
+ if (!sebangoCode.trim() || !machineId || !partNumber.trim() || !partName.trim() || !beratPartGr) {
+ setError('Sebango Code, Mesin, Part Number, Part Name, dan Berat Part wajib diisi.');
+ return;
+ }
+
+ if (factoryIds.length === 0) {
+ setError('Pilih minimal 1 factory untuk part ini.');
+ return;
+ }
 
     setIsSubmitting(true);
 
     try {
       if (isEditMode) {
-        await onUpdateSubmit(editingPart.id, {
-          sebango_code: sebangoCode.trim(),
-          machine_id: machineId,
-          customer: customer.trim() || '-',
+ await onUpdateSubmit(editingPart.id, {
+ sebango_code: sebangoCode.trim(),
+ machine_id: machineId,
+ factory_ids: factoryIds,
+ customer: customer.trim() || '-',
           model_id: modelId || undefined,
           model_code: modelCode.trim() || undefined,
           material_id: materialId || undefined,
@@ -171,10 +202,11 @@ export const MasterPartModal: React.FC<MasterPartModalProps> = ({
           berat_runner_gr: Number(beratRunnerGr) || 0,
         });
       } else {
-        await onCreateSubmit({
-          sebango_code: sebangoCode.trim(),
-          machine_id: machineId,
-          customer: customer.trim() || '-',
+ await onCreateSubmit({
+ sebango_code: sebangoCode.trim(),
+ machine_id: machineId,
+ factory_ids: factoryIds,
+ customer: customer.trim() || '-',
           model_id: modelId || undefined,
           model_code: modelCode.trim() || undefined,
           material_id: materialId || undefined,
@@ -238,12 +270,19 @@ export const MasterPartModal: React.FC<MasterPartModalProps> = ({
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
             <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-main)' }}>
-              Mesin & Pabrik <span style={{ color: 'var(--danger-color)' }}>*</span>
+              Mesin Utama <span style={{ color: 'var(--danger-color)' }}>*</span>
             </label>
             <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
               <select
                 value={machineId}
-                onChange={(e) => setMachineId(e.target.value)}
+                onChange={(e) => {
+                  const newMachineId = e.target.value;
+                  setMachineId(newMachineId);
+                  const selectedMachine = machines.find((m) => m.id === newMachineId);
+                  if (selectedMachine && selectedMachine.factory_id && !factoryIds.includes(selectedMachine.factory_id)) {
+                    setFactoryIds((prev) => [...prev, selectedMachine.factory_id]);
+                  }
+                }}
                 style={{
                   width: '100%',
                   height: '42px',
@@ -257,6 +296,9 @@ export const MasterPartModal: React.FC<MasterPartModalProps> = ({
                 }}
                 required
               >
+                <option value="" disabled>
+                  -- Pilih Mesin --
+                </option>
                 {machines.map((m) => (
                   <option key={m.id} value={m.id}>
                     {m.name} ({m.code}) - {m.factory_name}
@@ -276,8 +318,56 @@ export const MasterPartModal: React.FC<MasterPartModalProps> = ({
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
-          {/* Searchable Model Selector */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+          <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-main)' }}>
+            Factory Assignment <span style={{ color: 'var(--danger-color)' }}>*</span>
+          </label>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+              gap: '0.5rem',
+              padding: '0.75rem',
+              backgroundColor: 'var(--bg-main)',
+              border: '1px solid var(--border-color)',
+              borderRadius: 'var(--radius-md)',
+            }}
+          >
+            {factories.length === 0 ? (
+              <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Memuat daftar pabrik...</span>
+            ) : (
+              factories.map((f) => (
+                <label
+                  key={f.id}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    fontSize: '0.85rem',
+                    color: 'var(--text-main)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={factoryIds.includes(f.id)}
+                    onChange={(e) =>
+                      setFactoryIds((prev) =>
+                        e.target.checked ? [...prev, f.id] : prev.filter((id) => id !== f.id)
+                      )
+                    }
+                  />
+                  <span>
+                    {f.name} ({f.code}){f.location ? ` - ${f.location}` : ''}
+                  </span>
+                </label>
+              ))
+            )}
+          </div>
+        </div>
+
+ <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+ {/* Searchable Model Selector */}
           <div ref={modelDropdownRef} style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
             <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-main)' }}>
               Model Kendaraan <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 400 }}>(Cari / Pilih Model)</span>

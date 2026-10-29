@@ -721,15 +721,22 @@ VALUES ?`;
     `;
     const allowanceParams: any[] = [qYear];
 
-    if (location && location !== 'all') {
-      allowanceQuery += `
-        JOIN master_parts mp ON pai.master_part_id = mp.id
-        JOIN machines mc ON mp.machine_id = mc.id
-        JOIN factories fc ON mc.factory_id = fc.id
-        WHERE YEAR(pai.production_date) = ? AND fc.location = ?
-      `;
-      allowanceParams.push(location);
-    } else {
+ if (location && location !== 'all') {
+ allowanceQuery += `
+ JOIN production_analytics_batches pab ON pab.id = pai.batch_id
+ LEFT JOIN master_parts mp ON pai.master_part_id = mp.id
+ LEFT JOIN machines mc ON mp.machine_id = mc.id
+ LEFT JOIN factories mc_fc ON mc.factory_id = mc_fc.id
+ WHERE YEAR(pai.production_date) = ?
+ AND COALESCE(
+ (SELECT css.location FROM crussing_sync_state css
+ WHERE css.external_location = pab.external_location
+ ORDER BY css.date_to DESC LIMIT 1),
+ mc_fc.location
+ ) = ?
+ `;
+ allowanceParams.push(location);
+ } else {
       allowanceQuery += ` WHERE YEAR(pai.production_date) = ?`;
     }
 

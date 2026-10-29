@@ -4,9 +4,11 @@ export interface MasterPart {
   machine_id: string;
   machine_code?: string;
   machine_name?: string;
-  factory_code?: string;
-  factory_name?: string;
-  customer: string;
+ factory_code?: string;
+ factory_name?: string;
+ factory_ids?: string[];
+ factory_names?: string[];
+ customer: string;
   model_id: string;
   model_code?: string;
   part_number: string;
@@ -33,9 +35,10 @@ export interface MasterModel {
 }
 
 export interface CreateMasterPartPayload {
-  sebango_code: string;
-  machine_id: string;
-  customer: string;
+ sebango_code: string;
+ machine_id: string;
+ factory_ids?: string[];
+ customer: string;
   model_id?: string;
   model_code?: string;
   material_id?: string;

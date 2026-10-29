@@ -52,10 +52,11 @@ interface AddPartModalProps {
     model_code?: string;
     model_name?: string;
     jenis_part?: string;
-    image_url?: string;
-    factory_id?: string;
-    factory_name?: string;
-  }>;
+ image_url?: string;
+ factory_id?: string;
+ factory_name?: string;
+ factory_ids?: string[];
+ }>;
   materials?: Array<{ id: string; material_name: string }>;
   factories?: Array<{ id: string; name: string }>;
   onAddBatch: (
@@ -108,7 +109,12 @@ export const AddPartModal: React.FC<AddPartModalProps> = ({
     return safeParts.filter((p) => {
       if (!p) return false;
       if (selectedJenis !== 'ALL' && p.jenis_part !== selectedJenis) return false;
-      if (selectedFactoryId && p.factory_id !== selectedFactoryId) return false;
+      if (selectedFactoryId) {
+        const matchesFactory = p.factory_ids && p.factory_ids.length > 0
+          ? p.factory_ids.includes(selectedFactoryId)
+          : p.factory_id === selectedFactoryId;
+        if (!matchesFactory) return false;
+      }
 
       if (!debouncedSearch.trim()) return true;
       const q = debouncedSearch.toLowerCase().trim();

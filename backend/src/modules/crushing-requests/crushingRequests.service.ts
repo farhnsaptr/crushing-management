@@ -193,9 +193,20 @@ export class CrushingRequestsService {
         const part = partRows[0];
         const effMat = await resolveEffectiveMaterial(part.material_id);
 
-        // Security validation: verify part belongs to user's assigned factory (skip if ALL / null)
-        if (userRole === 'pengirim' && factoryId && factoryId !== 'ALL' && part.factory_id !== factoryId) {
-          throw new Error(`Part '${part.part_name}' bukan berasal dari pabrik yang ditugaskan ke Anda`);
+        // Security validation: part harus di-assign ke factory transaksi pengirim.
+        if (userRole === 'pengirim') {
+          const effectiveFactoryId = factoryId && factoryId !== 'ALL' ? factoryId : null;
+          if (!effectiveFactoryId) {
+            throw new Error('Pilih pabrik asal pengiriman terlebih dahulu');
+          }
+
+          const [assignmentRows] = await pool.query<RowDataPacket[]>(
+            'SELECT 1 FROM master_part_factories WHERE master_part_id = ? AND factory_id = ? LIMIT 1',
+            [part.id, effectiveFactoryId]
+          );
+          if (assignmentRows.length === 0 && part.factory_id !== effectiveFactoryId) {
+            throw new Error(`Part '${part.part_name}' tidak tersedia untuk pabrik yang dipilih`);
+          }
         }
 
         const qtyPcs = Math.max(1, Number(item.quantity_pcs) || 1);

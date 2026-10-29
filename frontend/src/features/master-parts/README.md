@@ -14,6 +14,7 @@ Modul ini bertanggung jawab mengelola master data parts dan moulding plastik inj
 - **Fitur Export Data Master Parts**: Mengunduh seluruh data master parts aktif ke format Excel (`GET /api/master-parts/export`).
 - **Fitur Unduh Template Format Excel**: Mengunduh template `.xlsx` berkolom standar (`GET /api/master-parts/template`).
 - Fitur Tambah & Edit Data Manual per item.
+- **Assignment Factory**: modal tambah/edit memiliki pilihan multi-factory. Part hanya tampil untuk pengirim di factory yang di-assign.
 
 ## Hak Akses Role
 - **`super-admin`**: Akses Penuh (Read & Write).

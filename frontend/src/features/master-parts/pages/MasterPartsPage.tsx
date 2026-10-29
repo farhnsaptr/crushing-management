@@ -18,10 +18,11 @@ export const MasterPartsPage: React.FC = () => {
   const { user } = useAuth();
   const isSuperAdmin = user?.role === 'super-admin';
 
-  const {
-    parts,
-    machines,
-    page,
+ const {
+ parts,
+ machines,
+ factories,
+ page,
     setPage,
     total,
     totalPages,
@@ -365,9 +366,10 @@ export const MasterPartsPage: React.FC = () => {
       <MasterPartModal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
-        editingPart={editingPart}
-        machines={machines}
-        onCreateSubmit={handleCreatePart}
+ editingPart={editingPart}
+ machines={machines}
+ factories={factories}
+ onCreateSubmit={handleCreatePart}
         onUpdateSubmit={handleUpdatePart}
       />
 

@@ -81,12 +81,12 @@ export const MasterPartsTable: React.FC<MasterPartsTableProps> = ({
     {
       header: renderSortHeader('Factory', 'factory_name'),
       accessorKey: 'factory_name',
-      cell: (part) => (
-        <span style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--primary-color)' }}>
-          {part.factory_name || part.factory_code || '-'}
-        </span>
-      ),
-      width: '120px',
+ cell: (part) => (
+ <span style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--primary-color)' }}>
+ {part.factory_names?.length ? part.factory_names.join(', ') : part.factory_name || part.factory_code || '-'}
+ </span>
+ ),
+ width: '160px',
     },
     {
       header: 'Aksi',

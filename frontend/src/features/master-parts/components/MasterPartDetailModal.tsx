@@ -129,9 +129,9 @@ export const MasterPartDetailModal: React.FC<MasterPartDetailModalProps> = ({
               <Building2 size={15} />
               <span>LOKASI / PABRIK</span>
             </div>
-            <p style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-main)', marginTop: '0.25rem' }}>
-              {part.factory_name || part.factory_code || '-'}
-            </p>
+ <p style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-main)', marginTop: '0.25rem' }}>
+ {part.factory_names?.length ? part.factory_names.join(', ') : part.factory_name || part.factory_code || '-'}
+ </p>
           </div>
         </div>
 
