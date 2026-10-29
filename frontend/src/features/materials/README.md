@@ -40,3 +40,8 @@ materials/
 
 ## Material Campuran
 Dropdown "Dicampur ke Material Campuran" di modal edit memilih campuran yang dibuat di halaman `mixed-materials`. Kolom "Dicampur ke" di tabel menampilkan hasilnya. Pencatatan efektif dilakukan backend.
+
+## Lokasi Plant
+- Halaman memakai selector plant (default mengikuti plant user) dan hanya menampilkan material di plant aktif.
+- Modal tambah/edit material punya checkbox lokasi plant; kolom Plant ditampilkan di tabel.
+- Daftar part pemakai material ikut difilter sesuai plant aktif.

@@ -57,6 +57,40 @@ export class MasterPartsService {
  }));
  }
 
+ private static async getFactoryLocations(factoryIds: string[]): Promise<string[]> {
+ const unique = [...new Set(factoryIds.filter(Boolean))];
+ if (unique.length === 0) return [];
+ const [rows] = await pool.query<RowDataPacket[]>(
+ 'SELECT DISTINCT location FROM factories WHERE id IN (?) AND location IS NOT NULL',
+ [unique]
+ );
+ return rows.map((r) => String(r.location));
+ }
+
+ private static async assignMaterialLocations(materialId: string, locations: string[]) {
+ for (const location of locations) {
+ await pool.query(
+ 'INSERT IGNORE INTO master_material_locations (material_id, location) VALUES (?, ?)',
+ [materialId, location]
+ );
+ }
+ }
+
+ /** Material harus tersedia di semua lokasi factory tempat part dipakai. */
+ private static async assertMaterialCoversFactories(materialId: string, factoryIds: string[]) {
+ const locations = await this.getFactoryLocations(factoryIds);
+ if (locations.length === 0) return;
+ const [rows] = await pool.query<RowDataPacket[]>(
+ 'SELECT location FROM master_material_locations WHERE material_id = ? AND location IN (?)',
+ [materialId, locations]
+ );
+ if (rows.length !== locations.length) {
+ const covered = new Set(rows.map((r) => String(r.location)));
+ const missing = locations.filter((l) => !covered.has(l));
+ throw new Error(`Material belum tersedia di plant: ${missing.join(', ')}.`);
+ }
+ }
+
  private static async replacePartFactories(partId: string, factoryIds: string[]) {
  const unique = [...new Set(factoryIds.filter(Boolean))];
  if (unique.length === 0) {
@@ -332,6 +366,15 @@ export class MasterPartsService {
     const stdQtyNg = shikakeVal * 2;
     const allowanceKg = Number(((stdQtyNg * beratPartVal) / 1000).toFixed(2));
 
+ let factoryIds = (data.factory_ids || []).map(String);
+ if (factoryIds.length === 0) {
+ const [mcRows] = await pool.query<RowDataPacket[]>(
+ 'SELECT factory_id FROM machines WHERE id = ?',
+ [data.machine_id]
+ );
+ if (mcRows[0]) factoryIds = [mcRows[0].factory_id];
+ }
+
     // Auto-resolve or create Model in master_models
     let finalModelId: string | null = null;
     const cleanModelCode = (data.model_code || '').trim().toUpperCase();
@@ -363,6 +406,7 @@ export class MasterPartsService {
 
     // Auto-resolve or create Material in master_materials if material_id not provided
     let finalMaterialId: string | null = data.material_id || null;
+ let materialCreated = false;
     const cleanMatName = (data.material || '-').trim();
     if (!finalMaterialId && cleanMatName && cleanMatName !== '-') {
       const [matRows] = await pool.query<RowDataPacket[]>(
@@ -377,8 +421,18 @@ export class MasterPartsService {
           finalMaterialId,
           cleanMatName,
         ]);
+
+ materialCreated = true;
+
+ if (finalMaterialId && factoryIds.length > 0) {
+ await this.assignMaterialLocations(finalMaterialId, await this.getFactoryLocations(factoryIds));
+ }
       }
     }
+
+ if (finalMaterialId && factoryIds.length > 0 && !materialCreated) {
+ await this.assertMaterialCoversFactories(finalMaterialId, factoryIds);
+ }
 
     await pool.query(
       `INSERT INTO master_parts
@@ -407,14 +461,6 @@ export class MasterPartsService {
  ]
  );
 
- let factoryIds = (data.factory_ids || []).map(String);
- if (factoryIds.length === 0) {
- const [mcRows] = await pool.query<RowDataPacket[]>(
- 'SELECT factory_id FROM machines WHERE id = ?',
- [data.machine_id]
- );
- if (mcRows[0]) factoryIds = [mcRows[0].factory_id];
- }
  await this.replacePartFactories(id, factoryIds);
 
  return this.getPartById(id);
@@ -475,6 +521,7 @@ export class MasterPartsService {
     }
 
     let finalMaterialId: string | null = data.material_id !== undefined ? data.material_id : current.material_id;
+ let materialCreated = false;
     const cleanMatName = data.material !== undefined ? data.material.trim() : current.material;
 
     if (data.material !== undefined && cleanMatName && cleanMatName !== '-') {
@@ -490,10 +537,39 @@ export class MasterPartsService {
           finalMaterialId,
           cleanMatName,
         ]);
+ materialCreated = true;
       }
     }
 
-    await pool.query(
+    let finalFactoryIds: string[] = (data.factory_ids || []).map(String);
+ if (data.factory_ids === undefined) {
+ const [assignedRows] = await pool.query<RowDataPacket[]>(
+ 'SELECT factory_id FROM master_part_factories WHERE master_part_id = ?',
+ [id]
+ );
+ finalFactoryIds = assignedRows.map((r) => String(r.factory_id));
+ }
+ if (finalFactoryIds.length === 0) {
+ const [mcRows] = await pool.query<RowDataPacket[]>(
+ 'SELECT factory_id FROM machines WHERE id = ?',
+ [data.machine_id ?? current.machine_id]
+ );
+ if (mcRows[0]) finalFactoryIds = [mcRows[0].factory_id];
+ }
+ if (finalMaterialId && finalFactoryIds.length > 0) {
+ if (materialCreated) {
+ await this.assignMaterialLocations(finalMaterialId, await this.getFactoryLocations(finalFactoryIds));
+ } else if (
+ data.material_id !== undefined ||
+ data.material !== undefined ||
+ data.factory_ids !== undefined ||
+ data.machine_id !== undefined
+ ) {
+ await this.assertMaterialCoversFactories(finalMaterialId, finalFactoryIds);
+ }
+ }
+
+ await pool.query(
       `UPDATE master_parts SET
         sebango_code = ?, machine_id = ?, customer = ?, model_id = ?, material_id = ?, part_number = ?,
         part_name = ?, jenis_part = ?, material = ?, shikake = ?, qty_day = ?,
@@ -883,6 +959,14 @@ export class MasterPartsService {
           materialMap.set(cleanMatName.toUpperCase(), materialId);
         }
       }
+
+ if (materialId) {
+ await pool.query(
+ `INSERT IGNORE INTO master_material_locations (material_id, location)
+ SELECT ?, location FROM factories WHERE id = ? AND location IS NOT NULL`,
+ [materialId, factoryId]
+ );
+ }
 
       // 4. Upsert Master Part
       const partId = randomUUID();

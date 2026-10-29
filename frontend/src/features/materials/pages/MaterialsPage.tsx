@@ -9,6 +9,7 @@ import { Card } from '../../../components/common/Card';
 import { Input } from '../../../components/common/Input';
 import { Button } from '../../../components/common/Button';
 import { Toast } from '../../../components/common/Toast';
+import { PlantLocationToggle } from '../../../components/common/PlantLocationToggle';
 import { useAuth } from '../../../context/AuthContext';
 import { Search, Plus, RefreshCw, Layers, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
 
@@ -18,6 +19,9 @@ export const MaterialsPage: React.FC = () => {
 
   const {
     materials,
+ locations,
+ location,
+ setLocation,
     page,
     setPage,
     total,
@@ -49,7 +53,7 @@ export const MaterialsPage: React.FC = () => {
     setIsPartsModalOpen(true);
     setIsLoadingParts(true);
     try {
-      const data = await MaterialsService.getMaterialParts(material.id);
+      const data = await MaterialsService.getMaterialParts(material.id, location);
       setPartsData(data);
     } catch (err: any) {
       console.error('Failed to load material parts list:', err);
@@ -130,6 +134,14 @@ export const MaterialsPage: React.FC = () => {
 
             {/* Action Buttons Group */}
             <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem' }}>
+ <PlantLocationToggle
+ locations={locations}
+ value={location}
+ onChange={(loc) => {
+ setLocation(loc);
+ setPage(1);
+ }}
+ />
               {isSuperAdmin && (
                 <Button
                   variant="ghost"
@@ -255,6 +267,8 @@ export const MaterialsPage: React.FC = () => {
         onClose={() => setIsModalOpen(false)}
         editingMaterial={editingMaterial}
         mixedOptions={mixedOptions}
+ locations={locations}
+ defaultLocation={location}
         onCreateSubmit={handleCreateMaterial}
         onUpdateSubmit={handleUpdateMaterial}
       />

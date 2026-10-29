@@ -2,19 +2,19 @@ import { apiClient } from '../../../services/api.client';
 import type { Material, CreateMaterialPayload, MaterialPartsResponse } from '../types/materials.types';
 
 export class MaterialsService {
-  static async getMaterials(page: number = 1, limit: number = 20, search: string = ''): Promise<{
+  static async getMaterials(page: number = 1, limit: number = 20, search: string = '', location: string = ''): Promise<{
     materials: Material[];
     pagination: { page: number; limit: number; total: number; totalPages: number };
   }> {
     const response = await apiClient.get('/api/materials', {
-      params: { page, limit, search },
+      params: { page, limit, search, location },
     });
     return response.data.data;
   }
 
-  static async listMaterials(page: number = 1, limit: number = 200, search: string = ''): Promise<Material[]> {
+  static async listMaterials(page: number = 1, limit: number = 200, search: string = '', location: string = ''): Promise<Material[]> {
     const response = await apiClient.get('/api/materials', {
-      params: { page, limit, search },
+      params: { page, limit, search, location },
     });
     return response.data.data?.materials || [];
   }
@@ -24,8 +24,8 @@ export class MaterialsService {
     return response.data.data;
   }
 
-  static async getMaterialParts(id: string): Promise<MaterialPartsResponse> {
-    const response = await apiClient.get(`/api/materials/${id}/parts`);
+  static async getMaterialParts(id: string, location: string = ''): Promise<MaterialPartsResponse> {
+    const response = await apiClient.get(`/api/materials/${id}/parts`, { params: { location } });
     return response.data.data;
   }
 

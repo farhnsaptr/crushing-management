@@ -21,7 +21,12 @@ export function usePlantLocation() {
       .finally(() => setIsLoaded(true));
   }, []);
 
-  const location = stored && locations.includes(stored) ? stored : (locations[0] ?? 'Cibitung');
+  const allowed = (loc: string | null | undefined): loc is string => !!loc && locations.includes(loc);
+ const location = allowed(stored)
+ ? stored
+ : allowed(user?.factory_location)
+ ? user!.factory_location!
+ : (locations[0] ?? 'Cibitung');
 
   return { locations, location, setLocation: setStored, isLoaded };
 }

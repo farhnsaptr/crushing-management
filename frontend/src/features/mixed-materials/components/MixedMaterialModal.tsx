@@ -11,12 +11,15 @@ interface MixedMaterialModalProps {
   onClose: () => void;
   editing?: MixedMaterial | null;
   onSubmit: (payload: MixedMaterialPayload) => Promise<void>;
+ locations: string[];
+ defaultLocation: string;
 }
 
-export const MixedMaterialModal: React.FC<MixedMaterialModalProps> = ({ isOpen, onClose, editing, onSubmit }) => {
+export const MixedMaterialModal: React.FC<MixedMaterialModalProps> = ({ isOpen, onClose, editing, onSubmit, locations, defaultLocation }) => {
   const [name, setName] = useState<string>('');
   const [description, setDescription] = useState<string>('');
   const [recycleType, setRecycleType] = useState<RecycleType>('reuse');
+ const [materialLocations, setMaterialLocations] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -24,8 +27,9 @@ export const MixedMaterialModal: React.FC<MixedMaterialModalProps> = ({ isOpen, 
     setName(editing?.mixed_name || '');
     setDescription(editing?.description || '');
     setRecycleType(editing?.recycle_type || 'reuse');
+ setMaterialLocations(editing?.locations || [defaultLocation]);
     setError(null);
-  }, [editing, isOpen]);
+  }, [editing, isOpen, defaultLocation]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,7 +40,7 @@ export const MixedMaterialModal: React.FC<MixedMaterialModalProps> = ({ isOpen, 
     }
     setIsSubmitting(true);
     try {
-      await onSubmit({ mixed_name: name.trim(), description: description.trim() || undefined, recycle_type: recycleType });
+      await onSubmit({ mixed_name: name.trim(), description: description.trim() || undefined, recycle_type: recycleType, locations: materialLocations });
     } catch (err: any) {
       setError(extractErrorMessage(err, 'Gagal menyimpan material campuran.'));
     } finally {
@@ -104,6 +108,28 @@ export const MixedMaterialModal: React.FC<MixedMaterialModalProps> = ({ isOpen, 
             </label>
           </div>
         </div>
+
+ <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+ <label style={{ fontSize: '0.825rem', fontWeight: 700, color: 'var(--text-main, #0f172a)' }}>
+ Lokasi Plant
+ </label>
+ <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+ {locations.map((loc) => (
+ <label key={loc} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem', fontWeight: 700 }}>
+ <input
+ type="checkbox"
+ checked={materialLocations.includes(loc)}
+ onChange={(e) =>
+ setMaterialLocations((prev) =>
+ e.target.checked ? [...prev, loc] : prev.filter((l) => l !== loc)
+ )
+ }
+ />
+ {loc}
+ </label>
+ ))}
+ </div>
+ </div>
 
         <Input
           label="Deskripsi / Catatan"

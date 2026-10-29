@@ -158,9 +158,18 @@ export const MasterPartModal: React.FC<MasterPartModalProps> = ({
     }
   }, [isOpen, editingPart, machineId, machines, factoryIds.length]);
 
-  const filteredMaterials = materialsList.filter((m) =>
-    m.material_name.toLowerCase().includes(material.toLowerCase())
-  );
+ const selectedFactoryLocations = [
+ ...new Set(
+ factories
+.filter((f) => factoryIds.includes(f.id) && f.location)
+.map((f) => f.location as string)
+ ),
+ ];
+ const filteredMaterials = materialsList.filter((m) =>
+ m.material_name.toLowerCase().includes(material.toLowerCase()) &&
+ (selectedFactoryLocations.length === 0 ||
+ selectedFactoryLocations.every((loc) => m.locations?.includes(loc)))
+ );
 
   const filteredModels = modelsList.filter((m) =>
     m.model_code.toLowerCase().includes(modelCode.toLowerCase()) ||

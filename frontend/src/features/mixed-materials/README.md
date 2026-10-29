@@ -13,3 +13,6 @@ Halaman `/admin/mixed-materials` untuk mengelola material campuran (mis. A + B +
 - CRUD material campuran; jenis recycle (Reuse / No Reuse) dipilih user.
 - Lihat anggota campuran (material asli + jumlah part).
 - Anggota diatur dari edit Master Material (dropdown "Dicampur ke"). Seluruh pencatatan efektif dilakukan backend.
+
+## Lokasi Plant
+- Selector plant memfilter daftar campuran; modal punya checkbox lokasi plant dan tabel menampilkan kolom Plant.

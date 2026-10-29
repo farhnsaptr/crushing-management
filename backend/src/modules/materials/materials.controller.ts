@@ -9,8 +9,9 @@ export class MaterialsController {
       const page = parseInt(req.query.page as string, 10) || 1;
       const limit = parseInt(req.query.limit as string, 10) || 20;
       const search = (req.query.search as string) || '';
+ const location = (req.query.location as string) || '';
 
-      const result = await MaterialsService.listAllMaterials(page, limit, search);
+      const result = await MaterialsService.listAllMaterials(page, limit, search, location);
       sendSuccess(res, result, 'Materials list retrieved successfully');
     } catch (error: any) {
       sendError(res, error.message || 'Failed to list materials', 500);
@@ -34,7 +35,8 @@ export class MaterialsController {
   static async getParts(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
       const id = String(req.params.id);
-      const result = await MaterialsService.getMaterialParts(id);
+ const location = (req.query.location as string) || '';
+      const result = await MaterialsService.getMaterialParts(id, location);
       sendSuccess(res, result, 'Material parts list retrieved successfully');
     } catch (error: any) {
       sendError(res, error.message || 'Failed to get material parts', 500);
@@ -43,13 +45,13 @@ export class MaterialsController {
 
   static async create(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
-      const { material_name, description, recycle_type, mixed_material_id } = req.body;
+      const { material_name, description, recycle_type, mixed_material_id, locations } = req.body;
       if (!material_name || !material_name.trim()) {
         sendError(res, 'material_name is required', 400);
         return;
       }
 
-      const material = await MaterialsService.createMaterial({ material_name, description, recycle_type, mixed_material_id });
+      const material = await MaterialsService.createMaterial({ material_name, description, recycle_type, mixed_material_id, locations });
       sendSuccess(res, material, 'Material created successfully', 201);
     } catch (error: any) {
       sendError(res, error.message || 'Failed to create material', 400);

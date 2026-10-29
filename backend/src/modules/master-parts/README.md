@@ -36,3 +36,7 @@ master-parts/
 | `GET` | `/api/master-parts/by-jenis` | Authenticated | Filter part berdasarkan `jenis_part` |
 | `GET` | `/api/master-parts` | Authenticated | List semua master part (paginated) |
 | `POST` | `/api/master-parts` | Admin Only | Tambah master part baru |
+
+## Validasi Lokasi Material
+- Saat create/update part, material harus tersedia di semua lokasi factory part.
+- Material baru yang auto-dibuat saat create/import otomatis dipetakan ke lokasi factory part.

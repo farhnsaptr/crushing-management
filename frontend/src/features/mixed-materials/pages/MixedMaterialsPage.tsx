@@ -7,6 +7,7 @@ import { Card } from '../../../components/common/Card';
 import { Input } from '../../../components/common/Input';
 import { Button } from '../../../components/common/Button';
 import { Toast } from '../../../components/common/Toast';
+import { PlantLocationToggle } from '../../../components/common/PlantLocationToggle';
 import { Search, Plus, RefreshCw } from 'lucide-react';
 
 export const MixedMaterialsPage: React.FC = () => {
@@ -25,6 +26,7 @@ export const MixedMaterialsPage: React.FC = () => {
             />
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem' }}>
+ <PlantLocationToggle locations={m.locations} value={m.location} onChange={m.setLocation} />
             <Button variant="outline" size="sm" onClick={m.fetchItems} isLoading={m.isLoading} leftIcon={<RefreshCw size={15} />}>
               Refresh
             </Button>
@@ -53,6 +55,8 @@ export const MixedMaterialsPage: React.FC = () => {
         onClose={() => m.setIsModalOpen(false)}
         editing={m.editing}
         onSubmit={m.handleSubmit}
+ locations={m.locations}
+ defaultLocation={m.location}
       />
       <MixedMaterialMembersModal
         isOpen={m.isMembersOpen}

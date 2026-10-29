@@ -6,8 +6,8 @@ import type {
 } from '../types/mixedMaterials.types';
 
 export class MixedMaterialsService {
-  static async list(search: string = ''): Promise<MixedMaterial[]> {
-    const response = await apiClient.get('/api/mixed-materials', { params: { search } });
+  static async list(search: string = '', location: string = ''): Promise<MixedMaterial[]> {
+    const response = await apiClient.get('/api/mixed-materials', { params: { search, location } });
     return response.data.data || [];
   }
 
