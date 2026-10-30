@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   ResponsiveContainer,
   BarChart,
@@ -10,13 +10,16 @@ import {
   Legend,
   LabelList,
 } from 'recharts';
-import type { BudomariBreakdown, BudomariDailyItem } from '../types/dashboard.types';
+import type { BudomariBreakdown, BudomariDailyItem, BudomariPartDetail } from '../types/dashboard.types';
+import { BudomariDetailModal } from './BudomariDetailModal';
 
 interface BudomariChartProps {
  data: BudomariDailyItem[];
  monthlyBreakdown: BudomariBreakdown | null;
+ partDetails?: BudomariPartDetail[];
  isLoading: boolean;
  monthLabel?: string;
+ month: number;
  year?: number;
 }
 
@@ -126,10 +129,14 @@ const renderBarLabel = (props: any) => {
 export const BudomariChart: React.FC<BudomariChartProps> = ({
  data,
  monthlyBreakdown,
+ partDetails = [],
  isLoading,
  monthLabel = 'Bulan',
+ month,
  year = 2026,
 }) => {
+ const [isDetailOpen, setIsDetailOpen] = useState(false);
+
  if (isLoading) {
  return (
  <div className="dash-chart dash-chart-budomari">
@@ -175,9 +182,28 @@ export const BudomariChart: React.FC<BudomariChartProps> = ({
  <h3 style={{ fontSize: '0.85rem', fontWeight: 900, color: 'var(--text-main, #0f172a)', margin: 0 }}>
  KPI Budomari Material
  </h3>
+ <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted, #64748b)', fontWeight: 700 }}>
  {monthLabel} {year} — Komposisi 100%
  </span>
+ <button
+ type="button"
+ onClick={() => setIsDetailOpen(true)}
+ style={{
+ background: 'none',
+ border: 'none',
+ padding: 0,
+ font: 'inherit',
+ fontSize: '0.75rem',
+ fontWeight: 800,
+ color: 'var(--secondary-color, #e76114)',
+ cursor: 'pointer',
+ textDecoration: 'underline',
+ }}
+ >
+ Detail
+ </button>
+ </div>
  </div>
 
  {monthlyBreakdown && (
@@ -264,9 +290,9 @@ export const BudomariChart: React.FC<BudomariChartProps> = ({
  />
 
  <YAxis
- domain={[0, 100]}
+ domain={[50, 100]}
  allowDataOverflow={true}
- ticks={[0, 20, 40, 60, 80, 100]}
+ ticks={[50, 60, 70, 80, 90, 100]}
  width={42}
  tick={{ fontSize: 10.5, fill: '#64748b', fontWeight: 700 }}
  axisLine={{ stroke: '#cbd5e1' }}
@@ -305,6 +331,17 @@ export const BudomariChart: React.FC<BudomariChartProps> = ({
  )}
  </div>
  </div>
+
+ <BudomariDetailModal
+ isOpen={isDetailOpen}
+ onClose={() => setIsDetailOpen(false)}
+ data={data}
+ monthlyBreakdown={monthlyBreakdown}
+ partDetails={partDetails}
+ monthLabel={monthLabel}
+ month={month}
+ year={year}
+ />
  </div>
  );
 };

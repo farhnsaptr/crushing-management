@@ -72,8 +72,24 @@ export interface BudomariDailyItem {
  total_parts: number;
 }
 
+export interface BudomariPartDetail {
+ day: string;
+ day_num: number;
+ shift: string;
+ sebango_code: string;
+ part_number: string;
+ part_name: string;
+ total_pcs: number;
+ ok_use_pct: number;
+ ng_loss_pct: number;
+ runner_pct: number;
+ dango_pct: number;
+ dango_part_pct: number;
+}
+
 export interface BudomariChartResponse {
  budomari_chart: BudomariDailyItem[];
+ part_details?: BudomariPartDetail[];
  monthly_breakdown: BudomariBreakdown | null;
  total_records: number;
 }

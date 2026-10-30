@@ -45,6 +45,13 @@ function normalizeBudomariBreakdown(row: any): BudomariBreakdown | null {
 }
 
 export class DashboardService {
+ /** Filter SQL opsional berdasarkan departemen; 'unknown' = transaksi tanpa departemen. */
+ private static departmentSql(column: string, departmentId?: string): { sql: string; params: any[] } {
+ if (!departmentId || departmentId === 'others') return { sql: '', params: [] };
+ if (departmentId === 'unknown') return { sql: ` AND ${column} IS NULL`, params: [] };
+ return { sql: ` AND ${column} = ?`, params: [departmentId] };
+ }
+
   /**
    * KPI dashboard per bulan & lokasi:
    * - scrap_kg  : material no-reuse (NG + runner) menurut jenis recycle efektif (termasuk material campur)
@@ -116,10 +123,12 @@ export class DashboardService {
     };
   }
 
-  static async getDailyChartData(year?: number, month?: number, location: string = 'Cibitung') {
+  static async getDailyChartData(year?: number, month?: number, location: string = 'Cibitung', departmentId?: string) {
     const now = new Date();
     const qYear = year || now.getFullYear();
     const qMonth = month || now.getMonth() + 1;
+ const ngDepartment = this.departmentSql('t.department_id', departmentId);
+ const runnerDepartment = this.departmentSql('cr.department_id', departmentId);
 
     // 1. Fetch Part NG transactions per day & shift (with reuse vs no-reuse breakdown)
     const [ngRows] = await pool.query<RowDataPacket[]>(
@@ -138,10 +147,10 @@ export class DashboardService {
        LEFT JOIN machines mc ON mp.machine_id = mc.id
        LEFT JOIN factories mc_fc ON mc.factory_id = mc_fc.id
        WHERE YEAR(t.transaction_date) = ? AND MONTH(t.transaction_date) = ? 
-         AND COALESCE(req_fc.location, tx_fc.location, mc_fc.location) = ?
+         AND COALESCE(req_fc.location, tx_fc.location, mc_fc.location) = ?${ngDepartment.sql}
        GROUP BY DAY(t.transaction_date), t.shift
        ORDER BY day_num ASC`,
-      [qYear, qMonth, location]
+ [qYear, qMonth, location, ...ngDepartment.params]
     );
 
     // 2. Fetch Runner Material transactions per day & shift (with reuse vs no-reuse breakdown)
@@ -158,10 +167,10 @@ export class DashboardService {
        LEFT JOIN factories rmt_fc ON rmt.factory_id = rmt_fc.id
        ${RUNNER_MATERIAL_JOIN_SQL}
        WHERE YEAR(rmt.transaction_date) = ? AND MONTH(rmt.transaction_date) = ? 
-         AND COALESCE(req_fc.location, rmt_fc.location, rmt.location) = ?
+         AND COALESCE(req_fc.location, rmt_fc.location, rmt.location) = ?${runnerDepartment.sql}
        GROUP BY DAY(rmt.transaction_date), rmt.shift
        ORDER BY day_num ASC`,
-      [qYear, qMonth, location]
+ [qYear, qMonth, location, ...runnerDepartment.params]
     );
 
     // 3. Fetch Validated Verifications per day & shift
@@ -424,17 +433,60 @@ export class DashboardService {
  });
  }
 
+ const [partRows] = await pool.query<RowDataPacket[]>(
+ `SELECT
+ DAY(pai.production_date) AS day_num,
+ pai.shift,
+ pai.sebango_code,
+ pai.part_number_snapshot AS part_number,
+ pai.part_name_snapshot AS part_name,
+ pai.act_total_pcs AS total_pcs,
+ pai.ok_use_pct,
+ pai.ng_loss_pct,
+ pai.runner_pct,
+ pai.dango_pct,
+ pai.dango_part_pct
+ FROM production_analytics_items pai
+ JOIN master_parts mp ON pai.master_part_id = mp.id
+ JOIN machines mc ON mp.machine_id = mc.id
+ JOIN factories fc ON mc.factory_id = fc.id
+ WHERE YEAR(pai.production_date) = ?
+ AND MONTH(pai.production_date) = ?
+ AND fc.location = ?
+ AND pai.ok_use_pct IS NOT NULL
+ ORDER BY pai.production_date ASC, pai.shift ASC, pai.sebango_code ASC`,
+ [qYear, qMonth, location]
+ );
+
+ const partDetails = partRows.map((r) => ({
+ day: String(Number(r.day_num)).padStart(2, '0'),
+ day_num: Number(r.day_num),
+ shift: r.shift as string,
+ sebango_code: r.sebango_code as string,
+ part_number: (r.part_number as string) || '-',
+ part_name: (r.part_name as string) || '-',
+ total_pcs: Number(r.total_pcs) || 0,
+ ok_use_pct: Number(r.ok_use_pct) || 0,
+ ng_loss_pct: Number(r.ng_loss_pct) || 0,
+ runner_pct: Number(r.runner_pct) || 0,
+ dango_pct: Number(r.dango_pct) || 0,
+ dango_part_pct: Number(r.dango_part_pct) || 0,
+ }));
+
  return {
  budomari_chart: chartItems,
  monthly_breakdown: monthlyRows[0] ? normalizeBudomariBreakdown(monthlyRows[0]) : null,
  total_records: Number(monthlyRows[0]?.total_records) || 0,
+ part_details: partDetails,
  };
  }
 
-  static async getParetoMaterial(year?: number, month?: number, location: string = 'Cibitung') {
+  static async getParetoMaterial(year?: number, month?: number, location: string = 'Cibitung', departmentId?: string) {
     const now = new Date();
     const qYear = year || now.getFullYear();
     const qMonth = month || now.getMonth() + 1;
+ const ngDepartment = this.departmentSql('t.department_id', departmentId);
+ const runnerDepartment = this.departmentSql('cr.department_id', departmentId);
 
     const [rows] = await pool.query<RowDataPacket[]>(
       `SELECT 
@@ -455,7 +507,7 @@ export class DashboardService {
          LEFT JOIN factories mc_fc ON mc.factory_id = mc_fc.id
          LEFT JOIN master_materials mm ON mp.material_id = mm.id
          WHERE YEAR(t.transaction_date) = ? AND MONTH(t.transaction_date) = ? 
-           AND COALESCE(req_fc.location, tx_fc.location, mc_fc.location) = ?
+           AND COALESCE(req_fc.location, tx_fc.location, mc_fc.location) = ?${ngDepartment.sql}
 
          UNION ALL
 
@@ -469,12 +521,12 @@ export class DashboardService {
          LEFT JOIN factories rmt_fc ON rmt.factory_id = rmt_fc.id
          LEFT JOIN v_all_materials mm ON (rmt.material_id = mm.id OR rmt.material_name_snapshot = mm.material_name)
          WHERE YEAR(rmt.transaction_date) = ? AND MONTH(rmt.transaction_date) = ?
-           AND COALESCE(req_fc.location, rmt_fc.location, rmt.location) = ?
+           AND COALESCE(req_fc.location, rmt_fc.location, rmt.location) = ?${runnerDepartment.sql}
        ) combined
        GROUP BY material_name
        ORDER BY total_kg DESC
        LIMIT 5`,
-      [qYear, qMonth, location, qYear, qMonth, location]
+      [qYear, qMonth, location, ...ngDepartment.params, qYear, qMonth, location, ...runnerDepartment.params]
     );
 
     return rows.map((r, index) => ({
@@ -485,10 +537,11 @@ export class DashboardService {
     }));
   }
 
-  static async getTopNgParts(year?: number, month?: number, location: string = 'Cibitung') {
+  static async getTopNgParts(year?: number, month?: number, location: string = 'Cibitung', departmentId?: string) {
     const now = new Date();
     const qYear = year || now.getFullYear();
     const qMonth = month || now.getMonth() + 1;
+ const department = this.departmentSql('t.department_id', departmentId);
 
     const [rows] = await pool.query<RowDataPacket[]>(
       `SELECT 
@@ -505,11 +558,11 @@ export class DashboardService {
        LEFT JOIN machines mc ON mp.machine_id = mc.id
        LEFT JOIN factories mc_fc ON mc.factory_id = mc_fc.id
        WHERE YEAR(t.transaction_date) = ? AND MONTH(t.transaction_date) = ? 
-         AND COALESCE(req_fc.location, tx_fc.location, mc_fc.location) = ?
+         AND COALESCE(req_fc.location, tx_fc.location, mc_fc.location) = ?${department.sql}
        GROUP BY t.part_name_snapshot, t.part_number_snapshot, t.model_snapshot
        ORDER BY total_pcs DESC
        LIMIT 5`,
-      [qYear, qMonth, location]
+ [qYear, qMonth, location, ...department.params]
     );
 
     return rows.map((r, index) => ({

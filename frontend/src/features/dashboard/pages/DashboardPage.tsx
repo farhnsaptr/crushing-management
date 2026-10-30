@@ -28,9 +28,12 @@ export const DashboardPage: React.FC = () => {
     dailyChart,
  budomariChart,
  monthlyBreakdown,
+ budomariPartDetails,
  paretoMaterials,
  topParts,
  departmentPareto,
+ selectedDepartmentId,
+ setSelectedDepartmentId,
  senderStats,
  isLoading,
  handleRefresh,
@@ -99,8 +102,10 @@ export const DashboardPage: React.FC = () => {
  <BudomariChart
  data={budomariChart}
  monthlyBreakdown={monthlyBreakdown}
+ partDetails={budomariPartDetails}
  isLoading={isLoading}
  monthLabel={MONTH_OPTIONS.find((m) => m.value === selectedMonth)?.label || 'Bulan'}
+ month={selectedMonth}
  year={selectedYear}
  />
 
@@ -112,9 +117,33 @@ export const DashboardPage: React.FC = () => {
           year={selectedYear}
         />
 
+ {/* Filter departemen aktif dari klik nama di Pareto Departemen */}
+ {selectedDepartmentId && (
+ <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', fontWeight: 700, color: '#475569' }}>
+ <span>
+ Filter departemen:{' '}
+ <strong style={{ color: 'var(--secondary-color, #e76114)' }}>
+ {departmentPareto.find((d) => d.department_id === selectedDepartmentId)?.department_name || 'Dipilih'}
+ </strong>
+ </span>
+ <button
+ type="button"
+ onClick={() => setSelectedDepartmentId(null)}
+ style={{ border: '1px solid #cbd5e1', background: '#ffffff', borderRadius: '10px', padding: '0.2rem 0.6rem', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer', color: '#64748b' }}
+ >
+ Reset filter
+ </button>
+ </div>
+ )}
+
         {/* Tiga tabel berdampingan: Pareto Departemen, Part NG Terbanyak, Pareto Material */}
         <div className="dash-tables">
-          <DepartmentParetoTable data={departmentPareto} isLoading={isLoading} />
+ <DepartmentParetoTable
+ data={departmentPareto}
+ isLoading={isLoading}
+ selectedDepartmentId={selectedDepartmentId}
+ onSelectDepartment={(id) => setSelectedDepartmentId((prev) => (prev === id ? null : id))}
+ />
           <TopNgPartsTable data={topParts} isLoading={isLoading} />
           <ParetoMaterialTable data={paretoMaterials} isLoading={isLoading} />
         </div>
