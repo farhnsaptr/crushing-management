@@ -6,7 +6,7 @@ import { AuthenticatedRequest } from '../../middlewares/auth.middleware';
 export class MixedMaterialsController {
   static async list(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
-      const data = await MixedMaterialsService.list((req.query.search as string) || '');
+      const data = await MixedMaterialsService.list((req.query.search as string) || '', (req.query.location as string) || '');
       sendSuccess(res, data, 'Mixed materials retrieved successfully');
     } catch (error: any) {
       sendError(res, error.message || 'Failed to list mixed materials', 500);

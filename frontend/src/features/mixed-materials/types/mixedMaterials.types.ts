@@ -5,6 +5,7 @@ export interface MixedMaterial {
   mixed_name: string;
   description?: string | null;
   recycle_type: RecycleType;
+ locations?: string[];
   members_count: number;
   created_at?: string;
   updated_at?: string;
@@ -14,6 +15,7 @@ export interface MixedMaterialPayload {
   mixed_name: string;
   description?: string;
   recycle_type: RecycleType;
+ locations?: string[];
 }
 
 export interface MixedMaterialMember {

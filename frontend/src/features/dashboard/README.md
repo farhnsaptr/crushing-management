@@ -29,3 +29,13 @@ Dashboard admin/operator/guest dirancang muat dalam satu layar tanpa scroll (des
   - **Pareto Departemen Pengirim Part NG Terbanyak** (Peringkat, Nama Departemen, Total Transaksi, Jumlah Pcs, Total Berat kg, Proporsi %).
   - Top Part NG terbanyak.
   - Pareto Material / Resin.
+
+## Filter Departemen
+- Klik nama departemen pada tabel Pareto Departemen untuk memfilter grafik harian, Top Part NG, dan Pareto Material ke departemen tersebut.
+- Klik nama yang sama sekali lagi atau tombol "Reset filter" untuk kembali ke seluruh plant.
+- Baris "Lainnya" tidak dapat dipilih. Data Budomari dan KPI ringkasan tetap level plant karena sumber datanya tidak menyimpan departemen.
+
+## Detail KPI Budomari
+- Teks **Detail** di kanan atas chart Budomari membuka modal berisi rata-rata bulanan dan tabel data harian (OK Use, NG Loss, Runner, Dango, Dango Part, jumlah part) dari respons API yang sama.
+- Modal Detail Budomari juga menampilkan tabel **Detail Part** (tanggal, shift, sebango, part number, part name, pcs, dan komponen KPI) dari `part_details`.
+- Tabel Detail Part punya filter tanggal, pencarian (sebango/part number/part name/shift), dan pagination 10 baris per halaman.

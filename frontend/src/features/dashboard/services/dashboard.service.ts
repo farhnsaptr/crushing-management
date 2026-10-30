@@ -25,10 +25,11 @@ export class DashboardService {
   static async getDailyChart(
     year?: number,
     month?: number,
-    location: PlantLocation = 'Cibitung'
+    location: PlantLocation = 'Cibitung',
+ departmentId?: string
   ): Promise<DailyRecycleChartResponse> {
     const response = await apiClient.get('/api/dashboard/daily-chart', {
-      params: { year, month, location },
+      params: { year, month, location, department_id: departmentId },
     });
     return response.data.data || { daily_chart: [] };
   }
@@ -53,10 +54,11 @@ export class DashboardService {
   static async getParetoMaterial(
     year?: number,
     month?: number,
-    location: PlantLocation = 'Cibitung'
+    location: PlantLocation = 'Cibitung',
+ departmentId?: string
   ): Promise<ParetoMaterialItem[]> {
     const response = await apiClient.get('/api/dashboard/pareto-material', {
-      params: { year, month, location },
+      params: { year, month, location, department_id: departmentId },
     });
     return response.data.data || [];
   }
@@ -64,10 +66,11 @@ export class DashboardService {
   static async getTopNgParts(
     year?: number,
     month?: number,
-    location: PlantLocation = 'Cibitung'
+    location: PlantLocation = 'Cibitung',
+ departmentId?: string
   ): Promise<TopNgPartItem[]> {
     const response = await apiClient.get('/api/dashboard/top-ng-parts', {
-      params: { year, month, location },
+      params: { year, month, location, department_id: departmentId },
     });
     return response.data.data || [];
   }

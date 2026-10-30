@@ -6,8 +6,10 @@ import type { MixedMaterial } from '../../mixed-materials/types/mixedMaterials.t
 import type { Material, CreateMaterialPayload } from '../types/materials.types';
 import type { ToastMessage } from '../../../components/common/Toast';
 import { extractErrorMessage } from '../../../services/api.client';
+import { usePlantLocation } from '../../factories/hooks/usePlantLocation';
 
 export const useMaterials = () => {
+ const { locations, location, setLocation } = usePlantLocation();
   const [materials, setMaterials] = useState<Material[]>([]);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const debouncedSearchQuery = useDebounce(searchQuery, 400);
@@ -28,7 +30,7 @@ export const useMaterials = () => {
   const fetchMaterials = useCallback(async () => {
     setIsLoading(true);
     try {
-      const res = await MaterialsService.getMaterials(page, limit, debouncedSearchQuery);
+      const res = await MaterialsService.getMaterials(page, limit, debouncedSearchQuery, location);
       setMaterials(res.materials || []);
       setTotal(res.pagination?.total || 0);
       setTotalPages(res.pagination?.totalPages || 1);
@@ -41,7 +43,7 @@ export const useMaterials = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [page, limit, debouncedSearchQuery]);
+  }, [page, limit, debouncedSearchQuery, location]);
 
   useEffect(() => {
     fetchMaterials();
@@ -50,11 +52,11 @@ export const useMaterials = () => {
   // Pilihan campuran untuk dropdown "Dicampur ke"
   const loadMixedOptions = useCallback(async () => {
     try {
-      setMixedOptions(await MixedMaterialsService.list());
+      setMixedOptions(await MixedMaterialsService.list('', location));
     } catch {
       setMixedOptions([]);
     }
-  }, []);
+  }, [location]);
 
   const handleOpenCreateModal = () => {
     loadMixedOptions();
@@ -158,6 +160,9 @@ export const useMaterials = () => {
   };
 
   return {
+ locations,
+ location,
+ setLocation,
     materials,
     page,
     setPage,

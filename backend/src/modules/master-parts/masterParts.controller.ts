@@ -112,11 +112,12 @@ export class MasterPartsController {
 
   static async create(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
-      const {
-        sebango_code,
-        machine_id,
-        customer,
-        model_id,
+ const {
+ sebango_code,
+ machine_id,
+ factory_ids,
+ customer,
+ model_id,
         model_code,
         part_number,
         part_name,
@@ -136,10 +137,11 @@ export class MasterPartsController {
         return;
       }
 
-      const part = await MasterPartsService.createPart({
-        sebango_code,
-        machine_id,
-        customer: customer || '-',
+ const part = await MasterPartsService.createPart({
+ sebango_code,
+ machine_id,
+ factory_ids,
+ customer: customer || '-',
         model_id,
         model_code,
         part_number,

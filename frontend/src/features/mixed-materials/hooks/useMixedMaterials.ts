@@ -8,8 +8,10 @@ import type {
 } from '../types/mixedMaterials.types';
 import type { ToastMessage } from '../../../components/common/Toast';
 import { extractErrorMessage } from '../../../services/api.client';
+import { usePlantLocation } from '../../factories/hooks/usePlantLocation';
 
 export const useMixedMaterials = () => {
+ const { locations, location, setLocation } = usePlantLocation();
   const [items, setItems] = useState<MixedMaterial[]>([]);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const debouncedSearch = useDebounce(searchQuery, 400);
@@ -30,13 +32,13 @@ export const useMixedMaterials = () => {
   const fetchItems = useCallback(async () => {
     setIsLoading(true);
     try {
-      setItems(await MixedMaterialsService.list(debouncedSearch));
+      setItems(await MixedMaterialsService.list(debouncedSearch, location));
     } catch (err: any) {
       notify('error', extractErrorMessage(err, 'Gagal memuat material campuran.'));
     } finally {
       setIsLoading(false);
     }
-  }, [debouncedSearch]);
+  }, [debouncedSearch, location]);
 
   useEffect(() => {
     fetchItems();
@@ -101,6 +103,9 @@ export const useMixedMaterials = () => {
 
   return {
     items,
+ locations,
+ location,
+ setLocation,
     searchQuery,
     setSearchQuery,
     isLoading,

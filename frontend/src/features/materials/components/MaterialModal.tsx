@@ -12,6 +12,8 @@ interface MaterialModalProps {
   onClose: () => void;
   editingMaterial?: Material | null;
   mixedOptions: MixedMaterial[];
+ locations: string[];
+ defaultLocation: string;
   onCreateSubmit: (payload: CreateMaterialPayload) => Promise<void>;
   onUpdateSubmit: (id: string, payload: Partial<CreateMaterialPayload>) => Promise<void>;
 }
@@ -21,6 +23,8 @@ export const MaterialModal: React.FC<MaterialModalProps> = ({
   onClose,
   editingMaterial,
   mixedOptions,
+ locations,
+ defaultLocation,
   onCreateSubmit,
   onUpdateSubmit,
 }) => {
@@ -28,6 +32,7 @@ export const MaterialModal: React.FC<MaterialModalProps> = ({
   const [description, setDescription] = useState<string>('');
   const [recycleType, setRecycleType] = useState<'reuse' | 'no_reuse'>('reuse');
   const [mixedMaterialId, setMixedMaterialId] = useState<string>('');
+ const [materialLocations, setMaterialLocations] = useState<string[]>([]);
 
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -40,14 +45,16 @@ export const MaterialModal: React.FC<MaterialModalProps> = ({
       setDescription(editingMaterial.description || '');
       setRecycleType(editingMaterial.recycle_type || 'reuse');
       setMixedMaterialId(editingMaterial.mixed_material_id || '');
+ setMaterialLocations(editingMaterial.locations || []);
     } else {
       setMaterialName('');
       setDescription('');
       setRecycleType('reuse');
       setMixedMaterialId('');
+ setMaterialLocations([defaultLocation]);
     }
     setError(null);
-  }, [editingMaterial, isOpen]);
+  }, [editingMaterial, isOpen, defaultLocation]);
 
   const handleDescriptionChange = (val: string) => {
     setDescription(val);
@@ -67,6 +74,11 @@ export const MaterialModal: React.FC<MaterialModalProps> = ({
       return;
     }
 
+ if (materialLocations.length === 0) {
+ setError('Pilih minimal 1 lokasi plant.');
+ return;
+ }
+
     setIsSubmitting(true);
 
     try {
@@ -76,6 +88,7 @@ export const MaterialModal: React.FC<MaterialModalProps> = ({
           description: description.trim() || undefined,
           recycle_type: recycleType,
           mixed_material_id: mixedMaterialId || null,
+ locations: materialLocations,
         });
       } else {
         await onCreateSubmit({
@@ -83,6 +96,7 @@ export const MaterialModal: React.FC<MaterialModalProps> = ({
           description: description.trim() || undefined,
           recycle_type: recycleType,
           mixed_material_id: mixedMaterialId || null,
+ locations: materialLocations,
         });
       }
     } catch (err: any) {
@@ -194,6 +208,28 @@ export const MaterialModal: React.FC<MaterialModalProps> = ({
             </label>
           </div>
         </div>
+
+ <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+ <label style={{ fontSize: '0.825rem', fontWeight: 700, color: 'var(--text-main, #0f172a)' }}>
+ Lokasi Plant
+ </label>
+ <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+ {locations.map((loc) => (
+ <label key={loc} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem', fontWeight: 700 }}>
+ <input
+ type="checkbox"
+ checked={materialLocations.includes(loc)}
+ onChange={(e) =>
+ setMaterialLocations((prev) =>
+ e.target.checked ? [...prev, loc] : prev.filter((l) => l !== loc)
+ )
+ }
+ />
+ {loc}
+ </label>
+ ))}
+ </div>
+ </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
           <label style={{ fontSize: '0.825rem', fontWeight: 700, color: 'var(--text-main, #0f172a)' }}>

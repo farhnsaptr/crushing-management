@@ -40,6 +40,15 @@ export const MixedMaterialsTable: React.FC<MixedMaterialsTableProps> = ({
       },
       width: '170px',
     },
+ {
+ header: 'Plant',
+ cell: (m) => (
+ <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-main)' }}>
+ {m.locations?.length ? m.locations.join(', ') : '-'}
+ </span>
+ ),
+ width: '140px',
+ },
     {
       header: 'Anggota',
       cell: (m) => (

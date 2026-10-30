@@ -12,7 +12,11 @@ Modul ini mengelola katalog data master part resin, model kendaraan, berat part/
 4. **Filter Berdasarkan Jenis Part (`MasterPartsService.getPartsByJenis`)**:
    - Menampilkan daftar part sesuai `jenis_part` (misal: BUMPER, GRILLE, DOOR TRIM) untuk halaman input scan.
 5. **Upload File > 1MB (`preview-import` & `:id/upload-image`)**:
-   - Excel import dan foto part dikirim per-chunk lewat `POST /api/uploads/chunk`, lalu endpoint menerima JSON `{ upload_id, total_chunks, filename }` (lihat modul `uploads`). Upload multipart langsung tetap didukung.
+ - Excel import dan foto part dikirim per-chunk lewat `POST /api/uploads/chunk`, lalu endpoint menerima JSON `{ upload_id, total_chunks, filename }` (lihat modul `uploads`). Upload multipart langsung tetap didukung.
+6. **Assignment Factory (`master_part_factories`)**:
+ - Satu part bisa di-assign ke beberapa factory. Filter part untuk pengirim memakai tabel pivot ini.
+ - `master_parts.machine_id` tetap mesin utama/home machine, bukan penentu akses factory.
+ - Laporan transaksi tetap mengikuti `crushing_requests.factory_id` / `ng_transactions.factory_id`.
 
 ## Struktur File
 ```
@@ -32,3 +36,7 @@ master-parts/
 | `GET` | `/api/master-parts/by-jenis` | Authenticated | Filter part berdasarkan `jenis_part` |
 | `GET` | `/api/master-parts` | Authenticated | List semua master part (paginated) |
 | `POST` | `/api/master-parts` | Admin Only | Tambah master part baru |
+
+## Validasi Lokasi Material
+- Saat create/update part, material harus tersedia di semua lokasi factory part.
+- Material baru yang auto-dibuat saat create/import otomatis dipetakan ke lokasi factory part.

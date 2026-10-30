@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { MasterPartsService } from '../services/masterParts.service';
 import { MachinesService } from '../../machines/services/machines.service';
+import { FactoriesService } from '../../factories/services/factories.service';
 import { useDebounce } from '../../../hooks';
 import type {
   MasterPart,
@@ -9,13 +10,15 @@ import type {
   ParsedPartRow,
 } from '../types/masterParts.types';
 import type { Machine } from '../../machines/types/machines.types';
+import type { Factory } from '../../factories/types/factories.types';
 import type { ToastMessage } from '../../../components/common/Toast';
 import { extractErrorMessage } from '../../../services/api.client';
 
 export const useMasterParts = () => {
-  const [parts, setParts] = useState<MasterPart[]>([]);
-  const [machines, setMachines] = useState<Machine[]>([]);
-  const [jenisList, setJenisList] = useState<string[]>([]);
+ const [parts, setParts] = useState<MasterPart[]>([]);
+ const [machines, setMachines] = useState<Machine[]>([]);
+ const [factories, setFactories] = useState<Factory[]>([]);
+ const [jenisList, setJenisList] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const debouncedSearchQuery = useDebounce(searchQuery, 400);
   const [selectedJenis, setSelectedJenis] = useState<string>('all');
@@ -216,23 +219,33 @@ export const useMasterParts = () => {
     setPage(1);
   };
 
-  const fetchJenisList = async () => {
-    try {
-      const data = await MasterPartsService.getJenisList();
-      setJenisList(data || []);
-    } catch (err) {
-      console.warn('Failed to load jenis list', err);
-    }
-  };
+ const fetchJenisList = async () => {
+ try {
+ const data = await MasterPartsService.getJenisList();
+ setJenisList(data || []);
+ } catch (err) {
+ console.warn('Failed to load jenis list', err);
+ }
+ };
 
-  useEffect(() => {
-    fetchParts();
-  }, [fetchParts]);
+ const fetchFactories = async () => {
+ try {
+ const data = await FactoriesService.getFactories();
+ setFactories(data || []);
+ } catch (err) {
+ console.warn('Failed to load factories', err);
+ }
+ };
 
-  useEffect(() => {
-    fetchMachines();
-    fetchJenisList();
-  }, []);
+ useEffect(() => {
+ fetchParts();
+ }, [fetchParts]);
+
+ useEffect(() => {
+ fetchMachines();
+ fetchJenisList();
+ fetchFactories();
+ }, []);
 
   const handleOpenCreateModal = () => {
     setEditingPart(null);
@@ -406,10 +419,11 @@ export const useMasterParts = () => {
     }
   };
 
-  return {
-    parts,
-    machines,
-    page,
+ return {
+ parts,
+ machines,
+ factories,
+ page,
     setPage,
     limit,
     total,

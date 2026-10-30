@@ -99,7 +99,7 @@ export const NgInputFormCard: React.FC<NgInputFormCardProps> = ({
                 <strong>Material:</strong> {selectedPart.effective_material_name || selectedPart.material || '-'}
               </div>
               <div>
-                <strong>Factory:</strong> {selectedPart.factory_name || selectedPart.factory_code || '-'}
+                <strong>Factory:</strong> {selectedPart.factory_names?.length ? selectedPart.factory_names.join(', ') : selectedPart.factory_name || selectedPart.factory_code || '-'}
               </div>
             </div>
           </div>

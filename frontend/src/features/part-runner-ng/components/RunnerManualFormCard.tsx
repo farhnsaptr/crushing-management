@@ -65,7 +65,7 @@ export const RunnerManualFormCard: React.FC<RunnerManualFormCardProps> = ({
   useEffect(() => {
     const fetchMaterials = async () => {
       try {
-        const response = await apiClient.get('/api/materials', { params: { page: 1, limit: 100 } });
+        const response = await apiClient.get('/api/materials', { params: { page: 1, limit: 100, location } });
         if (response.data && response.data.data && Array.isArray(response.data.data.materials)) {
           const matList = response.data.data.materials;
           setMaterials(matList);

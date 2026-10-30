@@ -28,7 +28,93 @@ export interface ParsedPartRow {
 }
 
 export class MasterPartsService {
-  static async searchParts(query: string, factoryId?: string) {
+ private static async attachFactories<T extends Record<string, any>>(rows: T[], idKey: keyof T = 'id' as keyof T) {
+ if (rows.length === 0) return rows.map((r) => ({ ...r, factory_ids: [] as string[], factory_names: [] as string[] }));
+
+ const ids = rows.map((r) => r[idKey]).filter(Boolean);
+ if (ids.length === 0) return rows.map((r) => ({ ...r, factory_ids: [] as string[], factory_names: [] as string[] }));
+ const [factoryRows] = await pool.query<RowDataPacket[]>(
+ `SELECT mpf.master_part_id, f.id AS factory_id, f.name AS factory_name
+ FROM master_part_factories mpf
+ JOIN factories f ON f.id = mpf.factory_id
+ WHERE mpf.master_part_id IN (?)
+ ORDER BY f.name ASC`,
+ [ids]
+ );
+
+ const map = new Map<string, { factory_ids: string[]; factory_names: string[] }>();
+ factoryRows.forEach((row) => {
+ const entry = map.get(row.master_part_id) || { factory_ids: [], factory_names: [] };
+ entry.factory_ids.push(row.factory_id);
+ entry.factory_names.push(row.factory_name);
+ map.set(row.master_part_id, entry);
+ });
+
+ return rows.map((r) => ({
+ ...r,
+ factory_ids: map.get(r[idKey])?.factory_ids || [],
+ factory_names: map.get(r[idKey])?.factory_names || [],
+ }));
+ }
+
+ private static async getFactoryLocations(factoryIds: string[]): Promise<string[]> {
+ const unique = [...new Set(factoryIds.filter(Boolean))];
+ if (unique.length === 0) return [];
+ const [rows] = await pool.query<RowDataPacket[]>(
+ 'SELECT DISTINCT location FROM factories WHERE id IN (?) AND location IS NOT NULL',
+ [unique]
+ );
+ return rows.map((r) => String(r.location));
+ }
+
+ private static async assignMaterialLocations(materialId: string, locations: string[]) {
+ for (const location of locations) {
+ await pool.query(
+ 'INSERT IGNORE INTO master_material_locations (material_id, location) VALUES (?, ?)',
+ [materialId, location]
+ );
+ }
+ }
+
+ /** Material harus tersedia di semua lokasi factory tempat part dipakai. */
+ private static async assertMaterialCoversFactories(materialId: string, factoryIds: string[]) {
+ const locations = await this.getFactoryLocations(factoryIds);
+ if (locations.length === 0) return;
+ const [rows] = await pool.query<RowDataPacket[]>(
+ 'SELECT location FROM master_material_locations WHERE material_id = ? AND location IN (?)',
+ [materialId, locations]
+ );
+ if (rows.length !== locations.length) {
+ const covered = new Set(rows.map((r) => String(r.location)));
+ const missing = locations.filter((l) => !covered.has(l));
+ throw new Error(`Material belum tersedia di plant: ${missing.join(', ')}.`);
+ }
+ }
+
+ private static async replacePartFactories(partId: string, factoryIds: string[]) {
+ const unique = [...new Set(factoryIds.filter(Boolean))];
+ if (unique.length === 0) {
+ throw new Error('Pilih minimal 1 factory untuk part ini');
+ }
+
+ const [factories] = await pool.query<RowDataPacket[]>(
+ 'SELECT id FROM factories WHERE id IN (?)',
+ [unique]
+ );
+ if (factories.length !== unique.length) {
+ throw new Error('Factory yang dipilih tidak ditemukan');
+ }
+
+ await pool.query('DELETE FROM master_part_factories WHERE master_part_id = ?', [partId]);
+ for (const factoryId of unique) {
+ await pool.query(
+ 'INSERT IGNORE INTO master_part_factories (master_part_id, factory_id) VALUES (?, ?)',
+ [partId, factoryId]
+ );
+ }
+ }
+
+ static async searchParts(query: string, factoryId?: string) {
     const searchTerm = `%${query}%`;
     let sql = `
       SELECT DISTINCT mp.part_number, mp.part_name, mp.jenis_part, mp.material, COALESCE(xm.mixed_name, mm.material_name, mp.material) AS effective_material_name, m.model_code
@@ -40,11 +126,11 @@ export class MasterPartsService {
       WHERE (mp.part_number LIKE ? OR mp.part_name LIKE ? OR mp.sebango_code LIKE ? OR m.model_code LIKE ? OR m.description LIKE ? OR mp.customer LIKE ?) AND mp.is_active = TRUE
     `;
     const params: any[] = [searchTerm, searchTerm, searchTerm, searchTerm, searchTerm, searchTerm];
-    if (factoryId) {
-      sql += ' AND mc.factory_id = ?';
-      params.push(factoryId);
-    }
-    sql += ' LIMIT 20';
+ if (factoryId) {
+ sql += ' AND EXISTS (SELECT 1 FROM master_part_factories mpf WHERE mpf.master_part_id = mp.id AND mpf.factory_id = ?)';
+ params.push(factoryId);
+ }
+ sql += ' LIMIT 20';
 
     const [rows] = await pool.query<RowDataPacket[]>(sql, params);
     return rows;
@@ -57,12 +143,12 @@ export class MasterPartsService {
       JOIN machines mc ON mp.machine_id = mc.id
       WHERE mp.is_active = TRUE AND mp.jenis_part IS NOT NULL AND mp.jenis_part != '' AND mp.jenis_part != '-'
     `;
-    const params: any[] = [];
-    if (factoryId) {
-      sql += ' AND mc.factory_id = ?';
-      params.push(factoryId);
-    }
-    sql += ' ORDER BY mp.jenis_part ASC';
+ const params: any[] = [];
+ if (factoryId) {
+ sql += ' AND EXISTS (SELECT 1 FROM master_part_factories mpf WHERE mpf.master_part_id = mp.id AND mpf.factory_id = ?)';
+ params.push(factoryId);
+ }
+ sql += ' ORDER BY mp.jenis_part ASC';
 
     const [rows] = await pool.query<RowDataPacket[]>(sql, params);
     return rows.map((r) => r.jenis_part);
@@ -79,19 +165,20 @@ export class MasterPartsService {
        WHERE mp.part_number = ? AND mp.is_active = TRUE
     `;
     const params: any[] = [partNumber];
-    if (factoryId) {
-      sql += ' AND mc.factory_id = ?';
-      params.push(factoryId);
-    }
+ if (factoryId) {
+ sql += ' AND EXISTS (SELECT 1 FROM master_part_factories mpf WHERE mpf.master_part_id = mp.id AND mpf.factory_id = ?)';
+ params.push(factoryId);
+ }
 
-    const [rows] = await pool.query<RowDataPacket[]>(sql, params);
-    return rows.map((r) => ({
-      ...r,
-      image_url: StorageService.formatImageUrl(r.image_url),
-    }));
-  }
+ const [rows] = await pool.query<RowDataPacket[]>(sql, params);
+ const withFactories = await this.attachFactories(rows, 'master_part_id');
+ return withFactories.map((r) => ({
+ ...r,
+ image_url: StorageService.formatImageUrl(r.image_url),
+ }));
+ }
 
-  static async getByQrCode(qrCodeValue: string, factoryId?: string) {
+ static async getByQrCode(qrCodeValue: string, factoryId?: string) {
     let sql = `
       SELECT mp.id AS master_part_id, mp.part_number, mp.part_name, mp.jenis_part, mp.material,
               COALESCE(xm.mixed_name, mm.material_name, mp.material) AS effective_material_name,
@@ -105,20 +192,21 @@ export class MasterPartsService {
        LEFT JOIN mixed_materials xm ON xm.id = mm.mixed_material_id
        WHERE (mp.part_number = ? OR mp.sebango_code = ?) AND mp.is_active = TRUE
     `;
-    const params: any[] = [qrCodeValue, qrCodeValue];
-    if (factoryId) {
-      sql += ' AND mc.factory_id = ?';
-      params.push(factoryId);
-    }
-    sql += ' LIMIT 1';
+ const params: any[] = [qrCodeValue, qrCodeValue];
+ if (factoryId) {
+ sql += ' AND EXISTS (SELECT 1 FROM master_part_factories mpf WHERE mpf.master_part_id = mp.id AND mpf.factory_id = ?)';
+ params.push(factoryId);
+ }
+ sql += ' LIMIT 1';
 
-    const [rows] = await pool.query<RowDataPacket[]>(sql, params);
-    if (!rows[0]) return null;
-    return {
-      ...rows[0],
-      image_url: StorageService.formatImageUrl(rows[0].image_url),
-    };
-  }
+ const [rows] = await pool.query<RowDataPacket[]>(sql, params);
+ if (!rows[0]) return null;
+ const [row] = await this.attachFactories(rows, 'master_part_id');
+ return {
+ ...row,
+ image_url: StorageService.formatImageUrl(row.image_url),
+ };
+ }
 
   static async getPartsByJenis(jenisPart: string, factoryId?: string) {
     let sql = `
@@ -134,18 +222,19 @@ export class MasterPartsService {
        LEFT JOIN mixed_materials xm ON xm.id = mm.mixed_material_id
        WHERE mp.jenis_part = ? AND mp.is_active = TRUE
     `;
-    const params: any[] = [jenisPart];
-    if (factoryId) {
-      sql += ' AND mc.factory_id = ?';
-      params.push(factoryId);
-    }
+ const params: any[] = [jenisPart];
+ if (factoryId) {
+ sql += ' AND EXISTS (SELECT 1 FROM master_part_factories mpf WHERE mpf.master_part_id = mp.id AND mpf.factory_id = ?)';
+ params.push(factoryId);
+ }
 
-    const [rows] = await pool.query<RowDataPacket[]>(sql, params);
-    return rows.map((r) => ({
-      ...r,
-      image_url: StorageService.formatImageUrl(r.image_url),
-    }));
-  }
+ const [rows] = await pool.query<RowDataPacket[]>(sql, params);
+ const withFactories = await this.attachFactories(rows, 'master_part_id');
+ return withFactories.map((r) => ({
+ ...r,
+ image_url: StorageService.formatImageUrl(r.image_url),
+ }));
+ }
 
   static async listAllParts(
     page: number = 1,
@@ -172,12 +261,12 @@ export class MasterPartsService {
       params.push(jenis.trim());
     }
 
-    if (factoryId) {
-      whereClause += ' AND mc.factory_id = ?';
-      params.push(factoryId);
-    }
+ if (factoryId) {
+ whereClause += ' AND EXISTS (SELECT 1 FROM master_part_factories mpf WHERE mpf.master_part_id = mp.id AND mpf.factory_id = ?)';
+ params.push(factoryId);
+ }
 
-    const countQuery = `
+ const countQuery = `
       SELECT COUNT(*) AS total
       FROM master_parts mp
       JOIN machines mc ON mp.machine_id = mc.id
@@ -212,9 +301,10 @@ export class MasterPartsService {
       LIMIT ? OFFSET ?
     `;
 
-    const [rows] = await pool.query<RowDataPacket[]>(dataQuery, [...params, limit, offset]);
+ const [rows] = await pool.query<RowDataPacket[]>(dataQuery, [...params, limit, offset]);
+ const withFactories = await this.attachFactories(rows);
 
-    const formattedRows = rows.map((r) => ({
+ const formattedRows = withFactories.map((r) => ({
       ...r,
       image_url: StorageService.formatImageUrl(r.image_url),
       shikake: Number(r.shikake),
@@ -249,13 +339,14 @@ export class MasterPartsService {
     }));
   }
 
-  static async createPart(data: {
-    sebango_code: string;
-    machine_id: string;
-    customer: string;
-    model_id?: string;
-    model_code?: string;
-    material_id?: string;
+ static async createPart(data: {
+ sebango_code: string;
+ machine_id: string;
+ factory_ids?: string[];
+ customer: string;
+ model_id?: string;
+ model_code?: string;
+ material_id?: string;
     part_number: string;
     part_name: string;
     jenis_part: string;
@@ -274,6 +365,15 @@ export class MasterPartsService {
     const beratPartVal = Number(data.berat_part_gr) || 0;
     const stdQtyNg = shikakeVal * 2;
     const allowanceKg = Number(((stdQtyNg * beratPartVal) / 1000).toFixed(2));
+
+ let factoryIds = (data.factory_ids || []).map(String);
+ if (factoryIds.length === 0) {
+ const [mcRows] = await pool.query<RowDataPacket[]>(
+ 'SELECT factory_id FROM machines WHERE id = ?',
+ [data.machine_id]
+ );
+ if (mcRows[0]) factoryIds = [mcRows[0].factory_id];
+ }
 
     // Auto-resolve or create Model in master_models
     let finalModelId: string | null = null;
@@ -306,6 +406,7 @@ export class MasterPartsService {
 
     // Auto-resolve or create Material in master_materials if material_id not provided
     let finalMaterialId: string | null = data.material_id || null;
+ let materialCreated = false;
     const cleanMatName = (data.material || '-').trim();
     if (!finalMaterialId && cleanMatName && cleanMatName !== '-') {
       const [matRows] = await pool.query<RowDataPacket[]>(
@@ -320,8 +421,18 @@ export class MasterPartsService {
           finalMaterialId,
           cleanMatName,
         ]);
+
+ materialCreated = true;
+
+ if (finalMaterialId && factoryIds.length > 0) {
+ await this.assignMaterialLocations(finalMaterialId, await this.getFactoryLocations(factoryIds));
+ }
       }
     }
+
+ if (finalMaterialId && factoryIds.length > 0 && !materialCreated) {
+ await this.assertMaterialCoversFactories(finalMaterialId, factoryIds);
+ }
 
     await pool.query(
       `INSERT INTO master_parts
@@ -346,18 +457,21 @@ export class MasterPartsService {
         Number(data.berat_runner_gr) || 0,
         stdQtyNg,
         allowanceKg,
-        StorageService.extractKey(data.image_url),
-      ]
-    );
+ StorageService.extractKey(data.image_url),
+ ]
+ );
 
-    return this.getPartById(id);
-  }
+ await this.replacePartFactories(id, factoryIds);
 
-  static async updatePart(
-    id: string,
-    data: {
-      sebango_code?: string;
-      machine_id?: string;
+ return this.getPartById(id);
+ }
+
+ static async updatePart(
+ id: string,
+ data: {
+ sebango_code?: string;
+ machine_id?: string;
+ factory_ids?: string[];
       customer?: string;
       model_id?: string;
       model_code?: string;
@@ -407,6 +521,7 @@ export class MasterPartsService {
     }
 
     let finalMaterialId: string | null = data.material_id !== undefined ? data.material_id : current.material_id;
+ let materialCreated = false;
     const cleanMatName = data.material !== undefined ? data.material.trim() : current.material;
 
     if (data.material !== undefined && cleanMatName && cleanMatName !== '-') {
@@ -422,10 +537,39 @@ export class MasterPartsService {
           finalMaterialId,
           cleanMatName,
         ]);
+ materialCreated = true;
       }
     }
 
-    await pool.query(
+    let finalFactoryIds: string[] = (data.factory_ids || []).map(String);
+ if (data.factory_ids === undefined) {
+ const [assignedRows] = await pool.query<RowDataPacket[]>(
+ 'SELECT factory_id FROM master_part_factories WHERE master_part_id = ?',
+ [id]
+ );
+ finalFactoryIds = assignedRows.map((r) => String(r.factory_id));
+ }
+ if (finalFactoryIds.length === 0) {
+ const [mcRows] = await pool.query<RowDataPacket[]>(
+ 'SELECT factory_id FROM machines WHERE id = ?',
+ [data.machine_id ?? current.machine_id]
+ );
+ if (mcRows[0]) finalFactoryIds = [mcRows[0].factory_id];
+ }
+ if (finalMaterialId && finalFactoryIds.length > 0) {
+ if (materialCreated) {
+ await this.assignMaterialLocations(finalMaterialId, await this.getFactoryLocations(finalFactoryIds));
+ } else if (
+ data.material_id !== undefined ||
+ data.material !== undefined ||
+ data.factory_ids !== undefined ||
+ data.machine_id !== undefined
+ ) {
+ await this.assertMaterialCoversFactories(finalMaterialId, finalFactoryIds);
+ }
+ }
+
+ await pool.query(
       `UPDATE master_parts SET
         sebango_code = ?, machine_id = ?, customer = ?, model_id = ?, material_id = ?, part_number = ?,
         part_name = ?, jenis_part = ?, material = ?, shikake = ?, qty_day = ?,
@@ -450,15 +594,19 @@ export class MasterPartsService {
         data.berat_runner_gr !== undefined ? Number(data.berat_runner_gr) : current.berat_runner_gr,
         stdQtyNg,
         allowanceKg,
-        data.image_url !== undefined ? StorageService.extractKey(data.image_url) : current.image_url,
-        id,
-      ]
-    );
+ data.image_url !== undefined ? StorageService.extractKey(data.image_url) : current.image_url,
+ id,
+ ]
+ );
 
-    return this.getPartById(id);
-  }
+ if (data.factory_ids !== undefined) {
+ await this.replacePartFactories(id, data.factory_ids);
+ }
 
-  static async getPartById(id: string) {
+ return this.getPartById(id);
+ }
+
+ static async getPartById(id: string) {
     const [rows] = await pool.query<RowDataPacket[]>(
       `SELECT mp.*, m.model_code, mc.name AS machine_name, mc.code AS machine_code, f.name AS factory_name, f.code AS factory_code, mm.material_name AS master_material_name
        FROM master_parts mp
@@ -469,14 +617,15 @@ export class MasterPartsService {
        WHERE mp.id = ?`,
       [id]
     );
-    if (!rows[0]) return null;
-    return {
-      ...rows[0],
-      image_url: StorageService.formatImageUrl(rows[0].image_url),
-    };
-  }
+ if (!rows[0]) return null;
+ const [row] = await this.attachFactories(rows);
+ return {
+ ...row,
+ image_url: StorageService.formatImageUrl(row.image_url),
+ };
+ }
 
-  static async updatePartImageUrl(id: string, imageUrl: string) {
+ static async updatePartImageUrl(id: string, imageUrl: string) {
     const key = StorageService.extractKey(imageUrl);
     const [result] = await pool.query<ResultSetHeader>(
       'UPDATE master_parts SET image_url = ? WHERE id = ?',
@@ -525,10 +674,11 @@ export class MasterPartsService {
   }
 
   static async deleteAllParts() {
-    const connection = await pool.getConnection();
-    try {
-      await connection.query('SET FOREIGN_KEY_CHECKS = 0');
-      const [result] = await connection.query<ResultSetHeader>('DELETE FROM master_parts');
+ const connection = await pool.getConnection();
+ try {
+ await connection.query('SET FOREIGN_KEY_CHECKS = 0');
+ await connection.query('DELETE FROM master_part_factories');
+ const [result] = await connection.query<ResultSetHeader>('DELETE FROM master_parts');
       await connection.query('SET FOREIGN_KEY_CHECKS = 1');
       return { deletedCount: result.affectedRows };
     } finally {
@@ -810,6 +960,14 @@ export class MasterPartsService {
         }
       }
 
+ if (materialId) {
+ await pool.query(
+ `INSERT IGNORE INTO master_material_locations (material_id, location)
+ SELECT ?, location FROM factories WHERE id = ? AND location IS NOT NULL`,
+ [materialId, factoryId]
+ );
+ }
+
       // 4. Upsert Master Part
       const partId = randomUUID();
       await pool.query(
@@ -850,12 +1008,26 @@ export class MasterPartsService {
           row.qty_kbn || 0,
           row.berat_part_gr || 0,
           row.berat_runner_gr || 0,
-          row.std_qty_ng,
-          row.allowance_kg,
-        ]
-      );
-      insertedCount++;
-    }
+ row.std_qty_ng,
+ row.allowance_kg,
+ ]
+ );
+
+ // Import tetap memakai grain SEBANGO + MESIN. Assignment factory hanya ditambah
+ // dari kolom LOCATION; part yang sama di mesin berbeda tetap menjadi row terpisah.
+ const [savedPart] = await pool.query<RowDataPacket[]>(
+ 'SELECT id FROM master_parts WHERE sebango_code = ? AND machine_id = ?',
+ [row.sebango_code, machineId]
+ );
+ if (savedPart[0]) {
+ await pool.query(
+ 'INSERT IGNORE INTO master_part_factories (master_part_id, factory_id) VALUES (?, ?)',
+ [savedPart[0].id, factoryId]
+ );
+ }
+
+ insertedCount++;
+ }
 
     return { insertedCount };
   }
@@ -926,15 +1098,19 @@ export class MasterPartsService {
   // Export Master Parts Data to Excel (.xlsx)
   static async generateExportBuffer(): Promise<Buffer> {
     const [rows] = await pool.query<RowDataPacket[]>(
-      `SELECT mp.sebango_code, f.name AS location, mc.name AS mc, mp.customer, m.model_code AS model,
-              mp.part_number, mp.part_name, mp.jenis_part, mp.material, mp.shikake, mp.qty_day,
-              mp.prod_lot, mp.qty_kbn, mp.berat_part_gr, mp.berat_runner_gr, mp.std_qty_ng, mp.allowance_kg
-       FROM master_parts mp
-       JOIN master_models m ON mp.model_id = m.id
-       JOIN machines mc ON mp.machine_id = mc.id
-       JOIN factories f ON mc.factory_id = f.id
-       WHERE mp.is_active = TRUE
-       ORDER BY mp.created_at DESC`
+ `SELECT mp.sebango_code,
+ (SELECT GROUP_CONCAT(f2.name ORDER BY f2.name SEPARATOR ', ')
+ FROM master_part_factories mpf
+ JOIN factories f2 ON f2.id = mpf.factory_id
+ WHERE mpf.master_part_id = mp.id) AS location,
+ mc.name AS mc, mp.customer, m.model_code AS model,
+ mp.part_number, mp.part_name, mp.jenis_part, mp.material, mp.shikake, mp.qty_day,
+ mp.prod_lot, mp.qty_kbn, mp.berat_part_gr, mp.berat_runner_gr, mp.std_qty_ng, mp.allowance_kg
+ FROM master_parts mp
+ JOIN master_models m ON mp.model_id = m.id
+ JOIN machines mc ON mp.machine_id = mc.id
+ WHERE mp.is_active = TRUE
+ ORDER BY mp.created_at DESC`
     );
 
     const exportData = rows.map((r) => ({

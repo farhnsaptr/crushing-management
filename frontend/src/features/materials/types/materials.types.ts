@@ -5,6 +5,7 @@ export interface Material {
   recycle_type: 'reuse' | 'no_reuse';
   mixed_material_id?: string | null; // campuran tempat material ini dimasukkan
   mixed_material_name?: string | null;
+ locations?: string[];
   used_parts_count?: number;
   created_at?: string;
   updated_at?: string;
@@ -15,6 +16,7 @@ export interface CreateMaterialPayload {
   description?: string;
   recycle_type?: 'reuse' | 'no_reuse';
   mixed_material_id?: string | null; // null = lepas dari campuran
+ locations?: string[];
 }
 
 export interface MaterialPartDetail {
@@ -32,6 +34,7 @@ export interface MaterialPartDetail {
   machine_code: string;
   machine_name: string;
   factory_name: string;
+ factory_location?: string | null;
 }
 
 export interface MaterialPartsResponse {

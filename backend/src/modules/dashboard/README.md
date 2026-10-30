@@ -44,3 +44,11 @@ Mendownload laporan spreadsheet Excel (.xlsx) yang berisi 2 worksheet:
 1. **Transaksi NG**: Berisi data riwayat transaksi NG dengan kolom huruf kapital (`TANGGAL`, `SHIFT`, `SEBANGO`, `PART NAME`, `PART NUMBER`, `MATERIAL`, `REUSE/NO REUSE`, `MODEL`, `BERAT PART`, `QTY PER PCS`, `ALLOWANCE`, `INPUT`, `OUTPUT`). Nilai `OUTPUT` mengambil nilai aktual hasil verifikasi/validasi operator per shift & material.
 2. **Transaksi Runner**: Berisi data riwayat transaksi Runner per material dengan kolom huruf kapital (`TANGGAL`, `SHIFT`, `NAMA MATERIAL`, `REUSE/NO REUSE`, `QTY PER PCS`, `INPUT`, `OUTPUT`, `BATCH / SUMBER`). Nilai `OUTPUT` mengambil nilai aktual hasil verifikasi/validasi operator.
 - **Query Params**: `start_date`, `end_date`, `location` (`Cibitung` | `Karawang`)
+
+## Filter Departemen
+- `GET /daily-chart`, `/pareto-material`, dan `/top-ng-parts` menerima query `department_id`.
+- Nilai `unknown` memfilter transaksi tanpa departemen (`department_id IS NULL`); `others` diabaikan.
+- Grafik harian memfilter NG dan runner berdasarkan departemen; verifikasi (output/gap) dan Budomari tetap level plant karena tidak memiliki relasi departemen.
+
+## Detail Part Budomari
+- `GET /budomari-chart` juga mengembalikan `part_details` (baris `production_analytics_items` per tanggal/shift/sebango) berisi part number, part name, pcs, dan komponen KPI.

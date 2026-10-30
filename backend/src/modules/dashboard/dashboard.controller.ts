@@ -22,8 +22,9 @@ export class DashboardController {
       const year = req.query.year ? parseInt(req.query.year as string, 10) : undefined;
       const month = req.query.month ? parseInt(req.query.month as string, 10) : undefined;
       const location = (req.query.location as string) === 'Karawang' ? 'Karawang' : 'Cibitung';
+ const departmentId = (req.query.department_id as string) || undefined;
 
-      const chartData = await DashboardService.getDailyChartData(year, month, location);
+      const chartData = await DashboardService.getDailyChartData(year, month, location, departmentId);
       sendSuccess(res, chartData, 'Daily chart data retrieved successfully');
     } catch (error: any) {
       sendError(res, error.message || 'Failed to get daily chart data', 500);
@@ -48,8 +49,9 @@ export class DashboardController {
       const year = req.query.year ? parseInt(req.query.year as string, 10) : undefined;
       const month = req.query.month ? parseInt(req.query.month as string, 10) : undefined;
       const location = (req.query.location as string) === 'Karawang' ? 'Karawang' : 'Cibitung';
+ const departmentId = (req.query.department_id as string) || undefined;
 
-      const paretoData = await DashboardService.getParetoMaterial(year, month, location);
+      const paretoData = await DashboardService.getParetoMaterial(year, month, location, departmentId);
       sendSuccess(res, paretoData, 'Pareto material data retrieved successfully');
     } catch (error: any) {
       sendError(res, error.message || 'Failed to get pareto material data', 500);
@@ -61,8 +63,9 @@ export class DashboardController {
       const year = req.query.year ? parseInt(req.query.year as string, 10) : undefined;
       const month = req.query.month ? parseInt(req.query.month as string, 10) : undefined;
       const location = (req.query.location as string) === 'Karawang' ? 'Karawang' : 'Cibitung';
+ const departmentId = (req.query.department_id as string) || undefined;
 
-      const topNgData = await DashboardService.getTopNgParts(year, month, location);
+      const topNgData = await DashboardService.getTopNgParts(year, month, location, departmentId);
       sendSuccess(res, topNgData, 'Top NG parts retrieved successfully');
     } catch (error: any) {
       sendError(res, error.message || 'Failed to get top NG parts', 500);

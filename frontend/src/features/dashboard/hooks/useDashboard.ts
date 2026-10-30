@@ -10,6 +10,7 @@ import type {
  DailyRecycleChartItem,
  BudomariDailyItem,
  BudomariBreakdown,
+ BudomariPartDetail,
  ParetoMaterialItem,
  TopNgPartItem,
  DepartmentParetoItem,
@@ -50,9 +51,11 @@ export function useDashboard() {
   const [dailyChart, setDailyChart] = useState<DailyRecycleChartItem[]>([]);
  const [budomariChart, setBudomariChart] = useState<BudomariDailyItem[]>([]);
  const [monthlyBreakdown, setMonthlyBreakdown] = useState<BudomariBreakdown | null>(null);
+ const [budomariPartDetails, setBudomariPartDetails] = useState<BudomariPartDetail[]>([]);
  const [paretoMaterials, setParetoMaterials] = useState<ParetoMaterialItem[]>([]);
   const [topParts, setTopParts] = useState<TopNgPartItem[]>([]);
   const [departmentPareto, setDepartmentPareto] = useState<DepartmentParetoItem[]>([]);
+ const [selectedDepartmentId, setSelectedDepartmentId] = useState<string | null>(null);
 
   // Sender Specific Dashboard Data
   const [senderStats, setSenderStats] = useState<SenderDashboardStats | null>(null);
@@ -93,10 +96,10 @@ export function useDashboard() {
       } else {
         const [statsData, chartResult, budomariResult, paretoData, topPartsData, deptParetoData] = await Promise.all([
           DashboardService.getSummary(selectedYear, selectedMonth, selectedLocation),
-          DashboardService.getDailyChart(selectedYear, selectedMonth, selectedLocation),
+          DashboardService.getDailyChart(selectedYear, selectedMonth, selectedLocation, selectedDepartmentId || undefined),
           DashboardService.getBudomariChart(selectedYear, selectedMonth, selectedLocation),
-          DashboardService.getParetoMaterial(selectedYear, selectedMonth, selectedLocation),
-          DashboardService.getTopNgParts(selectedYear, selectedMonth, selectedLocation),
+          DashboardService.getParetoMaterial(selectedYear, selectedMonth, selectedLocation, selectedDepartmentId || undefined),
+          DashboardService.getTopNgParts(selectedYear, selectedMonth, selectedLocation, selectedDepartmentId || undefined),
           DashboardService.getDepartmentPareto(selectedYear, selectedMonth, selectedLocation),
         ]);
 
@@ -104,6 +107,7 @@ export function useDashboard() {
         setDailyChart(chartResult.daily_chart || []);
  setBudomariChart(budomariResult.budomari_chart || []);
  setMonthlyBreakdown(budomariResult.monthly_breakdown);
+ setBudomariPartDetails(budomariResult.part_details || []);
  setParetoMaterials(paretoData);
         setTopParts(topPartsData);
         setDepartmentPareto(deptParetoData);
@@ -114,7 +118,7 @@ export function useDashboard() {
     } finally {
       setIsLoading(false);
     }
-  }, [role, selectedYear, selectedMonth, selectedLocation, isLocationsLoaded]);
+  }, [role, selectedYear, selectedMonth, selectedLocation, selectedDepartmentId, isLocationsLoaded]);
 
  useEffect(() => {
  fetchDashboardData();
@@ -153,9 +157,12 @@ export function useDashboard() {
     dailyChart,
  budomariChart,
  monthlyBreakdown,
+ budomariPartDetails,
  paretoMaterials,
  topParts,
  departmentPareto,
+ selectedDepartmentId,
+ setSelectedDepartmentId,
  senderStats,
  isLoading,
  isExporting,

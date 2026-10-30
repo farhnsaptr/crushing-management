@@ -115,6 +115,8 @@ export const useNgInput = () => {
           result = allParts;
         } else {
           result = allParts.filter((p) => {
+            if (p.factory_ids?.includes(selectedFactoryId)) return true;
+
             const partFactoryId = (p as any).factory_id || (p as any).machine?.factory_id;
             if (partFactoryId && partFactoryId === selectedFactoryId) return true;
 
